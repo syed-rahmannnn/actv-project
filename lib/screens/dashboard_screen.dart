@@ -1,5 +1,6 @@
 import 'package:activ/screens/browse_members_screen.dart';
 import 'package:activ/screens/notification_screen.dart';
+import 'package:activ/screens/personal_details_form.dart';
 import 'package:flutter/material.dart';
 import 'profile_screen.dart';
 import '../services/auth_service.dart';
@@ -11,6 +12,65 @@ class DashboardScreen extends StatelessWidget {
     super.key,  
     required this.userData,
   });
+
+  int _calculateProfileCompletion() {
+    final registrationForm = userData['registrationForm'];
+    if (registrationForm == null) return 0;
+    
+    int completedFields = 0;
+    int totalFields = 0;
+    
+    // Personal Details (Step 1)
+    if (registrationForm['aadhaarNumber']?.isNotEmpty == true) completedFields++;
+    if (registrationForm['streetName']?.isNotEmpty == true) completedFields++;
+    if (registrationForm['educationalQualification']?.isNotEmpty == true) completedFields++;
+    if (registrationForm['religion']?.isNotEmpty == true) completedFields++;
+    if (registrationForm['socialCategory'] != null) completedFields++;
+    totalFields += 5;
+    
+    // Business Information (Step 2)
+    if (registrationForm['doingBusiness'] != null) completedFields++;
+    if (registrationForm['organizationName']?.isNotEmpty == true) completedFields++;
+    if (registrationForm['constitutionType'] != null) completedFields++;
+    if (registrationForm['businessTypes']?.isNotEmpty == true) completedFields++;
+    if (registrationForm['businessActivities']?.isNotEmpty == true) completedFields++;
+    if (registrationForm['businessCommencementYear'] != null) completedFields++;
+    if (registrationForm['numberOfEmployees']?.isNotEmpty == true) completedFields++;
+    if (registrationForm['memberOfOtherChamber'] != null) completedFields++;
+    if (registrationForm['govtOrganizations']?.isNotEmpty == true) completedFields++;
+    totalFields += 9;
+    
+    // Extended Business (if applicable)
+    if (registrationForm['doingBusiness'] == true) {
+      if (registrationForm['additionalBusiness']?.isNotEmpty == true) completedFields++;
+      if (registrationForm['businessLocation']?.isNotEmpty == true) completedFields++;
+      if (registrationForm['businessScale'] != null) completedFields++;
+      if (registrationForm['exportStatus'] != null) completedFields++;
+      if (registrationForm['hasExportLicense'] != null) completedFields++;
+      if (registrationForm['businessDescription']?.isNotEmpty == true) completedFields++;
+      totalFields += 6;
+    }
+    
+    // Financial & Compliance (Step 3)
+    if (registrationForm['panNumber']?.isNotEmpty == true) completedFields++;
+    if (registrationForm['gstNumber']?.isNotEmpty == true) completedFields++;
+    if (registrationForm['filedITR'] != null) completedFields++;
+    if (registrationForm['turnoverRange'] != null) completedFields++;
+    if (registrationForm['fy2021']?.isNotEmpty == true) completedFields++;
+    if (registrationForm['fy2020']?.isNotEmpty == true) completedFields++;
+    if (registrationForm['fy2019']?.isNotEmpty == true) completedFields++;
+    if (registrationForm['govtSchemeBenefit'] != null) completedFields++;
+    totalFields += 8;
+    
+    // Declaration (Step 4)
+    if (registrationForm['sisterConcerns']?.isNotEmpty == true) completedFields++;
+    if (registrationForm['companyNames']?.isNotEmpty == true) completedFields++;
+    if (registrationForm['agreeToDeclaration'] == true) completedFields++;
+    totalFields += 3;
+    
+    if (totalFields == 0) return 0;
+    return ((completedFields / totalFields) * 100).round();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -131,9 +191,9 @@ class DashboardScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
-                            '65% completed',
-                            style: TextStyle(
+                          Text(
+                            '${_calculateProfileCompletion()}% completed',
+                            style: const TextStyle(
                               fontSize: 14,
                               color: Colors.grey,
                             ),
@@ -148,7 +208,14 @@ class DashboardScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 16),
                           ElevatedButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => PersonalDetailsForm(userData: userData),
+                                ),
+                              );
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue,
                               shape: RoundedRectangleBorder(
@@ -230,12 +297,16 @@ class DashboardScreen extends StatelessWidget {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.orange,
+                              color: userData['registrationForm']?['profileCompleted'] == true 
+                                  ? Colors.orange 
+                                  : Colors.grey,
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: const Text(
-                              'In review',
-                              style: TextStyle(
+                            child: Text(
+                              userData['registrationForm']?['profileCompleted'] == true 
+                                  ? 'In review' 
+                                  : 'Not started',
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -243,15 +314,19 @@ class DashboardScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
-                            'Your profile is under review.',
-                            style: TextStyle(
+                          Text(
+                            userData['registrationForm']?['profileCompleted'] == true 
+                                ? 'Your profile is under review.'
+                                : 'Complete your profile to get started.',
+                            style: const TextStyle(
                               fontSize: 12,
                               color: Colors.grey,
                             ),
                           ),
-                          const Text(
-                            'Tap to see status updates',
+                          Text(
+                            userData['registrationForm']?['profileCompleted'] == true 
+                                ? 'Tap to see status updates'
+                                : 'Fill in all required information',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey,
