@@ -444,3 +444,4 @@ class ApplicationSubmittedScreen extends StatelessWidget {
     );
   }
 }
+
