@@ -154,7 +154,7 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
                       [
                         _buildReadOnlyField('Name', widget.userData['registrationForm']?['fullName'] ?? 'John Doe'),
                         _buildReadOnlyField('Block', widget.userData['registrationForm']?['block'] ?? 'Block A'),
-                        _buildReadOnlyField('City', widget.userData['registrationForm']?['city'] ?? 'Mumbai'),
+                        _buildReadOnlyField('state', widget.userData['registrationForm']?['state'] ?? 'Mumbai'),
                         _buildReadOnlyField('District', widget.userData['registrationForm']?['district'] ?? 'Mumbai'),
                         _buildReadOnlyField('Phone Number', widget.userData['registrationForm']?['phoneNumber'] ?? '+91 98765 43210'),
                         _buildReadOnlyField('Email ID', widget.userData['email'] ?? 'john.doe@email.com'),
@@ -399,3 +399,4 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
     );
   }
 }
+

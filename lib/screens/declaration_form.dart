@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dashboard_screen.dart';
+import 'application_submitted_screen.dart';
 
 class DeclarationForm extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -414,31 +414,13 @@ class _DeclarationFormState extends State<DeclarationForm> {
     updatedUserData['registrationForm']['profileCompleted'] = true;
     updatedUserData['registrationForm']['submissionDate'] = DateTime.now().toIso8601String();
 
-    // Show success message
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Application Submitted!'),
-          content: const Text('Your profile has been successfully submitted and is now under review.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                // Navigate back to dashboard with updated status
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (context) => DashboardScreen(userData: updatedUserData),
-                  ),
-                  (route) => false,
-                );
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
+    // Navigate to application submitted screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ApplicationSubmittedScreen(userData: updatedUserData),
+      ),
     );
   }
 }
+
