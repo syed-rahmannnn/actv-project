@@ -4,8 +4,8 @@ import 'package:http/http.dart' as http;
 class ApiService {
   // Your local backend server URL
   // static const String baseUrl = 'http://localhost:3000/api'; // Local development
-  // static const String baseUrl = 'http://10.0.2.2:3000/api'; // Android Emulator  
-  static const String baseUrl = 'http://10.226.106.109:3000/api';
+  //static const String baseUrl = 'http://10.0.2.2:3000/api'; // Android Emulator  
+  static const String baseUrl = 'http://172.21.112.1:3000/api'; // Physical device on same network
   // Headers for requests
   static Map<String, String> get headers => {
     'Content-Type': 'application/json',
@@ -69,7 +69,6 @@ class ApiService {
     required String email,
     required String password,
   }) async {
-    try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/login'),
         headers: headers,
