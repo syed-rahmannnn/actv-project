@@ -57,7 +57,7 @@ class DashboardScreen extends StatelessWidget {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => ProfileScreen(userData: userData)),
+                        MaterialPageRoute(builder: (context) => const ProfileScreen()),
                       );
                     },
                     child: Row(
@@ -78,13 +78,7 @@ class DashboardScreen extends StatelessWidget {
                                 color: Colors.black87,
                               ),
                             ),
-                            const Text(
-                              "TechCorp Solution",
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.black54,
-                              ),
-                            ),
+                            const SizedBox.shrink(),
                           ],
                         ),
                       ],

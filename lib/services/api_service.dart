@@ -5,43 +5,105 @@ class ApiService {
   // Your local backend server URL
   // static const String baseUrl = 'http://localhost:3000/api'; // Local development
   //static const String baseUrl = 'http://10.0.2.2:3000/api'; // Android Emulator  
-  static const String baseUrl = 'http://172.21.112.1:3000/api'; // Physical device on same network
+  static const String baseUrl = 'http://172.25.100.248:3000/api'; // Active Wi‑Fi IP
   // Headers for requests
   static Map<String, String> get headers => {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
 
+  // Firebase validate (allow only registered members)
+  static Future<Map<String, dynamic>> firebaseValidate({
+    required String firebaseUid,
+    required String? email,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/firebase-validate'),
+        headers: headers,
+        body: jsonEncode({
+          'firebaseUid': firebaseUid,
+          'email': email,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'data': jsonDecode(response.body),
+        };
+      } else {
+        return {
+          'success': false,
+          'error': jsonDecode(response.body)['message'] ?? 'Validation failed',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getMemberByFirebaseUid(String uid) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/members/by-firebase?uid=$uid'),
+        headers: headers,
+      );
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'data': jsonDecode(response.body),
+        };
+      } else {
+        return {
+          'success': false,
+          'error': jsonDecode(response.body)['message'] ?? 'Fetch failed',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Network error: ${e.toString()}',
+      };
+    }
+  }
   // Register user (creates both User and UserRegistrationForm)
   static Future<Map<String, dynamic>> registerUser({
-    required String email,
-    required String password,
+    required String firebaseUid,
     required String fullName,
     required String phoneNumber,
     required DateTime dateOfBirth,
     required String gender,
+    required String address,
+    required String city,
     required String state,
     required String district,
     String? block,
-    required String completeAddress,
+    required String pincode,
+    String? profilePicture,
+    String? memberType,
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/register'),
+        Uri.parse('$baseUrl/members/register'),
         headers: headers,
         body: jsonEncode({
-          'email': email,
-          'password': password,
-          'registrationForm': {
-            'fullName': fullName,
-            'phoneNumber': phoneNumber,
-            'dateOfBirth': dateOfBirth.toIso8601String(),
-            'gender': gender,
-            'state': state,
-            'district': district,
-            'block': block,
-            'completeAddress': completeAddress,
-          }
+          'firebaseUid': firebaseUid,
+          'fullName': fullName,
+          'phoneNumber': phoneNumber,
+          'dateOfBirth': dateOfBirth.toIso8601String(),
+          'gender': gender,
+          'address': address,
+          'city': city,
+          'state': state,
+          'district': district,
+          'block': block,
+          'pincode': pincode,
+          'profilePicture': profilePicture,
+          'memberType': memberType,
         }),
       );
 
@@ -69,6 +131,7 @@ class ApiService {
     required String email,
     required String password,
   }) async {
+    try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/login'),
         headers: headers,

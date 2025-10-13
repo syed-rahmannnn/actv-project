@@ -3,6 +3,7 @@ import 'registration_step1_screen.dart';
 import 'dashboard_screen.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -315,7 +316,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Handle login functionality with database check
+  // Handle login via Firebase and validate with backend
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -326,55 +327,51 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final result = await ApiService.loginUser(
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
-      // Check for success
-      if (result['success'] == true) {
-        // Safely handle token and user data
-        final token = result['token'] as String?;
-        final userData = result['user'] as Map<String, dynamic>?;
+      final user = credential.user;
 
-        if (token == null || userData == null) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Invalid login data received'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        } else {
-          // Save login data for persistence
-          await AuthService.saveLoginData(
-            token: token,
-            userData: userData,
-          );
-          
-          // Navigate to Dashboard on successful login
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DashboardScreen(
-                  userData: userData,
-                ),
-              ),
-            );
-          }
-        }
-      } else {
-        // Show error if login fails
+      if (user == null) {
+        throw Exception('Firebase login failed');
+      }
+
+      final validate = await ApiService.firebaseValidate(
+        firebaseUid: user.uid,
+        email: user.email,
+      );
+
+      if (validate['success'] != true || validate['data']?['allowed'] != true) {
+        await FirebaseAuth.instance.signOut();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['error'] ?? 'Invalid email or password'),
+            const SnackBar(
+              content: Text('Not registered member. Access denied.'),
               backgroundColor: Colors.red,
             ),
           );
         }
+        return;
+      }
+
+      final member = Map<String, dynamic>.from(validate['data']['member'] as Map);
+
+      await AuthService.saveLoginData(
+        token: 'firebase',
+        userData: member,
+      );
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DashboardScreen(
+              userData: member,
+            ),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {

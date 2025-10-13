@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:activ/services/api_service.dart';
 import 'business_information_form.dart';
 
 class PersonalDetailsForm extends StatefulWidget {
@@ -14,6 +16,31 @@ class PersonalDetailsForm extends StatefulWidget {
 }
 
 class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
+  Future<Map<String, dynamic>?> _loadMemberFromBackend() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return widget.userData;
+      final res = await ApiService.getMemberByFirebaseUid(user.uid);
+      if (res['success'] == true) {
+        final member = Map<String, dynamic>.from(res['data']['member'] as Map);
+        return {
+          'email': user.email,
+          'registrationForm': {
+            'fullName': member['fullName'],
+            'block': member['block'],
+            'state': member['state'],
+            'district': member['district'],
+            'phoneNumber': member['phoneNumber'],
+            'dateOfBirth': member['dateOfBirth'],
+            'completeAddress': member['address'],
+          }
+        };
+      }
+      return widget.userData;
+    } catch (_) {
+      return widget.userData;
+    }
+  }
   final _aadhaarController = TextEditingController();
   final _streetNameController = TextEditingController();
   final _educationController = TextEditingController();
@@ -149,18 +176,31 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
                     const SizedBox(height: 30),
                     
                     // Personal Details Section
-                    _buildSectionCard(
-                      'Personal details',
-                      [
-                        _buildReadOnlyField('Name', widget.userData['registrationForm']?['fullName'] ?? 'John Doe'),
-                        _buildReadOnlyField('Block', widget.userData['registrationForm']?['block'] ?? 'Block A'),
-                        _buildReadOnlyField('state', widget.userData['registrationForm']?['state'] ?? 'Mumbai'),
-                        _buildReadOnlyField('District', widget.userData['registrationForm']?['district'] ?? 'Mumbai'),
-                        _buildReadOnlyField('Phone Number', widget.userData['registrationForm']?['phoneNumber'] ?? '+91 98765 43210'),
-                        _buildReadOnlyField('Email ID', widget.userData['email'] ?? 'john.doe@email.com'),
-                        _buildReadOnlyField('Date of Birth', widget.userData['registrationForm']?['dateOfBirth'] ?? '15/03/1990'),
-                      ],
-                    ),
+    _buildSectionCard(
+      'Personal details',
+      [
+        FutureBuilder<Map<String, dynamic>?>(
+          future: _loadMemberFromBackend(),
+          builder: (context, snapshot) {
+            final data = snapshot.data;
+            final form = (data?['registrationForm'] as Map<String, dynamic>?) ?? {};
+            String s(dynamic v) => (v == null || (v is String && v.isEmpty)) ? '—' : v.toString();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildReadOnlyField('Name', s(form['fullName'])),
+                _buildReadOnlyField('Block', s(form['block'])),
+                _buildReadOnlyField('state', s(form['state'])),
+                _buildReadOnlyField('District', s(form['district'])),
+                _buildReadOnlyField('Phone Number', s(form['phoneNumber'])),
+                _buildReadOnlyField('Email ID', s(data?['email'])),
+                _buildReadOnlyField('Date of Birth', s(form['dateOfBirth'])),
+              ],
+            );
+          },
+        ),
+      ],
+    ),
                     const SizedBox(height: 20),
                     
                     // Personal & Demographic Details Section

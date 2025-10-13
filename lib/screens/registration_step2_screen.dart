@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 import '../services/api_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RegistrationStep2Screen extends StatefulWidget {
   final Map<String, dynamic> personalData;
@@ -441,17 +442,57 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
         int.parse(dobParts[0]), // day
       );
 
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        // Try to sign in with credentials provided in step 1.
+        final String email = (widget.personalData['email'] ?? '').toString().trim();
+        final String password = (widget.personalData['password'] ?? '').toString();
+
+        if (email.isEmpty || password.isEmpty) {
+          throw Exception('Please sign in with Firebase first');
+        }
+
+        try {
+          final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+            email: email,
+            password: password,
+          );
+          currentUser = cred.user;
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'user-not-found') {
+            // Create the user then proceed
+            final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+              email: email,
+              password: password,
+            );
+            currentUser = cred.user;
+          } else if (e.code == 'wrong-password') {
+            throw Exception('Wrong password. Please check and try again.');
+          } else {
+            throw Exception(e.message ?? 'Firebase sign-in failed');
+          }
+        }
+      }
+
+      if (currentUser == null) {
+        throw Exception('Please sign in with Firebase first');
+      }
+
       final result = await ApiService.registerUser(
-        email: widget.personalData['email'],
-        password: widget.personalData['password'],
+        firebaseUid: currentUser.uid,
         fullName: widget.personalData['fullName'],
         phoneNumber: widget.personalData['phone'],
         dateOfBirth: dateOfBirth,
         gender: widget.personalData['gender'],
+        address: _addressController.text,
+        city: _selectedDistrict ?? '',
         state: _selectedState!,
         district: _selectedDistrict!,
-        block: _blockController.text.isEmpty ? null : _blockController.text,
-        completeAddress: _addressController.text,
+        // send block separately
+        // pincode currently from personalData or ensure a default
+        pincode: widget.personalData['pincode'] ?? '000000',
+        profilePicture: null,
+        memberType: null,
       );
 
       if (result['success']) {
@@ -464,7 +505,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
             'district': _selectedDistrict,
             'block': _blockController.text,
             'address': _addressController.text,
-            'id': result['data']['user']['id'],
+            'member': result['data']['member'],
           };
 
           Navigator.pushReplacement(

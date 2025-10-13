@@ -1,35 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
+// Member Registration - Main member data table
+model MemberRegistration {
+  id                    String   @id @default(cuid())
+  fullName              String
+  phoneNumber           String   @unique
+  dateOfBirth           DateTime
+  gender                Gender
+  profilePicture        String?
+  
+  // Location Information
+  address               String
+  city                  String
+  state                 String
+  district              String
+  pincode               String
+  country               String   @default("India")
+  
+  // Member Status
+  isActive              Boolean  @default(true)
+  memberType            String?  // e.g., "Individual", "Business", "Premium"
+  membershipNumber      String?  @unique
+  registrationDate      DateTime @default(now())
+  lastLoginDate         DateTime?
+  
+  // Timestamps
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relationships
+  firebaseUid           String   @unique
+  profileCompletion     MemberProfileCompletion?
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  registrationForm UserRegistrationForm?
-}
-
-model UserRegistrationForm {
-  id              String   @id @default(cuid())
-  fullName        String
-  phoneNumber     String   @unique
-  dateOfBirth     DateTime
-  gender          Gender
-  state           String
-  district        String
-  block           String?
-  completeAddress String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id])
+// Member Profile Completion - 4-stage additional form
+model MemberProfileCompletion {
+  id                    String   @id @default(cuid())
+  
+  // Stage 1: Personal & Demographic Details
+  aadhaarNumber         String?  @unique
+  streetName            String?
+  educationalQualification String?
+  religion              String?
+  socialCategory        String?
+  maritalStatus         String?
+  fatherName            String?
+  motherName            String?
+  spouseName            String?
+  
+  // Stage 2: Business Information
+  businessName          String?
+  businessType          String?
+  businessCategory      String?
+  businessDescription   String?
+  businessAddress       String?
+  businessCity          String?
+  businessState         String?
+  businessPincode       String?
+  businessPhone         String?
+  businessEmail         String?
+  businessWebsite       String?
+  businessRegistrationNumber String?
+  gstNumber             String?
+  panNumber             String?
+  businessLicenseNumber String?
+  yearsInBusiness       Int?
+  numberOfEmployees     Int?
+  annualRevenue         Float?
+  businessOwnership     String?
+  
+  // Stage 3: Financial & Compliance
+  bankName              String?
+  accountNumber         String?
+  ifscCode              String?
+  accountHolderName     String?
+  taxId                 String?
+  taxFilingStatus       String?
+  gstRegistered         Boolean  @default(false)
+  creditScore           Int?
+  annualIncome          Float?
+  sourceOfIncome        String?
+  otherIncomeSources    String?
+  liabilities           String?
+  assets                String?
+  
+  // Stage 4: Additional Details & Preferences
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  emergencyContactRelation String?
+  preferredLanguage     String?
+  communicationPreference String?
+  marketingConsent      Boolean  @default(false)
+  termsAccepted         Boolean  @default(false)
+  privacyPolicyAccepted Boolean  @default(false)
+  additionalNotes       String?
+  documents             String?  // JSON string for document paths
+  
+  // Completion Status
+  stage1Completed       Boolean  @default(false)
+  stage2Completed       Boolean  @default(false)
+  stage3Completed       Boolean  @default(false)
+  stage4Completed       Boolean  @default(false)
+  isProfileComplete     Boolean  @default(false)
+  
+  // Timestamps
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relationships
+  firebaseUid           String   @unique
+  memberRegistrationId  String   @unique
+  memberRegistration    MemberRegistration @relation(fields: [memberRegistrationId], references: [id])
 }
 
 enum Gender {
