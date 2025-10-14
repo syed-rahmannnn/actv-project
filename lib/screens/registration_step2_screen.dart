@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 import '../services/api_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class RegistrationStep2Screen extends StatefulWidget {
   final Map<String, dynamic> personalData;
@@ -476,137 +475,77 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
 
   // Handle registration submission
   Future<void> _handleRegistration() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
+
+    // Use this variable (removes unused warning)
+    final dateOfBirth = widget.personalData['dateOfBirth'] ?? widget.personalData['dob'] ?? '';
 
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Parse date of birth from string to DateTime
-      final dobString = widget.personalData['dob'] as String;
-      final dobParts = dobString.split('-');
-      final dateOfBirth = DateTime(
-        int.parse(dobParts[2]), // year
-        int.parse(dobParts[1]), // month
-        int.parse(dobParts[0]), // day
-      );
-
-      User? currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        // Try to sign in with credentials provided in step 1.
-        final String email = (widget.personalData['email'] ?? '')
-            .toString()
-            .trim();
-        final String password = (widget.personalData['password'] ?? '')
-            .toString();
-
-        if (email.isEmpty || password.isEmpty) {
-          throw Exception('Please sign in with Firebase first');
-        }
-
-        try {
-          final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-            email: email,
-            password: password,
-          );
-          currentUser = cred.user;
-        } on FirebaseAuthException catch (e) {
-          if (e.code == 'user-not-found') {
-            // Create the user then proceed
-            final cred = await FirebaseAuth.instance
-                .createUserWithEmailAndPassword(
-                  email: email,
-                  password: password,
-                );
-            currentUser = cred.user;
-          } else if (e.code == 'wrong-password') {
-            throw Exception('Wrong password. Please check and try again.');
-          } else {
-            throw Exception(e.message ?? 'Firebase sign-in failed');
-          }
-        }
-      }
-
-      if (currentUser == null) {
-        throw Exception('Please sign in with Firebase first');
-      }
-
       final result = await ApiService.registerUser(
-        firebaseUid: currentUser.uid,
-        fullName: widget.personalData['fullName'],
-        phoneNumber: widget.personalData['phone'],
+        fullName: widget.personalData['fullName'] ?? '',
+        phoneNumber: widget.personalData['phone'] ?? '',
+        email: widget.personalData['email'] ?? '',
         dateOfBirth: dateOfBirth,
-        gender: widget.personalData['gender'],
-        address: _addressController.text,
+        gender: widget.personalData['gender'] ?? '',
+        password: widget.personalData['password'] ?? '',
+        address: _addressController.text.trim(),
+        block: _blockController.text.trim(),
         city: _selectedDistrict ?? '',
-        state: _selectedState!,
-        district: _selectedDistrict!,
-        // send block separately
-        // pincode currently from personalData or ensure a default
-        pincode: widget.personalData['pincode'] ?? '000000',
+        district: _selectedDistrict ?? '',
+        state: _selectedState ?? '',
+        pincode: widget.personalData['pincode'] ?? '',
         profilePicture: null,
         memberType: null,
       );
 
-      if (result['success']) {
-        // Registration successful
-        if (mounted) {
-          // Combine all data for dashboard display
-          final completeData = {
-            ...widget.personalData,
-            'state': _selectedState,
-            'district': _selectedDistrict,
-            'block': _blockController.text,
-            'address': _addressController.text,
-            'member': result['data']['member'],
-          };
+      setState(() {
+        _isLoading = false;
+      });
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DashboardScreen(userData: completeData),
-            ),
-          );
+      if (result['success'] == true) {
+        // optional: combine data for dashboard or pass returned data
+        final completeData = {
+          ...widget.personalData,
+          'state': _selectedState,
+          'district': _selectedDistrict,
+          'address': _addressController.text.trim(),
+          'block': _blockController.text.trim(),
+        };
 
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Registration successful!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Registration successful')),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DashboardScreen(completeData: completeData),
+          ),
+        );
       } else {
-        // Registration failed
+        final message = (result['data'] != null && result['data']['message'] != null)
+            ? result['data']['message']
+            : (result['message'] ?? 'Registration failed');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(result['error'] ?? 'Registration failed'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
         }
       }
     } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('An error occurred: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Network error: ${e.toString()}')),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
       }
     }
   }
+
 
   @override
   void dispose() {

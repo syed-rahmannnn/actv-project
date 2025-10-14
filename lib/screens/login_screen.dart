@@ -368,7 +368,7 @@ class _LoginScreenState extends State<LoginScreen> {
           context,
           MaterialPageRoute(
             builder: (context) => DashboardScreen(
-              userData: member,
+              completeData: member,
             ),
           ),
         );

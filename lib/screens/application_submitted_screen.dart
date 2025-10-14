@@ -355,7 +355,7 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                         onPressed: () {
                           Navigator.of(context).pushAndRemoveUntil(
                             MaterialPageRoute(
-                              builder: (context) => DashboardScreen(userData: userData),
+                              builder: (context) => DashboardScreen(completeData: userData),
                             ),
                             (route) => false,
                           );

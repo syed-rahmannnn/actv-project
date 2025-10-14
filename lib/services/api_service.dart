@@ -5,7 +5,8 @@ class ApiService {
   // Your local backend server URL
   // static const String baseUrl = 'http://localhost:3000/api'; // Local development
   //static const String baseUrl = 'http://10.0.2.2:3000/api'; // Android Emulator  
-  static const String baseUrl = 'http://172.25.100.248:3000/api'; // Active Wi‑Fi IP
+  static const String baseUrl = 'http://192.168.29.130:4000';
+  // Active Wi‑Fi IP
   // Headers for requests
   static Map<String, String> get headers => {
     'Content-Type': 'application/json',
@@ -70,62 +71,6 @@ class ApiService {
       };
     }
   }
-  // Register user (creates both User and UserRegistrationForm)
-  static Future<Map<String, dynamic>> registerUser({
-    required String firebaseUid,
-    required String fullName,
-    required String phoneNumber,
-    required DateTime dateOfBirth,
-    required String gender,
-    required String address,
-    required String city,
-    required String state,
-    required String district,
-    String? block,
-    required String pincode,
-    String? profilePicture,
-    String? memberType,
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/members/register'),
-        headers: headers,
-        body: jsonEncode({
-          'firebaseUid': firebaseUid,
-          'fullName': fullName,
-          'phoneNumber': phoneNumber,
-          'dateOfBirth': dateOfBirth.toIso8601String(),
-          'gender': gender,
-          'address': address,
-          'city': city,
-          'state': state,
-          'district': district,
-          'block': block,
-          'pincode': pincode,
-          'profilePicture': profilePicture,
-          'memberType': memberType,
-        }),
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return {
-          'success': true,
-          'data': jsonDecode(response.body),
-        };
-      } else {
-        return {
-          'success': false,
-          'error': jsonDecode(response.body)['message'] ?? 'Registration failed',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'error': 'Network error: ${e.toString()}',
-      };
-    }
-  }
-
   // Login user
   static Future<Map<String, dynamic>> loginUser({
     required String email,
@@ -160,6 +105,59 @@ class ApiService {
         'success': false,
         'error': 'Network error: ${e.toString()}',
       };
+    }
+  }
+  /// Registers a user with combined data from step1 + step2.
+  static Future<Map<String, dynamic>> registerUser({
+    required String fullName,
+    required String phoneNumber,
+    required String email,
+    required String dateOfBirth,
+    required String gender,
+    required String password,
+    String? address,
+    String? block,
+    String? city,
+    String? district,
+    String? state,
+    String? pincode,
+    String? profilePicture,
+    String? memberType,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/register');
+      final payload = {
+        'fullName': fullName,
+        'phone': phoneNumber,
+        'email': email,
+        'dateOfBirth': dateOfBirth,
+        'gender': gender,
+        'password': password,
+        'address': address,
+        'block': block,
+        'city': city,
+        'district': district,
+        'state': state,
+        'pincode': pincode,
+        'profilePicture': profilePicture,
+        'memberType': memberType,
+      };
+
+      final resp = await http.post(
+        uri,
+        headers: headers,
+        body: jsonEncode(payload),
+      );
+
+      final body = jsonDecode(resp.body);
+
+      if (resp.statusCode == 201 || resp.statusCode == 200) {
+        return {'success': true, 'data': body};
+      } else {
+        return {'success': false, 'status': resp.statusCode, 'data': body};
+      }
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
     }
   }
 
