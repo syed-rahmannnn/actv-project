@@ -5,7 +5,8 @@ class RegistrationStep1Screen extends StatefulWidget {
   const RegistrationStep1Screen({super.key});
 
   @override
-  State<RegistrationStep1Screen> createState() => _RegistrationStep1ScreenState();
+  State<RegistrationStep1Screen> createState() =>
+      _RegistrationStep1ScreenState();
 }
 
 class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
@@ -16,7 +17,7 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
   final _dobController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  
+
   String _selectedGender = 'Male';
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -48,13 +49,10 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
           children: [
             const Text(
               'Step 1 of 2',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey, fontSize: 14),
             ),
             const SizedBox(height: 30),
-            
+
             // Tab indicator
             Row(
               children: [
@@ -87,17 +85,15 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                     child: const Text(
                       'Location',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(color: Colors.grey),
                     ),
                   ),
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 30),
-            
+
             // Registration Form Card
             Container(
               padding: const EdgeInsets.all(24),
@@ -126,7 +122,7 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Personal Information Section
                     Row(
                       children: [
@@ -150,7 +146,7 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Full Name Field
                     const Text(
                       'Full Name*',
@@ -187,7 +183,7 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Phone Number Field
                     const Text(
                       'Phone Number*',
@@ -225,7 +221,7 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Email Address Field
                     const Text(
                       'Email Address*',
@@ -266,7 +262,7 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Date of Birth Field
                     const Text(
                       'Date of Birth*',
@@ -283,7 +279,10 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                       decoration: InputDecoration(
                         hintText: 'dd-mm-yyyy',
                         hintStyle: TextStyle(color: Colors.grey[400]),
-                        suffixIcon: const Icon(Icons.calendar_today, color: Colors.grey),
+                        suffixIcon: const Icon(
+                          Icons.calendar_today,
+                          color: Colors.grey,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide(color: Colors.grey[300]!),
@@ -306,7 +305,7 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                         );
                         if (picked != null) {
                           setState(() {
-                            _dobController.text = 
+                            _dobController.text =
                                 '${picked.day.toString().padLeft(2, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.year}';
                           });
                         }
@@ -319,7 +318,7 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Gender Field
                     const Text(
                       'Gender*',
@@ -330,44 +329,54 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    RadioGroup<String>(
-                       groupValue: _selectedGender,
-                       onChanged: (value) {
-                         setState(() {
-                           _selectedGender = value!;
-                         });
-                       },
-                       child: Row(
-                         children: [
-                           Expanded(
-                             child: RadioListTile<String>(
-                             title: const Text('Male'),
-                             value: 'Male',
-                             contentPadding: EdgeInsets.zero,
-                           dense: true,
-                         ),
-                         ),
-                           Expanded(
-                             child: RadioListTile<String>(
-                             title: const Text('Female'),
-                             value: 'Female',
-                             contentPadding: EdgeInsets.zero,
-                               dense: true,
-                             ),
-                           ),
-                           Expanded(
-                             child: RadioListTile<String>(
-                             title: const Text('Other'),
-                           value: 'Other',
-                         contentPadding: EdgeInsets.zero,
-                         dense: true,
-                           ),
-                           ),
-                         ],
-                       ),
-                     ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Male'),
+                            value: 'Male',
+                            groupValue: _selectedGender,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedGender = value!;
+                              });
+                            },
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                          ),
+                        ),
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Female'),
+                            value: 'Female',
+                            groupValue: _selectedGender,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedGender = value!;
+                              });
+                            },
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                          ),
+                        ),
+                        Expanded(
+                          child: RadioListTile<String>(
+                            title: const Text('Other'),
+                            value: 'Other',
+                            groupValue: _selectedGender,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedGender = value!;
+                              });
+                            },
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 16),
-                    
+
                     // Password Field
                     const Text(
                       'Password',
@@ -386,7 +395,9 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                         hintStyle: TextStyle(color: Colors.grey[400]),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
                             color: Colors.grey,
                           ),
                           onPressed: () {
@@ -419,7 +430,7 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Confirm Password Field
                     const Text(
                       'Confirm Password',
@@ -438,12 +449,15 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                         hintStyle: TextStyle(color: Colors.grey[400]),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                            _obscureConfirmPassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
                             color: Colors.grey,
                           ),
                           onPressed: () {
                             setState(() {
-                              _obscureConfirmPassword = !_obscureConfirmPassword;
+                              _obscureConfirmPassword =
+                                  !_obscureConfirmPassword;
                             });
                           },
                         ),
@@ -471,7 +485,7 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                       },
                     ),
                     const SizedBox(height: 30),
-                    
+
                     // Next Button
                     SizedBox(
                       width: double.infinity,

@@ -6,44 +6,95 @@ import 'package:firebase_auth/firebase_auth.dart';
 class RegistrationStep2Screen extends StatefulWidget {
   final Map<String, dynamic> personalData;
 
-  const RegistrationStep2Screen({
-    super.key,
-    required this.personalData,
-  });
+  const RegistrationStep2Screen({super.key, required this.personalData});
 
   @override
-  State<RegistrationStep2Screen> createState() => _RegistrationStep2ScreenState();
+  State<RegistrationStep2Screen> createState() =>
+      _RegistrationStep2ScreenState();
 }
 
 class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
   final _formKey = GlobalKey<FormState>();
   final _blockController = TextEditingController();
   final _addressController = TextEditingController();
-  
+
   String? _selectedState;
   String? _selectedDistrict;
   bool _isLoading = false;
 
   final List<String> _states = [
-    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
-    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
-    'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
-    'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
-    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+    'Andhra Pradesh',
+    'Arunachal Pradesh',
+    'Assam',
+    'Bihar',
+    'Chhattisgarh',
+    'Goa',
+    'Gujarat',
+    'Haryana',
+    'Himachal Pradesh',
+    'Jharkhand',
+    'Karnataka',
+    'Kerala',
+    'Madhya Pradesh',
+    'Maharashtra',
+    'Manipur',
+    'Meghalaya',
+    'Mizoram',
+    'Nagaland',
+    'Odisha',
+    'Punjab',
+    'Rajasthan',
+    'Sikkim',
+    'Tamil Nadu',
+    'Telangana',
+    'Tripura',
+    'Uttar Pradesh',
+    'Uttarakhand',
+    'West Bengal',
   ];
 
   final Map<String, List<String>> _stateDistricts = {
     'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad'],
     'Karnataka': ['Bangalore', 'Mysore', 'Hubli', 'Belgaum', 'Mangalore'],
     'Tamil Nadu': [
-      'Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore',
-      'Dharmapuri', 'Dindigul', 'Erode', 'Kallakurichi', 'Kanchipuram',
-      'Kanyakumari', 'Karur', 'Krishnagiri', 'Madurai', 'Mayiladuthurai',
-      'Nagapattinam', 'Namakkal', 'Nilgiris', 'Perambalur', 'Pudukkottai',
-      'Ramanathapuram', 'Ranipet', 'Salem', 'Sivaganga', 'Tenkasi',
-      'Thanjavur', 'Theni', 'Thoothukudi', 'Tiruchirappalli', 'Tirunelveli',
-      'Tirupathur', 'Tiruppur', 'Tiruvallur', 'Tiruvannamalai', 'Tiruvarur',
-      'Vellore', 'Viluppuram', 'Virudhunagar'
+      'Ariyalur',
+      'Chengalpattu',
+      'Chennai',
+      'Coimbatore',
+      'Cuddalore',
+      'Dharmapuri',
+      'Dindigul',
+      'Erode',
+      'Kallakurichi',
+      'Kanchipuram',
+      'Kanyakumari',
+      'Karur',
+      'Krishnagiri',
+      'Madurai',
+      'Mayiladuthurai',
+      'Nagapattinam',
+      'Namakkal',
+      'Nilgiris',
+      'Perambalur',
+      'Pudukkottai',
+      'Ramanathapuram',
+      'Ranipet',
+      'Salem',
+      'Sivaganga',
+      'Tenkasi',
+      'Thanjavur',
+      'Theni',
+      'Thoothukudi',
+      'Tiruchirappalli',
+      'Tirunelveli',
+      'Tirupathur',
+      'Tiruppur',
+      'Tiruvallur',
+      'Tiruvannamalai',
+      'Tiruvarur',
+      'Vellore',
+      'Viluppuram',
+      'Virudhunagar',
     ],
     'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar'],
     // Add more states and districts as needed
@@ -78,13 +129,10 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
           children: [
             const Text(
               'Step 2 of 2',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey, fontSize: 14),
             ),
             const SizedBox(height: 30),
-            
+
             // Tab indicator
             Row(
               children: [
@@ -99,9 +147,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                     child: const Text(
                       'Personal Info',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(color: Colors.grey),
                     ),
                   ),
                 ),
@@ -125,9 +171,9 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 30),
-            
+
             // Registration Form Card
             Container(
               padding: const EdgeInsets.all(24),
@@ -156,7 +202,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Location Details Section
                     Row(
                       children: [
@@ -180,7 +226,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // State Field
                     const Text(
                       'State*',
@@ -192,7 +238,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                    initialValue: _selectedState,
+                      value: _selectedState,
                       hint: const Text('Select state'),
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
@@ -217,7 +263,8 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                       onChanged: (String? newValue) {
                         setState(() {
                           _selectedState = newValue;
-                          _selectedDistrict = null; // Reset district when state changes
+                          _selectedDistrict =
+                              null; // Reset district when state changes
                         });
                       },
                       validator: (value) {
@@ -228,7 +275,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // District Field
                     const Text(
                       'District*',
@@ -240,7 +287,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                    initialValue: _selectedDistrict,
+                      value: _selectedDistrict,
                       hint: const Text('Select district'),
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
@@ -275,7 +322,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Block Field
                     const Text(
                       'Block*',
@@ -312,7 +359,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Complete Address Field
                     const Text(
                       'Complete Address*',
@@ -350,7 +397,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                       },
                     ),
                     const SizedBox(height: 40),
-                    
+
                     // Action Buttons
                     Row(
                       children: [
@@ -383,7 +430,9 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                           child: SizedBox(
                             height: 50,
                             child: ElevatedButton(
-                              onPressed: _isLoading ? null : _handleRegistration,
+                              onPressed: _isLoading
+                                  ? null
+                                  : _handleRegistration,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.blue,
                                 shape: RoundedRectangleBorder(
@@ -396,7 +445,10 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                                       height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
                                       ),
                                     )
                                   : const Text(
@@ -445,8 +497,11 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
       User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
         // Try to sign in with credentials provided in step 1.
-        final String email = (widget.personalData['email'] ?? '').toString().trim();
-        final String password = (widget.personalData['password'] ?? '').toString();
+        final String email = (widget.personalData['email'] ?? '')
+            .toString()
+            .trim();
+        final String password = (widget.personalData['password'] ?? '')
+            .toString();
 
         if (email.isEmpty || password.isEmpty) {
           throw Exception('Please sign in with Firebase first');
@@ -461,10 +516,11 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
         } on FirebaseAuthException catch (e) {
           if (e.code == 'user-not-found') {
             // Create the user then proceed
-            final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-              email: email,
-              password: password,
-            );
+            final cred = await FirebaseAuth.instance
+                .createUserWithEmailAndPassword(
+                  email: email,
+                  password: password,
+                );
             currentUser = cred.user;
           } else if (e.code == 'wrong-password') {
             throw Exception('Wrong password. Please check and try again.');
@@ -511,9 +567,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => DashboardScreen(
-                userData: completeData,
-              ),
+              builder: (context) => DashboardScreen(userData: completeData),
             ),
           );
 
