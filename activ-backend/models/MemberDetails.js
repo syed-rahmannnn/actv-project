@@ -52,6 +52,28 @@ const memberDetailsSchema = new mongoose.Schema({
     trim: true,
     maxlength: [500, 'Address cannot exceed 500 characters']
   },
+  // Personal & Demographic Details (moved from BusinessInfo)
+  aadhaarNumber: {
+    type: String,
+    trim: true,
+    match: [/^\d{12}$/, 'Aadhaar number must be 12 digits']
+  },
+  streetName: {
+    type: String,
+    trim: true
+  },
+  educationalQualification: {
+    type: String,
+    trim: true
+  },
+  religion: {
+    type: String,
+    trim: true
+  },
+  socialCategory: {
+    type: String,
+    enum: ['General', 'OBC', 'SC', 'ST', 'EWS', 'Other']
+  },
   profileCompleted: {
     type: Boolean,
     default: false

@@ -6,6 +6,18 @@ const memberFinancialInfoSchema = new mongoose.Schema({
     ref: 'MemberDetails',
     required: true
   },
+  // Required for every collection
+  fullName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  email: {
+    type: String,
+    required: true,
+    lowercase: true,
+    trim: true
+  },
   // Financial & Compliance Information
   panNumber: {
     type: String,

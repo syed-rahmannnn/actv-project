@@ -8,8 +8,9 @@
     "test": "test"
   },
   "scripts": {
-    "start": "node activ-backend/server.js",
-    "dev": "nodemon activ-backend/server.js",
+    "start": "cd activ-backend && node server.js",
+    "dev": "cd activ-backend && nodemon server.js",
+    "build": "cd activ-backend && npm install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

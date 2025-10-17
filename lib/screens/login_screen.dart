@@ -3,7 +3,6 @@ import 'registration_step1_screen.dart';
 import 'dashboard_screen.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -316,7 +315,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Handle login via Firebase and validate with backend
+  // Handle login via backend API
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -327,51 +326,46 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
+      // Create ApiService instance
+      final apiService = ApiService();
+      
+      // Login with backend
+      final result = await apiService.login(
+        _emailController.text.trim(),
+        _passwordController.text,
       );
 
-      final user = credential.user;
+      if (result['ok'] == true) {
+        // Login successful
+        final member = result['body']['data']['member'];
+        final token = result['token'];
 
-      if (user == null) {
-        throw Exception('Firebase login failed');
-      }
+        await AuthService.saveLoginData(
+          token: token,
+          userData: member,
+        );
 
-      final validate = await ApiService.firebaseValidate(
-        firebaseUid: user.uid,
-        email: user.email,
-      );
-
-      if (validate['success'] != true || validate['data']?['allowed'] != true) {
-        await FirebaseAuth.instance.signOut();
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DashboardScreen(
+                userData: member,
+              ),
+            ),
+          );
+        }
+      } else {
+        // Login failed
+        final errorMessage = result['body']?['message'] ?? 'Login failed';
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Not registered member. Access denied.'),
+            SnackBar(
+              content: Text(errorMessage),
               backgroundColor: Colors.red,
             ),
           );
         }
-        return;
-      }
-
-      final member = Map<String, dynamic>.from(validate['data']['member'] as Map);
-
-      await AuthService.saveLoginData(
-        token: 'firebase',
-        userData: member,
-      );
-
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DashboardScreen(
-              userData: member,
-            ),
-          ),
-        );
       }
     } catch (e) {
       if (mounted) {

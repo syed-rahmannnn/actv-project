@@ -6,33 +6,19 @@ const memberBusinessInfoSchema = new mongoose.Schema({
     ref: 'MemberDetails',
     required: true
   },
-  // Personal & Demographic Details
-  aadhaarNumber: {
+  // Required for every collection
+  fullName: {
     type: String,
-    trim: true,
-    match: [/^\d{12}$/, 'Aadhaar number must be 12 digits']
-  },
-  streetName: {
-    type: String,
+    required: true,
     trim: true
   },
-  educationalQualification: {
+  email: {
     type: String,
+    required: true,
+    lowercase: true,
     trim: true
   },
-  religion: {
-    type: String,
-    trim: true
-  },
-  socialCategory: {
-    type: String,
-    enum: ['General', 'OBC', 'SC', 'ST', 'EWS', 'Other']
-  },
-  // Business Information
-  doingBusiness: {
-    type: Boolean,
-    default: false
-  },
+  // Business Information (restricted to requested fields)
   organizationName: {
     type: String,
     trim: true
@@ -41,10 +27,10 @@ const memberBusinessInfoSchema = new mongoose.Schema({
     type: String,
     enum: ['Proprietorship', 'Partnership', 'Private Limited', 'Public Limited', 'LLP', 'Sole Proprietorship', 'Other']
   },
-  businessTypes: [{
+  businessType: {
     type: String,
     enum: ['Agriculture', 'Manufacturing', 'Trader', 'Retailer', 'Service Provider', 'Others']
-  }],
+  },
   businessActivities: {
     type: String,
     trim: true
@@ -65,11 +51,15 @@ const memberBusinessInfoSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  govtOrganizations: [{
+  registeredWithGovtOrganization: [{
     type: String,
     enum: ['MSME', 'KVIC', 'NABARD', 'None', 'Others']
   }],
-  // Extended Business Information
+  // Extended Business Information (included when applicable)
+  doingBusiness: {
+    type: Boolean,
+    default: false
+  },
   additionalBusiness: {
     type: String,
     trim: true

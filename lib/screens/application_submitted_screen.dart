@@ -11,6 +11,23 @@ class ApplicationSubmittedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Generate a random human-readable application ID per view
+    String makeAppId() {
+      final now = DateTime.now();
+      final rand = now.millisecondsSinceEpoch % 100000;
+      return 'APP-${now.year}-${rand.toString().padLeft(5, '0')}';
+    }
+
+    String formatDate(DateTime dt) {
+      const months = [
+        'January','February','March','April','May','June',
+        'July','August','September','October','November','December'
+      ];
+      return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+    }
+
+    final displayedId = makeAppId();
+    final submittedDate = formatDate(DateTime.now());
     return Scaffold(
       backgroundColor: const Color(0xFFE6F0FF),
       body: SafeArea(
@@ -112,7 +129,7 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  'APP-2024-001',
+                                  displayedId,
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
@@ -133,8 +150,8 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                                     color: Colors.grey,
                                   ),
                                 ),
-                                const Text(
-                                  'March 15, 2024',
+                                Text(
+                                  submittedDate,
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Colors.black87,
