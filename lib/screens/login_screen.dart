@@ -345,15 +345,6 @@ class _LoginScreenState extends State<LoginScreen> {
           userData: member,
         );
 
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DashboardScreen(
-              completeData: member,
-            ),
-          ),
-        );
         if (mounted) {
           Navigator.pushReplacement(
             context,
@@ -375,7 +366,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
         }
-      }
       }
     } catch (e) {
       if (mounted) {

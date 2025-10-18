@@ -55,7 +55,7 @@ class AuthWrapper extends StatelessWidget {
               }
               
               if (userSnapshot.data != null) {
-                return DashboardScreen(completeData: userSnapshot.data!);
+                return DashboardScreen(userData: userSnapshot.data!);
               }
               
               return const OnboardingScreen();

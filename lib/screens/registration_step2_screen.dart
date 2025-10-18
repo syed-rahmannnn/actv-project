@@ -475,10 +475,9 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
 
   // Handle registration submission
   Future<void> _handleRegistration() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    // Use this variable (removes unused warning)
-    final dateOfBirth = widget.personalData['dateOfBirth'] ?? widget.personalData['dob'] ?? '';
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -532,20 +531,23 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
             'token': result['token'],
           };
 
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration successful')),
-        );
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DashboardScreen(completeData: completeData),
-          ),
-        );
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DashboardScreen(userData: completeData),
+            ),
+          );
+
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Registration successful!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       } else {
-        final message = (result['data'] != null && result['data']['message'] != null)
-            ? result['data']['message']
-            : (result['message'] ?? 'Registration failed');
+        // Registration failed
         if (mounted) {
           final errorMessage = result['body']?['message'] ?? 'Registration failed';
           ScaffoldMessenger.of(context).showSnackBar(
@@ -557,9 +559,6 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
         }
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
         String errorMessage = 'An error occurred: $e';
         
@@ -598,7 +597,6 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
       }
     }
   }
-
 
   @override
   void dispose() {
