@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
+import 'package:activ/services/auth_service.dart';
 
 class ApplicationSubmittedScreen extends StatelessWidget {
   final Map<String, dynamic> userData;
 
-  const ApplicationSubmittedScreen({
-    super.key,
-    required this.userData,
-  });
+  const ApplicationSubmittedScreen({super.key, required this.userData});
 
   @override
   Widget build(BuildContext context) {
@@ -20,8 +18,18 @@ class ApplicationSubmittedScreen extends StatelessWidget {
 
     String formatDate(DateTime dt) {
       const months = [
-        'January','February','March','April','May','June',
-        'July','August','September','October','November','December'
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
       ];
       return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
     }
@@ -37,7 +45,7 @@ class ApplicationSubmittedScreen extends StatelessWidget {
             child: Column(
               children: [
                 const SizedBox(height: 40),
-                
+
                 // Main Content Card
                 Container(
                   width: double.infinity,
@@ -71,7 +79,7 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Title
                       const Text(
                         'Application Submitted!',
@@ -83,7 +91,7 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Description
                       const Text(
                         'Your membership application has been successfully submitted and is now under review. You will receive updates on your application status.',
@@ -95,7 +103,7 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 32),
-                      
+
                       // Application Summary
                       Container(
                         width: double.infinity,
@@ -117,7 +125,7 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            
+
                             // Application ID
                             Row(
                               children: [
@@ -139,7 +147,7 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 8),
-                            
+
                             // Submitted Date
                             Row(
                               children: [
@@ -160,7 +168,7 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 8),
-                            
+
                             // Status
                             Row(
                               children: [
@@ -172,7 +180,10 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.orange[100],
                                     borderRadius: BorderRadius.circular(12),
@@ -206,7 +217,7 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Application Progress Tracker
                       const Text(
                         'Application Progress',
@@ -218,14 +229,15 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                         textAlign: TextAlign.left,
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Progress Steps
                       Column(
                         children: [
                           _buildProgressStep(
                             stepNumber: 1,
                             title: 'Application Received',
-                            description: 'Your application has been received and assigned for review.',
+                            description:
+                                'Your application has been received and assigned for review.',
                             isCompleted: true,
                             isActive: true,
                           ),
@@ -233,7 +245,8 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                           _buildProgressStep(
                             stepNumber: 2,
                             title: 'Block Admin Review',
-                            description: 'Pending review by block administrator.',
+                            description:
+                                'Pending review by block administrator.',
                             isCompleted: false,
                             isActive: false,
                           ),
@@ -241,14 +254,15 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                           _buildProgressStep(
                             stepNumber: 3,
                             title: 'Final Approval',
-                            description: 'Final approval and membership activation.',
+                            description:
+                                'Final approval and membership activation.',
                             isCompleted: false,
                             isActive: false,
                           ),
                         ],
                       ),
                       const SizedBox(height: 24),
-                      
+
                       // Important Notice
                       Container(
                         width: double.infinity,
@@ -298,7 +312,7 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 32),
-                
+
                 // Action Buttons
                 Column(
                   children: [
@@ -310,7 +324,9 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Application Status feature coming soon!'),
+                              content: Text(
+                                'Application Status feature coming soon!',
+                              ),
                               backgroundColor: Colors.blue,
                             ),
                           );
@@ -332,7 +348,7 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    
+
                     // Download Application Copy Button
                     SizedBox(
                       width: double.infinity,
@@ -363,19 +379,36 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Back to Dashboard Button
                     SizedBox(
                       width: double.infinity,
                       height: 50,
                       child: TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                              builder: (context) => DashboardScreen(userData: userData),
-                            ),
-                            (route) => false,
-                          );
+                        onPressed: () async {
+                          // Ensure profile completion flags are truthy across common locations
+                          final data = Map<String, dynamic>.from(userData);
+                          final form = Map<String, dynamic>.from(
+                              data['registrationForm'] ?? {});
+                          form['profileCompleted'] = true;
+                          data['registrationForm'] = form;
+                          data['profileCompleted'] = true;
+                          if (data['member'] is Map<String, dynamic>) {
+                            (data['member'] as Map<String, dynamic>)['profileCompleted'] = true;
+                          }
+
+                          // Persist to local storage so AuthWrapper/Dashboard picks up immediately
+                          await AuthService.updateUserData(data);
+
+                          // Navigate to a fresh Dashboard with updated data
+                          if (context.mounted) {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (context) => DashboardScreen(userData: data),
+                              ),
+                              (route) => false,
+                            );
+                          }
                         },
                         child: const Text(
                           'Back to Dashboard',
@@ -412,18 +445,20 @@ class ApplicationSubmittedScreen extends StatelessWidget {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: isActive 
-                ? Colors.blue 
-                : isCompleted 
-                    ? Colors.green 
-                    : Colors.grey[300],
+            color: isActive
+                ? Colors.blue
+                : isCompleted
+                ? Colors.green
+                : Colors.grey[300],
             shape: BoxShape.circle,
           ),
           child: Center(
             child: Text(
               '$stepNumber',
               style: TextStyle(
-                color: isActive || isCompleted ? Colors.white : Colors.grey[600],
+                color: isActive || isCompleted
+                    ? Colors.white
+                    : Colors.grey[600],
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
@@ -431,7 +466,7 @@ class ApplicationSubmittedScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
-        
+
         // Step Content
         Expanded(
           child: Column(
@@ -461,5 +496,3 @@ class ApplicationSubmittedScreen extends StatelessWidget {
     );
   }
 }
-
-

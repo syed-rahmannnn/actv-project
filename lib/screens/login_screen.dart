@@ -31,16 +31,13 @@ class _LoginScreenState extends State<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 80),
-                
+
                 // ACTIV Logo
                 Center(
-                  child: Image.asset(
-                    'assets/images/activlogo.png',
-                    height: 80,
-                  ),
+                  child: Image.asset('assets/images/activlogo.png', height: 80),
                 ),
                 const SizedBox(height: 40),
-                
+
                 // Welcome Back
                 const Text(
                   "Welcome Back",
@@ -51,17 +48,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                
+
                 // Subtitle
                 const Text(
                   "Sign in to your account or create a new one",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
-                  ),
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
                 ),
                 const SizedBox(height: 40),
-                
+
                 // Email Field
                 Container(
                   decoration: BoxDecoration(
@@ -95,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Password Field
                 Container(
                   decoration: BoxDecoration(
@@ -139,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                
+
                 // Forgot Password
                 Align(
                   alignment: Alignment.centerRight,
@@ -147,15 +141,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {},
                     child: const Text(
                       "Forgot Password?",
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.blue, fontSize: 14),
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Sign In Button
                 SizedBox(
                   width: double.infinity,
@@ -174,7 +165,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
                         : const Text(
@@ -188,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Register link
                 Center(
                   child: GestureDetector(
@@ -203,9 +196,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: const Text.rich(
                       TextSpan(
                         text: "Don't have an account? ",
-                        style: TextStyle(
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(color: Colors.grey),
                         children: [
                           TextSpan(
                             text: "Register as member",
@@ -220,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 40),
-                
+
                 // Divider
                 const Row(
                   children: [
@@ -229,16 +220,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       padding: EdgeInsets.symmetric(horizontal: 16.0),
                       child: Text(
                         "Or continue with",
-                        style: TextStyle(
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(color: Colors.grey),
                       ),
                     ),
                     Expanded(child: Divider()),
                   ],
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Social Buttons
                 Column(
                   children: [
@@ -328,7 +317,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       // Create ApiService instance
       final apiService = ApiService();
-      
+
       // Login with backend
       final result = await apiService.login(
         _emailController.text.trim(),
@@ -340,31 +329,34 @@ class _LoginScreenState extends State<LoginScreen> {
         final member = result['body']['data']['member'];
         final token = result['token'];
 
-        await AuthService.saveLoginData(
-          token: token,
-          userData: member,
-        );
+        await AuthService.saveLoginData(token: token, userData: member);
 
         if (mounted) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => DashboardScreen(
-                userData: member,
+              builder: (context) => DashboardScreen(userData: member),
+            ),
+          );
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DashboardScreen(userData: member),
               ),
-            ),
-          );
-        }
-      } else {
-        // Login failed
-        final errorMessage = result['body']?['message'] ?? 'Login failed';
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage),
-              backgroundColor: Colors.red,
-            ),
-          );
+            );
+          }
+        } else {
+          // Login failed
+          final errorMessage = result['body']?['message'] ?? 'Login failed';
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(errorMessage),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       }
     } catch (e) {

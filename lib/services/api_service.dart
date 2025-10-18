@@ -4,13 +4,14 @@ import 'dart:developer' as developer;
 
 class ApiService {
   // Replace with your Render domain (include https)
-  static const String baseUrl = 'https://actv-project.onrender.com/api'; // Render domain
-  
+  static const String baseUrl =
+      'https://actv-project.onrender.com/api'; // Render domain
+
   String? _token;
 
   // Helper to get headers, include token if present
-  Map<String,String> _headers({bool json = true, bool auth = false}) {
-    final headers = <String,String>{};
+  Map<String, String> _headers({bool json = true, bool auth = false}) {
+    final headers = <String, String>{};
     if (json) headers['Content-Type'] = 'application/json';
     if (auth && _token != null) headers['Authorization'] = 'Bearer $_token';
     return headers;
@@ -18,7 +19,10 @@ class ApiService {
 
   void setToken(String token) {
     _token = token;
-    developer.log('ApiService: token set length=${token.length}', name: 'ApiService');
+    developer.log(
+      'ApiService: token set length=${token.length}',
+      name: 'ApiService',
+    );
   }
 
   void clearToken() {
@@ -37,12 +41,16 @@ class ApiService {
   }
 
   // Register user with proper backend route
-  Future<Map<String,dynamic>> register(Map<String,dynamic> payload) async {
+  Future<Map<String, dynamic>> register(Map<String, dynamic> payload) async {
     final url = Uri.parse('$baseUrl/auth/register'); // auth.js register route
     developer.log('POST $url', name: 'ApiService');
     developer.log('payload: ${jsonEncode(payload)}', name: 'ApiService');
 
-    final resp = await http.post(url, headers: _headers(), body: jsonEncode(payload));
+    final resp = await http.post(
+      url,
+      headers: _headers(),
+      body: jsonEncode(payload),
+    );
     developer.log('status: ${resp.statusCode}', name: 'ApiService');
     developer.log('body: ${resp.body}', name: 'ApiService');
 
@@ -58,13 +66,17 @@ class ApiService {
   }
 
   // Login user
-  Future<Map<String,dynamic>> login(String email, String password) async {
+  Future<Map<String, dynamic>> login(String email, String password) async {
     final url = Uri.parse('$baseUrl/auth/login');
     final payload = {'email': email.trim(), 'password': password};
     developer.log('POST $url', name: 'ApiService');
     developer.log('payload: ${jsonEncode(payload)}', name: 'ApiService');
 
-    final resp = await http.post(url, headers: _headers(), body: jsonEncode(payload));
+    final resp = await http.post(
+      url,
+      headers: _headers(),
+      body: jsonEncode(payload),
+    );
     developer.log('status: ${resp.statusCode}', name: 'ApiService');
     developer.log('body: ${resp.body}', name: 'ApiService');
 
@@ -78,14 +90,20 @@ class ApiService {
     }
   }
 
-
   // Generic put for updating member by id (example)
-  Future<Map<String,dynamic>> updateMember(String id, Map<String,dynamic> updates) async {
+  Future<Map<String, dynamic>> updateMember(
+    String id,
+    Map<String, dynamic> updates,
+  ) async {
     final url = Uri.parse('$baseUrl/members/$id');
     developer.log('PUT $url (auth: ${_token != null})', name: 'ApiService');
     developer.log('updates: ${jsonEncode(updates)}', name: 'ApiService');
 
-    final resp = await http.put(url, headers: _headers(auth: true), body: jsonEncode(updates));
+    final resp = await http.put(
+      url,
+      headers: _headers(auth: true),
+      body: jsonEncode(updates),
+    );
     developer.log('status: ${resp.statusCode}', name: 'ApiService');
     developer.log('body: ${resp.body}', name: 'ApiService');
     final body = jsonDecodeSafe(resp.body);
@@ -97,11 +115,17 @@ class ApiService {
   }
 
   // Get all members (for browse members screen)
-  static Future<Map<String,dynamic>> getMembers({int page = 1, int limit = 10}) async {
+  static Future<Map<String, dynamic>> getMembers({
+    int page = 1,
+    int limit = 10,
+  }) async {
     final url = Uri.parse('$baseUrl/members?page=$page&limit=$limit');
     developer.log('GET $url', name: 'ApiService');
 
-    final resp = await http.get(url, headers: {'Content-Type': 'application/json'});
+    final resp = await http.get(
+      url,
+      headers: {'Content-Type': 'application/json'},
+    );
     developer.log('status: ${resp.statusCode}', name: 'ApiService');
     developer.log('body: ${resp.body}', name: 'ApiService');
 
@@ -116,23 +140,34 @@ class ApiService {
   }
 
   // Get member by Firebase UID (using email from Firebase user)
-  static Future<Map<String,dynamic>> getMemberByFirebaseUid(String firebaseUid) async {
+  static Future<Map<String, dynamic>> getMemberByFirebaseUid(
+    String firebaseUid,
+  ) async {
     // Since the backend doesn't store Firebase UID, we'll use the email from Firebase Auth
     // This method should be called with the user's email, not UID
     // For now, return an error indicating this needs to be updated
-    developer.log('getMemberByFirebaseUid called with UID: $firebaseUid', name: 'ApiService');
+    developer.log(
+      'getMemberByFirebaseUid called with UID: $firebaseUid',
+      name: 'ApiService',
+    );
     return {
-      'success': false, 
-      'message': 'getMemberByFirebaseUid needs to be updated to use email instead of UID'
+      'success': false,
+      'message':
+          'getMemberByFirebaseUid needs to be updated to use email instead of UID',
     };
   }
 
   // Get member by email (alternative to getMemberByFirebaseUid)
-  static Future<Map<String,dynamic>> getMemberByEmail(String email) async {
-    final url = Uri.parse('$baseUrl/members/by-email?email=${Uri.encodeComponent(email)}');
+  static Future<Map<String, dynamic>> getMemberByEmail(String email) async {
+    final url = Uri.parse(
+      '$baseUrl/members/by-email?email=${Uri.encodeComponent(email)}',
+    );
     developer.log('GET $url', name: 'ApiService');
 
-    final resp = await http.get(url, headers: {'Content-Type': 'application/json'});
+    final resp = await http.get(
+      url,
+      headers: {'Content-Type': 'application/json'},
+    );
     developer.log('status: ${resp.statusCode}', name: 'ApiService');
     developer.log('body: ${resp.body}', name: 'ApiService');
 
@@ -147,11 +182,14 @@ class ApiService {
   }
 
   // Get business information by member ID
-  static Future<Map<String,dynamic>> getBusinessInfo(String memberId) async {
+  static Future<Map<String, dynamic>> getBusinessInfo(String memberId) async {
     final url = Uri.parse('$baseUrl/profile/business-info/$memberId');
     developer.log('GET $url', name: 'ApiService');
 
-    final resp = await http.get(url, headers: {'Content-Type': 'application/json'});
+    final resp = await http.get(
+      url,
+      headers: {'Content-Type': 'application/json'},
+    );
     developer.log('status: ${resp.statusCode}', name: 'ApiService');
     developer.log('body: ${resp.body}', name: 'ApiService');
 
@@ -166,16 +204,20 @@ class ApiService {
   }
 
   // Save business information
-  static Future<Map<String,dynamic>> saveBusinessInfo(String memberId, Map<String,dynamic> businessData) async {
+  static Future<Map<String, dynamic>> saveBusinessInfo(
+    String memberId,
+    Map<String, dynamic> businessData,
+  ) async {
     final url = Uri.parse('$baseUrl/profile/business-info');
-    final payload = {
-      'memberId': memberId,
-      ...businessData,
-    };
+    final payload = {'memberId': memberId, ...businessData};
     developer.log('POST $url', name: 'ApiService');
     developer.log('payload: ${jsonEncode(payload)}', name: 'ApiService');
 
-    final resp = await http.post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode(payload));
+    final resp = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
     developer.log('status: ${resp.statusCode}', name: 'ApiService');
     developer.log('body: ${resp.body}', name: 'ApiService');
 
@@ -190,16 +232,20 @@ class ApiService {
   }
 
   // Save financial & compliance information
-  static Future<Map<String, dynamic>> saveFinancialInfo(String memberId, Map<String, dynamic> financialData) async {
+  static Future<Map<String, dynamic>> saveFinancialInfo(
+    String memberId,
+    Map<String, dynamic> financialData,
+  ) async {
     final url = Uri.parse('$baseUrl/profile/financial-info');
-    final payload = {
-      'memberId': memberId,
-      ...financialData,
-    };
+    final payload = {'memberId': memberId, ...financialData};
     developer.log('POST $url', name: 'ApiService');
     developer.log('payload: ${jsonEncode(payload)}', name: 'ApiService');
 
-    final resp = await http.post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode(payload));
+    final resp = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
     developer.log('status: ${resp.statusCode}', name: 'ApiService');
     developer.log('body: ${resp.body}', name: 'ApiService');
 
@@ -213,16 +259,20 @@ class ApiService {
   }
 
   // Save declaration information
-  static Future<Map<String, dynamic>> saveDeclaration(String memberId, Map<String, dynamic> declarationData) async {
+  static Future<Map<String, dynamic>> saveDeclaration(
+    String memberId,
+    Map<String, dynamic> declarationData,
+  ) async {
     final url = Uri.parse('$baseUrl/profile/declaration');
-    final payload = {
-      'memberId': memberId,
-      ...declarationData,
-    };
+    final payload = {'memberId': memberId, ...declarationData};
     developer.log('POST $url', name: 'ApiService');
     developer.log('payload: ${jsonEncode(payload)}', name: 'ApiService');
 
-    final resp = await http.post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode(payload));
+    final resp = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
     developer.log('status: ${resp.statusCode}', name: 'ApiService');
     developer.log('body: ${resp.body}', name: 'ApiService');
 
@@ -234,5 +284,4 @@ class ApiService {
       return {'success': false, 'status': resp.statusCode, 'body': body};
     }
   }
-
 }

@@ -484,27 +484,22 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
     });
 
     try {
-      // Parse date of birth from string to DateTime
+      // Use DOB exactly in DD-MM-YYYY format
       final dobString = widget.personalData['dob'] as String;
       final dobParts = dobString.split('-');
-      final dateOfBirth = DateTime(
-        int.parse(dobParts[2]), // year
-        int.parse(dobParts[1]), // month
-        int.parse(dobParts[0]), // day
-      );
-
-      // Skip Firebase authentication for now - we'll use our backend directly
-      // Firebase authentication can be added later if needed
+      final dateOfBirthDDMMYYYY =
+          '${dobParts[0].padLeft(2, '0')}-${dobParts[1].padLeft(2, '0')}-${dobParts[2]}';
 
       // Create ApiService instance
       final apiService = ApiService();
-      
+
       // Prepare registration payload
       final payload = {
         "fullName": widget.personalData['fullName'],
         "email": widget.personalData['email'],
         "phoneNumber": widget.personalData['phone'],
-        "dateOfBirth": dateOfBirth.toIso8601String(),
+        // Store DOB as DD-MM-YYYY string
+        "dateOfBirth": dateOfBirthDDMMYYYY,
         "gender": widget.personalData['gender'],
         "password": widget.personalData['password'],
         "address": _addressController.text,
@@ -549,28 +544,30 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
       } else {
         // Registration failed
         if (mounted) {
-          final errorMessage = result['body']?['message'] ?? 'Registration failed';
+          final errorMessage =
+              result['body']?['message'] ?? 'Registration failed';
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage),
-              backgroundColor: Colors.red,
-            ),
+            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         String errorMessage = 'An error occurred: $e';
-        
+
         // Provide user-friendly error messages for common issues
-        if (e.toString().contains('blocked') || e.toString().contains('unusual activity')) {
-          errorMessage = 'Registration temporarily unavailable. Please try again in a few minutes.';
-        } else if (e.toString().contains('network') || e.toString().contains('connection')) {
-          errorMessage = 'Network error. Please check your internet connection and try again.';
+        if (e.toString().contains('blocked') ||
+            e.toString().contains('unusual activity')) {
+          errorMessage =
+              'Registration temporarily unavailable. Please try again in a few minutes.';
+        } else if (e.toString().contains('network') ||
+            e.toString().contains('connection')) {
+          errorMessage =
+              'Network error. Please check your internet connection and try again.';
         } else if (e.toString().contains('timeout')) {
           errorMessage = 'Request timed out. Please try again.';
         }
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),

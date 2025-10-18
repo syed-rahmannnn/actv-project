@@ -198,9 +198,26 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
             String s(dynamic v) => (v == null || (v is String && v.isEmpty)) ? '—' : v.toString();
             String fmtDate(dynamic v) {
               if (v == null) return '—';
-              final s = v.toString();
-              // If ISO-like, strip time portion
-              return s.contains('T') ? s.split('T').first : s;
+              final raw = v.toString();
+              final base = raw.contains('T') ? raw.split('T').first : raw;
+              // Convert YYYY-MM-DD or YYYY/MM/DD -> DD-MM-YYYY
+              if (base.contains('-')) {
+                final parts = base.split('-');
+                if (parts.length == 3 && parts[0].length == 4) {
+                  return '${parts[2].padLeft(2, '0')}-${parts[1].padLeft(2, '0')}-${parts[0]}';
+                }
+                return base; // likely already DD-MM-YYYY
+              }
+              if (base.contains('/')) {
+                final parts = base.split('/');
+                if (parts.length == 3 && parts[0].length == 4) {
+                  return '${parts[2].padLeft(2, '0')}-${parts[1].padLeft(2, '0')}-${parts[0]}';
+                }
+                if (parts.length == 3 && parts[2].length == 4) {
+                  return '${parts[0].padLeft(2, '0')}-${parts[1].padLeft(2, '0')}-${parts[2]}';
+                }
+              }
+              return base;
             }
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -453,11 +470,28 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
         throw Exception('Member ID not found');
       }
 
-      // Normalize date (YYYY-MM-DD)
+      // Normalize date to DD-MM-YYYY
       String normalizeDate(dynamic v) {
         if (v == null) return '';
-        final s = v.toString();
-        return s.contains('T') ? s.split('T').first : s;
+        final raw = v.toString();
+        final base = raw.contains('T') ? raw.split('T').first : raw;
+        if (base.contains('-')) {
+          final parts = base.split('-');
+          if (parts.length == 3 && parts[0].length == 4) {
+            return '${parts[2].padLeft(2, '0')}-${parts[1].padLeft(2, '0')}-${parts[0]}';
+          }
+          return base; // already DD-MM-YYYY
+        }
+        if (base.contains('/')) {
+          final parts = base.split('/');
+          if (parts.length == 3 && parts[0].length == 4) {
+            return '${parts[2].padLeft(2, '0')}-${parts[1].padLeft(2, '0')}-${parts[0]}';
+          }
+          if (parts.length == 3 && parts[2].length == 4) {
+            return '${parts[0].padLeft(2, '0')}-${parts[1].padLeft(2, '0')}-${parts[2]}';
+          }
+        }
+        return base;
       }
 
       // Compose updates for memberdetails including personal basics
