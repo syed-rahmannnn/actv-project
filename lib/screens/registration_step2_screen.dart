@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 import '../services/api_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class RegistrationStep2Screen extends StatefulWidget {
   final Map<String, dynamic> personalData;
@@ -494,64 +493,31 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
         int.parse(dobParts[0]), // day
       );
 
-      User? currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        // Try to sign in with credentials provided in step 1.
-        final String email = (widget.personalData['email'] ?? '')
-            .toString()
-            .trim();
-        final String password = (widget.personalData['password'] ?? '')
-            .toString();
+      // Skip Firebase authentication for now - we'll use our backend directly
+      // Firebase authentication can be added later if needed
 
-        if (email.isEmpty || password.isEmpty) {
-          throw Exception('Please sign in with Firebase first');
-        }
+      // Create ApiService instance
+      final apiService = ApiService();
+      
+      // Prepare registration payload
+      final payload = {
+        "fullName": widget.personalData['fullName'],
+        "email": widget.personalData['email'],
+        "phoneNumber": widget.personalData['phone'],
+        "dateOfBirth": dateOfBirth.toIso8601String(),
+        "gender": widget.personalData['gender'],
+        "password": widget.personalData['password'],
+        "address": _addressController.text,
+        "block": _blockController.text,
+        "city": _selectedDistrict ?? '',
+        "district": _selectedDistrict!,
+        "state": _selectedState!,
+        "pincode": widget.personalData['pincode'] ?? '000000',
+      };
 
-        try {
-          final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-            email: email,
-            password: password,
-          );
-          currentUser = cred.user;
-        } on FirebaseAuthException catch (e) {
-          if (e.code == 'user-not-found') {
-            // Create the user then proceed
-            final cred = await FirebaseAuth.instance
-                .createUserWithEmailAndPassword(
-                  email: email,
-                  password: password,
-                );
-            currentUser = cred.user;
-          } else if (e.code == 'wrong-password') {
-            throw Exception('Wrong password. Please check and try again.');
-          } else {
-            throw Exception(e.message ?? 'Firebase sign-in failed');
-          }
-        }
-      }
+      final result = await apiService.register(payload);
 
-      if (currentUser == null) {
-        throw Exception('Please sign in with Firebase first');
-      }
-
-      final result = await ApiService.registerUser(
-        firebaseUid: currentUser.uid,
-        fullName: widget.personalData['fullName'],
-        phoneNumber: widget.personalData['phone'],
-        dateOfBirth: dateOfBirth,
-        gender: widget.personalData['gender'],
-        address: _addressController.text,
-        city: _selectedDistrict ?? '',
-        state: _selectedState!,
-        district: _selectedDistrict!,
-        // send block separately
-        // pincode currently from personalData or ensure a default
-        pincode: widget.personalData['pincode'] ?? '000000',
-        profilePicture: null,
-        memberType: null,
-      );
-
-      if (result['success']) {
+      if (result['ok'] == true) {
         // Registration successful
         if (mounted) {
           // Combine all data for dashboard display
@@ -561,7 +527,8 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
             'district': _selectedDistrict,
             'block': _blockController.text,
             'address': _addressController.text,
-            'member': result['data']['member'],
+            'member': result['body']['data']['member'],
+            'token': result['token'],
           };
 
           Navigator.pushReplacement(
@@ -582,9 +549,10 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
       } else {
         // Registration failed
         if (mounted) {
+          final errorMessage = result['body']?['message'] ?? 'Registration failed';
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['error'] ?? 'Registration failed'),
+              content: Text(errorMessage),
               backgroundColor: Colors.red,
             ),
           );
@@ -592,10 +560,32 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'An error occurred: $e';
+        
+        // Provide user-friendly error messages for common issues
+        if (e.toString().contains('blocked') || e.toString().contains('unusual activity')) {
+          errorMessage = 'Registration temporarily unavailable. Please try again in a few minutes.';
+        } else if (e.toString().contains('network') || e.toString().contains('connection')) {
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+        } else if (e.toString().contains('timeout')) {
+          errorMessage = 'Request timed out. Please try again.';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('An error occurred: $e'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: () {
+                // Retry the registration after a short delay
+                Future.delayed(const Duration(seconds: 2), () {
+                  _handleRegistration();
+                });
+              },
+            ),
           ),
         );
       }

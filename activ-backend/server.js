@@ -3,7 +3,12 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-require('dotenv').config({ path: './config.env' });
+// Load environment variables
+if (process.env.NODE_ENV === 'production') {
+  require('dotenv').config({ path: './production.env' });
+} else {
+  require('dotenv').config({ path: './config.env' });
+}
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -12,6 +17,9 @@ const profileRoutes = require('./routes/profile');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Trust proxy setting for deployment platforms like Render, Heroku, etc.
+app.set('trust proxy', 1); // trust first proxy
 
 // Security middleware
 app.use(helmet());
@@ -25,8 +33,26 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // CORS configuration
+const allowedOrigins = [
+  'http://localhost:3000', 
+  'http://localhost:8080', 
+  'http://localhost:5000', 
+  'http://192.168.29.130:3000',
+  'https://actv-project.onrender.com',
+  'https://actv-project.onrender.com/'
+];
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:8080', 'http://localhost:5000', 'http://192.168.29.130:3000'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 

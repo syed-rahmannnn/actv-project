@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:activ/services/api_service.dart';
 import 'business_information_form.dart';
 
@@ -18,13 +17,18 @@ class PersonalDetailsForm extends StatefulWidget {
 class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
   Future<Map<String, dynamic>?> _loadMemberFromBackend() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return widget.userData;
-      final res = await ApiService.getMemberByFirebaseUid(user.uid);
+      // Get email from userData instead of Firebase
+      final email = widget.userData['email'] ?? widget.userData['member']?['email'];
+      if (email == null) return widget.userData;
+      
+      // Get member details from backend
+      final res = await ApiService.getMemberByEmail(email);
       if (res['success'] == true) {
-        final member = Map<String, dynamic>.from(res['data']['member'] as Map);
+        final member = Map<String, dynamic>.from(res['data'] as Map);
+        
         return {
-          'email': user.email,
+          'email': email,
+          'memberId': member['_id'],
           'registrationForm': {
             'fullName': member['fullName'],
             'block': member['block'],
@@ -33,11 +37,18 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
             'phoneNumber': member['phoneNumber'],
             'dateOfBirth': member['dateOfBirth'],
             'completeAddress': member['address'],
+            // Include demographic fields from memberdetails (source of truth)
+            'aadhaarNumber': member['aadhaarNumber'] ?? '',
+            'streetName': member['streetName'] ?? '',
+            'educationalQualification': member['educationalQualification'] ?? '',
+            'religion': member['religion'] ?? '',
+            'socialCategory': member['socialCategory'] ?? '',
           }
         };
       }
       return widget.userData;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Error loading member from backend: $e');
       return widget.userData;
     }
   }
@@ -185,6 +196,12 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
             final data = snapshot.data;
             final form = (data?['registrationForm'] as Map<String, dynamic>?) ?? {};
             String s(dynamic v) => (v == null || (v is String && v.isEmpty)) ? '—' : v.toString();
+            String fmtDate(dynamic v) {
+              if (v == null) return '—';
+              final s = v.toString();
+              // If ISO-like, strip time portion
+              return s.contains('T') ? s.split('T').first : s;
+            }
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -194,7 +211,7 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
                 _buildReadOnlyField('District', s(form['district'])),
                 _buildReadOnlyField('Phone Number', s(form['phoneNumber'])),
                 _buildReadOnlyField('Email ID', s(data?['email'])),
-                _buildReadOnlyField('Date of Birth', s(form['dateOfBirth'])),
+                _buildReadOnlyField('Date of Birth', fmtDate(form['dateOfBirth'])),
               ],
             );
           },
@@ -402,7 +419,7 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
     );
   }
 
-  void _proceedToNext() {
+  Future<void> _proceedToNext() async {
     // Validate required fields
     if (_aadhaarController.text.isEmpty ||
         _streetNameController.text.isEmpty ||
@@ -418,25 +435,101 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
       return;
     }
 
-    // Save form data to userData
-    final updatedUserData = Map<String, dynamic>.from(widget.userData);
-    if (updatedUserData['registrationForm'] == null) {
-      updatedUserData['registrationForm'] = {};
-    }
-    
-    updatedUserData['registrationForm']['aadhaarNumber'] = _aadhaarController.text;
-    updatedUserData['registrationForm']['streetName'] = _streetNameController.text;
-    updatedUserData['registrationForm']['educationalQualification'] = _educationController.text;
-    updatedUserData['registrationForm']['religion'] = _religionController.text;
-    updatedUserData['registrationForm']['socialCategory'] = _selectedSocialCategory;
-
-    // Navigate to next step
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => BusinessInformationForm(userData: updatedUserData),
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
       ),
     );
+
+    try {
+      // Get member ID from backend data
+      final backendData = await _loadMemberFromBackend();
+      final memberId = backendData?['memberId'];
+      
+      if (memberId == null) {
+        throw Exception('Member ID not found');
+      }
+
+      // Normalize date (YYYY-MM-DD)
+      String normalizeDate(dynamic v) {
+        if (v == null) return '';
+        final s = v.toString();
+        return s.contains('T') ? s.split('T').first : s;
+      }
+
+      // Compose updates for memberdetails including personal basics
+      final memberData = await _loadMemberFromBackend();
+      final form = (memberData?['registrationForm'] as Map<String, dynamic>?) ?? {};
+      final updates = {
+        'aadhaarNumber': _aadhaarController.text,
+        'streetName': _streetNameController.text,
+        'educationalQualification': _educationController.text,
+        'religion': _religionController.text,
+        'socialCategory': _selectedSocialCategory,
+        if (form['fullName'] != null) 'fullName': form['fullName'],
+        if (memberData?['email'] != null) 'email': memberData!['email'],
+        if (form['phoneNumber'] != null) 'phoneNumber': form['phoneNumber'],
+        if (form['completeAddress'] != null) 'address': form['completeAddress'],
+        if (form['state'] != null) 'state': form['state'],
+        if (form['district'] != null) 'district': form['district'],
+        if (form['block'] != null) 'block': form['block'],
+        if (form['dateOfBirth'] != null) 'dateOfBirth': normalizeDate(form['dateOfBirth']),
+      };
+
+      // Save demographics to memberdetails collection via updateMember
+      final result = await ApiService().updateMember(memberId, updates);
+      
+      // Close loading dialog
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      if (result['ok'] == true) {
+        // Save form data to userData for navigation
+        final updatedUserData = Map<String, dynamic>.from(widget.userData);
+        if (updatedUserData['registrationForm'] == null) {
+          updatedUserData['registrationForm'] = {};
+        }
+        
+        updatedUserData['registrationForm']['aadhaarNumber'] = _aadhaarController.text;
+        updatedUserData['registrationForm']['streetName'] = _streetNameController.text;
+        updatedUserData['registrationForm']['educationalQualification'] = _educationController.text;
+        updatedUserData['registrationForm']['religion'] = _religionController.text;
+        updatedUserData['registrationForm']['socialCategory'] = _selectedSocialCategory;
+        updatedUserData['memberId'] = memberId;
+
+        // Navigate to next step
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BusinessInformationForm(userData: updatedUserData),
+          ),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save data: ${result['body']?['message'] ?? result['status'] ?? 'Unknown error'}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (!mounted) return;
+      Navigator.pop(context);
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving data: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
 

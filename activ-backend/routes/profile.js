@@ -93,11 +93,43 @@ router.post('/business-info', async (req, res) => {
       });
     }
 
+    // Ensure name/email are stored in collection
+    const common = {
+      fullName: member.fullName,
+      email: member.email
+    };
+
+    // Whitelist allowed business fields
+    const allowed = [
+      'organizationName',
+      'constitutionType',
+      'businessType',
+      'businessActivities',
+      'businessCommencementYear',
+      'numberOfEmployees',
+      'memberOfOtherChamber',
+      'otherChamber',
+      'registeredWithGovtOrganization',
+      // Extended when doingBusiness is yes
+      'doingBusiness',
+      'additionalBusiness',
+      'businessLocation',
+      'businessWebsite',
+      'businessScale',
+      'exportStatus',
+      'hasExportLicense',
+      'exportLicense',
+      'businessDescription'
+    ];
+    const payload = {};
+    allowed.forEach(k => { if (businessData[k] !== undefined) payload[k] = businessData[k]; });
+
     // Update or create business info
     const businessInfo = await MemberBusinessInfo.findOneAndUpdate(
       { memberId: memberId },
-      { 
-        ...businessData,
+      {
+        ...payload,
+        ...common,
         memberId: memberId
       },
       { 
@@ -144,11 +176,25 @@ router.post('/financial-info', async (req, res) => {
       });
     }
 
+    const common = {
+      fullName: member.fullName,
+      email: member.email
+    };
+
+    // Whitelist allowed financial fields
+    const allowed = [
+      'panNumber','gstNumber','udyamNumber','filedITR','itrYears','turnoverRange',
+      'fy2021','fy2020','fy2019','govtSchemeBenefit','scheme1','scheme2','scheme3'
+    ];
+    const payload = {};
+    allowed.forEach(k => { if (financialData[k] !== undefined) payload[k] = financialData[k]; });
+
     // Update or create financial info
     const financialInfo = await MemberFinancialInfo.findOneAndUpdate(
       { memberId: memberId },
-      { 
-        ...financialData,
+      {
+        ...payload,
+        ...common,
         memberId: memberId
       },
       { 
@@ -195,11 +241,22 @@ router.post('/declaration', async (req, res) => {
       });
     }
 
+    const common = {
+      fullName: member.fullName,
+      email: member.email
+    };
+
+    // Whitelist allowed declaration fields
+    const allowed = ['sisterConcerns','companyNames','showOneFieldPerName','agreeToDeclaration','profileCompleted','submissionDate'];
+    const payload = {};
+    allowed.forEach(k => { if (declarationData[k] !== undefined) payload[k] = declarationData[k]; });
+
     // Update or create declaration
     const declaration = await MemberDeclaration.findOneAndUpdate(
       { memberId: memberId },
-      { 
-        ...declarationData,
+      {
+        ...payload,
+        ...common,
         memberId: memberId
       },
       { 

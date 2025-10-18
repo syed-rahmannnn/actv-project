@@ -77,7 +77,10 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const updates = req.body || {};
     // whitelist allowed fields to avoid accidental overwrite
-    const allowed = ['fullName','email','phoneNumber','dateOfBirth','gender','state','district','block','address','profileCompleted'];
+    const allowed = ['fullName','email','phoneNumber','dateOfBirth','gender','state','district','block','address','profileCompleted',
+      // demographic fields moved here
+      'aadhaarNumber','streetName','educationalQualification','religion','socialCategory'
+    ];
     const payload = {};
     allowed.forEach(k => {
       if (updates[k] !== undefined) payload[k] = updates[k];
