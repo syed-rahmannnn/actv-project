@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:activ/services/auth_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:activ/services/api_service.dart';
 
 class ProfileDetailScreen extends StatefulWidget {
@@ -15,14 +14,19 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
   Future<Map<String, dynamic>?> _loadMemberFromBackend() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return await AuthService.getUserData();
-      final res = await ApiService.getMemberByFirebaseUid(user.uid);
+      // Get user data from AuthService instead of Firebase
+      final userData = await AuthService.getUserData();
+      if (userData == null) return null;
+      
+      final email = userData['email'] ?? userData['member']?['email'];
+      if (email == null) return userData;
+      
+      final res = await ApiService.getMemberByEmail(email);
       if (res['success'] == true) {
         // Normalize to structure similar to previous userData for minimal UI changes
-        final member = Map<String, dynamic>.from(res['data']['member'] as Map);
+        final member = Map<String, dynamic>.from(res['data'] as Map);
         return {
-          'email': user.email,
+          'email': email,
           'fullName': member['fullName'],
           'phoneNumber': member['phoneNumber'],
           'dateOfBirth': member['dateOfBirth'],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'application_submitted_screen.dart';
+import 'package:activ/services/api_service.dart';
 
 class DeclarationForm extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -375,7 +376,7 @@ class _DeclarationFormState extends State<DeclarationForm> {
     );
   }
 
-  void _submitApplication() {
+  Future<void> _submitApplication() async {
     // Validate required fields
     if (_sisterConcernsController.text.isEmpty ||
         _companyNamesController.text.isEmpty ||
@@ -414,7 +415,46 @@ class _DeclarationFormState extends State<DeclarationForm> {
     updatedUserData['registrationForm']['profileCompleted'] = true;
     updatedUserData['registrationForm']['submissionDate'] = DateTime.now().toIso8601String();
 
+    // Save declaration to backend
+    try {
+      final memberId = updatedUserData['memberId'];
+      if (memberId == null) {
+        throw Exception('Member ID not found');
+      }
+
+      // Convert company names into array (split by new lines)
+      final companyNames = _companyNamesController.text
+          .split('\n')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+
+      final payload = {
+        'sisterConcerns': sisterConcerns,
+        'companyNames': companyNames,
+        'showOneFieldPerName': _showOneFieldPerName,
+        'agreeToDeclaration': _agreeToDeclaration,
+        'profileCompleted': true,
+        'submissionDate': DateTime.now().toIso8601String(),
+      };
+
+      final result = await ApiService.saveDeclaration(memberId, payload);
+      if (result['success'] != true) {
+        throw Exception(result['body']?['message'] ?? 'Failed to submit declaration');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to submit declaration: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     // Navigate to application submitted screen
+    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(

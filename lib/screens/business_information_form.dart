@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'financial_compliance_form.dart';
+import 'package:activ/services/api_service.dart';
 import 'extended_business_form.dart';
 
 class BusinessInformationForm extends StatefulWidget {
@@ -494,7 +495,7 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
     );
   }
 
-  void _proceedToNext() {
+  Future<void> _proceedToNext() async {
     // Validate required fields
     if (_doingBusiness == null ||
         _organizationNameController.text.isEmpty ||
@@ -514,6 +515,42 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
       return;
     }
 
+    // Save to backend (Business Info)
+    try {
+      final memberId = widget.userData['memberId'];
+      if (memberId == null) {
+        throw Exception('Member ID not found');
+      }
+
+      final businessData = {
+        'doingBusiness': _doingBusiness,
+        'organizationName': _organizationNameController.text,
+        'constitutionType': _selectedConstitution,
+        // map multi-select to first chosen for single businessType
+        'businessType': _selectedBusinessTypes.isNotEmpty ? _selectedBusinessTypes.first : null,
+        'businessActivities': _businessActivitiesController.text,
+        'businessCommencementYear': _selectedYear,
+        'numberOfEmployees': _employeesController.text,
+        'memberOfOtherChamber': _memberOfOtherChamber,
+        'otherChamber': _otherChamberController.text,
+        'registeredWithGovtOrganization': _selectedGovtOrganizations.toList(),
+      };
+
+      final result = await ApiService.saveBusinessInfo(memberId, businessData);
+      if (result['success'] != true) {
+        throw Exception(result['body']?['message'] ?? 'Failed to save business info');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save business info: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     // Save form data to userData
     final updatedUserData = Map<String, dynamic>.from(widget.userData);
     if (updatedUserData['registrationForm'] == null) {
@@ -523,15 +560,16 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
     updatedUserData['registrationForm']['doingBusiness'] = _doingBusiness;
     updatedUserData['registrationForm']['organizationName'] = _organizationNameController.text;
     updatedUserData['registrationForm']['constitutionType'] = _selectedConstitution;
-    updatedUserData['registrationForm']['businessTypes'] = _selectedBusinessTypes.toList();
+    updatedUserData['registrationForm']['businessType'] = _selectedBusinessTypes.isNotEmpty ? _selectedBusinessTypes.first : null;
     updatedUserData['registrationForm']['businessActivities'] = _businessActivitiesController.text;
     updatedUserData['registrationForm']['businessCommencementYear'] = _selectedYear;
     updatedUserData['registrationForm']['numberOfEmployees'] = _employeesController.text;
     updatedUserData['registrationForm']['memberOfOtherChamber'] = _memberOfOtherChamber;
     updatedUserData['registrationForm']['otherChamber'] = _otherChamberController.text;
-    updatedUserData['registrationForm']['govtOrganizations'] = _selectedGovtOrganizations.toList();
+    updatedUserData['registrationForm']['registeredWithGovtOrganization'] = _selectedGovtOrganizations.toList();
 
     // Navigate based on business selection
+    if (!mounted) return;
     if (_doingBusiness == true) {
       // Navigate to extended business form
       Navigator.push(

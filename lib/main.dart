@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:activ/screens/login_screen.dart';
 import 'package:activ/screens/onboarding_screen.dart';
 import 'package:activ/screens/dashboard_screen.dart';
@@ -7,7 +6,6 @@ import 'package:activ/services/auth_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -57,7 +55,7 @@ class AuthWrapper extends StatelessWidget {
               }
               
               if (userSnapshot.data != null) {
-                return DashboardScreen(completeData: userSnapshot.data!);
+                return DashboardScreen(userData: userSnapshot.data!);
               }
               
               return const OnboardingScreen();

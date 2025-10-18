@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'declaration_form.dart';
+import 'package:activ/services/api_service.dart';
 
 class FinancialComplianceForm extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -44,6 +45,16 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
   void initState() {
     super.initState();
     _populateFields();
+  }
+
+  bool _isValidPan(String input) {
+    final value = input.trim().toUpperCase();
+    return RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]{1}$').hasMatch(value);
+  }
+
+  bool _isValidGst(String input) {
+    final value = input.trim().toUpperCase();
+    return RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$').hasMatch(value);
   }
 
   void _populateFields() {
@@ -358,6 +369,7 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
+          enabled: _isFieldEnabled(label),
           decoration: InputDecoration(
             hintText: placeholder,
             filled: true,
@@ -465,7 +477,19 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
     );
   }
 
-  void _proceedToNext() {
+  bool _isFieldEnabled(String label) {
+    // Disable ITR years when _filedITR is false or null
+    if (label == 'How many continuous years have you filed ITR?') {
+      return _filedITR == true;
+    }
+    // Disable scheme fields unless govtSchemeBenefit is true
+    if (label == 'Scheme 1' || label == 'Scheme 2' || label == 'Scheme 3') {
+      return _govtSchemeBenefit == true;
+    }
+    return true;
+  }
+
+  Future<void> _proceedToNext() async {
     // Validate required fields
     if (_panController.text.isEmpty ||
         _gstController.text.isEmpty ||
@@ -486,27 +510,94 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
       return;
     }
 
+    // PAN/GST format validation to avoid backend 500 (validation error)
+    final pan = _panController.text.trim().toUpperCase();
+    if (!_isValidPan(pan)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid PAN format. Example: ABCDE1234F'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final gst = _gstController.text.trim().toUpperCase();
+    if (!_isValidGst(gst)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid GST format. Must be 15 characters (##ABCDE1234F1Z5)'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Save financial info to backend
+    try {
+      final memberId = widget.userData['memberId'];
+      if (memberId == null) {
+        throw Exception('Member ID not found');
+      }
+      // Sanitize dependent fields
+      final sanitizedItrYears = _filedITR == true ? _itrYearsController.text.trim() : '';
+      final scheme1 = _govtSchemeBenefit == true ? _scheme1Controller.text.trim() : '';
+      final scheme2 = _govtSchemeBenefit == true ? _scheme2Controller.text.trim() : '';
+      final scheme3 = _govtSchemeBenefit == true ? _scheme3Controller.text.trim() : '';
+
+      final financialData = {
+        'panNumber': pan,
+        'gstNumber': gst,
+        'udyamNumber': _udyamController.text.trim(),
+        'filedITR': _filedITR,
+        'itrYears': sanitizedItrYears,
+        'turnoverRange': _selectedTurnoverRange,
+        'fy2021': _fy2021Controller.text.trim(),
+        'fy2020': _fy2020Controller.text.trim(),
+        'fy2019': _fy2019Controller.text.trim(),
+        'govtSchemeBenefit': _govtSchemeBenefit,
+        'scheme1': scheme1,
+        'scheme2': scheme2,
+        'scheme3': scheme3,
+      };
+
+      final result = await ApiService.saveFinancialInfo(memberId, financialData);
+      if (result['success'] != true) {
+        throw Exception(result['body']?['message'] ?? 'Failed to save financial info');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save financial info: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     // Save form data to userData
     final updatedUserData = Map<String, dynamic>.from(widget.userData);
     if (updatedUserData['registrationForm'] == null) {
       updatedUserData['registrationForm'] = {};
     }
     
-    updatedUserData['registrationForm']['panNumber'] = _panController.text;
-    updatedUserData['registrationForm']['gstNumber'] = _gstController.text;
-    updatedUserData['registrationForm']['udyamNumber'] = _udyamController.text;
+    updatedUserData['registrationForm']['panNumber'] = pan;
+    updatedUserData['registrationForm']['gstNumber'] = gst;
+    updatedUserData['registrationForm']['udyamNumber'] = _udyamController.text.trim();
     updatedUserData['registrationForm']['filedITR'] = _filedITR;
-    updatedUserData['registrationForm']['itrYears'] = _itrYearsController.text;
+    updatedUserData['registrationForm']['itrYears'] = _filedITR == true ? _itrYearsController.text.trim() : '';
     updatedUserData['registrationForm']['turnoverRange'] = _selectedTurnoverRange;
-    updatedUserData['registrationForm']['fy2021'] = _fy2021Controller.text;
-    updatedUserData['registrationForm']['fy2020'] = _fy2020Controller.text;
-    updatedUserData['registrationForm']['fy2019'] = _fy2019Controller.text;
+    updatedUserData['registrationForm']['fy2021'] = _fy2021Controller.text.trim();
+    updatedUserData['registrationForm']['fy2020'] = _fy2020Controller.text.trim();
+    updatedUserData['registrationForm']['fy2019'] = _fy2019Controller.text.trim();
     updatedUserData['registrationForm']['govtSchemeBenefit'] = _govtSchemeBenefit;
-    updatedUserData['registrationForm']['scheme1'] = _scheme1Controller.text;
-    updatedUserData['registrationForm']['scheme2'] = _scheme2Controller.text;
-    updatedUserData['registrationForm']['scheme3'] = _scheme3Controller.text;
+    updatedUserData['registrationForm']['scheme1'] = _govtSchemeBenefit == true ? _scheme1Controller.text.trim() : '';
+    updatedUserData['registrationForm']['scheme2'] = _govtSchemeBenefit == true ? _scheme2Controller.text.trim() : '';
+    updatedUserData['registrationForm']['scheme3'] = _govtSchemeBenefit == true ? _scheme3Controller.text.trim() : '';
 
     // Navigate to declaration form
+    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(

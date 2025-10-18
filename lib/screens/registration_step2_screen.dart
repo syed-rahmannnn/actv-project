@@ -475,77 +475,128 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
 
   // Handle registration submission
   Future<void> _handleRegistration() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    // Use this variable (removes unused warning)
-    final dateOfBirth = widget.personalData['dateOfBirth'] ?? widget.personalData['dob'] ?? '';
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final result = await ApiService.registerUser(
-        fullName: widget.personalData['fullName'] ?? '',
-        phoneNumber: widget.personalData['phone'] ?? '',
-        email: widget.personalData['email'] ?? '',
-        dateOfBirth: dateOfBirth,
-        gender: widget.personalData['gender'] ?? '',
-        password: widget.personalData['password'] ?? '',
-        address: _addressController.text.trim(),
-        block: _blockController.text.trim(),
-        city: _selectedDistrict ?? '',
-        district: _selectedDistrict ?? '',
-        state: _selectedState ?? '',
-        pincode: widget.personalData['pincode'] ?? '',
-        profilePicture: null,
-        memberType: null,
+      // Parse date of birth from string to DateTime
+      final dobString = widget.personalData['dob'] as String;
+      final dobParts = dobString.split('-');
+      final dateOfBirth = DateTime(
+        int.parse(dobParts[2]), // year
+        int.parse(dobParts[1]), // month
+        int.parse(dobParts[0]), // day
       );
 
-      setState(() {
-        _isLoading = false;
-      });
+      // Skip Firebase authentication for now - we'll use our backend directly
+      // Firebase authentication can be added later if needed
 
-      if (result['success'] == true) {
-        // optional: combine data for dashboard or pass returned data
-        final completeData = {
-          ...widget.personalData,
-          'state': _selectedState,
-          'district': _selectedDistrict,
-          'address': _addressController.text.trim(),
-          'block': _blockController.text.trim(),
-        };
+      // Create ApiService instance
+      final apiService = ApiService();
+      
+      // Prepare registration payload
+      final payload = {
+        "fullName": widget.personalData['fullName'],
+        "email": widget.personalData['email'],
+        "phoneNumber": widget.personalData['phone'],
+        "dateOfBirth": dateOfBirth.toIso8601String(),
+        "gender": widget.personalData['gender'],
+        "password": widget.personalData['password'],
+        "address": _addressController.text,
+        "block": _blockController.text,
+        "city": _selectedDistrict ?? '',
+        "district": _selectedDistrict!,
+        "state": _selectedState!,
+        "pincode": widget.personalData['pincode'] ?? '000000',
+      };
 
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration successful')),
-        );
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DashboardScreen(completeData: completeData),
-          ),
-        );
-      } else {
-        final message = (result['data'] != null && result['data']['message'] != null)
-            ? result['data']['message']
-            : (result['message'] ?? 'Registration failed');
+      final result = await apiService.register(payload);
+
+      if (result['ok'] == true) {
+        // Registration successful
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+          // Combine all data for dashboard display
+          final completeData = {
+            ...widget.personalData,
+            'state': _selectedState,
+            'district': _selectedDistrict,
+            'block': _blockController.text,
+            'address': _addressController.text,
+            'member': result['body']['data']['member'],
+            'token': result['token'],
+          };
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DashboardScreen(userData: completeData),
+            ),
+          );
+
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Registration successful!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        // Registration failed
+        if (mounted) {
+          final errorMessage = result['body']?['message'] ?? 'Registration failed';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
+        String errorMessage = 'An error occurred: $e';
+        
+        // Provide user-friendly error messages for common issues
+        if (e.toString().contains('blocked') || e.toString().contains('unusual activity')) {
+          errorMessage = 'Registration temporarily unavailable. Please try again in a few minutes.';
+        } else if (e.toString().contains('network') || e.toString().contains('connection')) {
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+        } else if (e.toString().contains('timeout')) {
+          errorMessage = 'Request timed out. Please try again.';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Network error: ${e.toString()}')),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: () {
+                // Retry the registration after a short delay
+                Future.delayed(const Duration(seconds: 2), () {
+                  _handleRegistration();
+                });
+              },
+            ),
+          ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
-
 
   @override
   void dispose() {

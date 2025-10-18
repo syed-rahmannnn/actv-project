@@ -1,362 +1,238 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'dart:developer' as developer;
 
 class ApiService {
-  // Your local backend server URL
-  // static const String baseUrl = 'http://localhost:3000/api'; // Local development
-  //static const String baseUrl = 'http://10.0.2.2:3000/api'; // Android Emulator  
-  static const String baseUrl = 'http://192.168.29.130:4000';
-  // Active Wi‑Fi IP
-  // Headers for requests
-  static Map<String, String> get headers => {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
+  // Replace with your Render domain (include https)
+  static const String baseUrl = 'https://actv-project.onrender.com/api'; // Render domain
+  
+  String? _token;
 
-  // Firebase validate (allow only registered members)
-  static Future<Map<String, dynamic>> firebaseValidate({
-    required String firebaseUid,
-    required String? email,
-  }) async {
+  // Helper to get headers, include token if present
+  Map<String,String> _headers({bool json = true, bool auth = false}) {
+    final headers = <String,String>{};
+    if (json) headers['Content-Type'] = 'application/json';
+    if (auth && _token != null) headers['Authorization'] = 'Bearer $_token';
+    return headers;
+  }
+
+  void setToken(String token) {
+    _token = token;
+    developer.log('ApiService: token set length=${token.length}', name: 'ApiService');
+  }
+
+  void clearToken() {
+    _token = null;
+    developer.log('ApiService: token cleared', name: 'ApiService');
+  }
+
+  // Safe json decode
+  dynamic jsonDecodeSafe(String input) {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/firebase-validate'),
-        headers: headers,
-        body: jsonEncode({
-          'firebaseUid': firebaseUid,
-          'email': email,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'data': jsonDecode(response.body),
-        };
-      } else {
-        return {
-          'success': false,
-          'error': jsonDecode(response.body)['message'] ?? 'Validation failed',
-        };
-      }
+      return input.isNotEmpty ? jsonDecode(input) : null;
     } catch (e) {
-      return {
-        'success': false,
-        'error': 'Network error: ${e.toString()}',
-      };
+      developer.log('jsonDecodeSafe error: $e', name: 'ApiService');
+      return input;
     }
   }
 
-  static Future<Map<String, dynamic>> getMemberByFirebaseUid(String uid) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/members/by-firebase?uid=$uid'),
-        headers: headers,
-      );
-      if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'data': jsonDecode(response.body),
-        };
-      } else {
-        return {
-          'success': false,
-          'error': jsonDecode(response.body)['message'] ?? 'Fetch failed',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'error': 'Network error: ${e.toString()}',
-      };
+  // Register user with proper backend route
+  Future<Map<String,dynamic>> register(Map<String,dynamic> payload) async {
+    final url = Uri.parse('$baseUrl/auth/register'); // auth.js register route
+    developer.log('POST $url', name: 'ApiService');
+    developer.log('payload: ${jsonEncode(payload)}', name: 'ApiService');
+
+    final resp = await http.post(url, headers: _headers(), body: jsonEncode(payload));
+    developer.log('status: ${resp.statusCode}', name: 'ApiService');
+    developer.log('body: ${resp.body}', name: 'ApiService');
+
+    final body = jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      // backend returns data.token and data.member
+      final token = body['data']?['token'] ?? body['token'];
+      if (token != null) setToken(token as String);
+      return {'ok': true, 'body': body, 'token': token};
+    } else {
+      return {'ok': false, 'status': resp.statusCode, 'body': body};
     }
   }
+
   // Login user
-  static Future<Map<String, dynamic>> loginUser({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/login'),
-        headers: headers,
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
-      );
+  Future<Map<String,dynamic>> login(String email, String password) async {
+    final url = Uri.parse('$baseUrl/auth/login');
+    final payload = {'email': email.trim(), 'password': password};
+    developer.log('POST $url', name: 'ApiService');
+    developer.log('payload: ${jsonEncode(payload)}', name: 'ApiService');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return {
-          'success': true,
-          'data': data,
-          'user': data['user'],
-          'token': data['token'], // If you're using JWT
-        };
-      } else {
-        return {
-          'success': false,
-          'error': jsonDecode(response.body)['message'] ?? 'Login failed',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'error': 'Network error: ${e.toString()}',
-      };
-    }
-  }
-  /// Registers a user with combined data from step1 + step2.
-  static Future<Map<String, dynamic>> registerUser({
-    required String fullName,
-    required String phoneNumber,
-    required String email,
-    required String dateOfBirth,
-    required String gender,
-    required String password,
-    String? address,
-    String? block,
-    String? city,
-    String? district,
-    String? state,
-    String? pincode,
-    String? profilePicture,
-    String? memberType,
-  }) async {
-    try {
-      final uri = Uri.parse('$baseUrl/api/register');
-      final payload = {
-        'fullName': fullName,
-        'phone': phoneNumber,
-        'email': email,
-        'dateOfBirth': dateOfBirth,
-        'gender': gender,
-        'password': password,
-        'address': address,
-        'block': block,
-        'city': city,
-        'district': district,
-        'state': state,
-        'pincode': pincode,
-        'profilePicture': profilePicture,
-        'memberType': memberType,
-      };
+    final resp = await http.post(url, headers: _headers(), body: jsonEncode(payload));
+    developer.log('status: ${resp.statusCode}', name: 'ApiService');
+    developer.log('body: ${resp.body}', name: 'ApiService');
 
-      final resp = await http.post(
-        uri,
-        headers: headers,
-        body: jsonEncode(payload),
-      );
-
-      final body = jsonDecode(resp.body);
-
-      if (resp.statusCode == 201 || resp.statusCode == 200) {
-        return {'success': true, 'data': body};
-      } else {
-        return {'success': false, 'status': resp.statusCode, 'data': body};
-      }
-    } catch (e) {
-      return {'success': false, 'message': e.toString()};
+    final body = jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      final token = body['data']?['token'] ?? body['token'];
+      if (token != null) setToken(token as String);
+      return {'ok': true, 'body': body, 'token': token};
+    } else {
+      return {'ok': false, 'status': resp.statusCode, 'body': body};
     }
   }
 
-  // Get user profile
-  static Future<Map<String, dynamic>> getUserProfile({
-    required String userId,
-    String? token,
-  }) async {
-    try {
-      Map<String, String> requestHeaders = {...headers};
-      if (token != null) {
-        requestHeaders['Authorization'] = 'Bearer $token';
-      }
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/user/$userId'),
-        headers: requestHeaders,
-      );
+  // Generic put for updating member by id (example)
+  Future<Map<String,dynamic>> updateMember(String id, Map<String,dynamic> updates) async {
+    final url = Uri.parse('$baseUrl/members/$id');
+    developer.log('PUT $url (auth: ${_token != null})', name: 'ApiService');
+    developer.log('updates: ${jsonEncode(updates)}', name: 'ApiService');
 
-      if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'data': jsonDecode(response.body),
-        };
-      } else {
-        return {
-          'success': false,
-          'error': jsonDecode(response.body)['message'] ?? 'Failed to get user profile',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'error': 'Network error: ${e.toString()}',
-      };
+    final resp = await http.put(url, headers: _headers(auth: true), body: jsonEncode(updates));
+    developer.log('status: ${resp.statusCode}', name: 'ApiService');
+    developer.log('body: ${resp.body}', name: 'ApiService');
+    final body = jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'ok': true, 'body': body};
+    } else {
+      return {'ok': false, 'status': resp.statusCode, 'body': body};
     }
   }
 
-  // Check if email exists
-  static Future<Map<String, dynamic>> checkEmailExists(String email) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/auth/check-email?email=$email'),
-        headers: headers,
-      );
+  // Get all members (for browse members screen)
+  static Future<Map<String,dynamic>> getMembers({int page = 1, int limit = 10}) async {
+    final url = Uri.parse('$baseUrl/members?page=$page&limit=$limit');
+    developer.log('GET $url', name: 'ApiService');
 
-      if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'exists': jsonDecode(response.body)['exists'],
-        };
-      } else {
-        return {
-          'success': false,
-          'error': 'Failed to check email',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'error': 'Network error: ${e.toString()}',
-      };
+    final resp = await http.get(url, headers: {'Content-Type': 'application/json'});
+    developer.log('status: ${resp.statusCode}', name: 'ApiService');
+    developer.log('body: ${resp.body}', name: 'ApiService');
+
+    // Create a temporary instance to use jsonDecodeSafe
+    final apiService = ApiService();
+    final body = apiService.jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'success': true, 'data': body['data']['members']};
+    } else {
+      return {'success': false, 'status': resp.statusCode, 'body': body};
     }
   }
 
-  // Check if phone number exists
-  static Future<Map<String, dynamic>> checkPhoneExists(String phoneNumber) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/auth/check-phone?phoneNumber=$phoneNumber'),
-        headers: headers,
-      );
+  // Get member by Firebase UID (using email from Firebase user)
+  static Future<Map<String,dynamic>> getMemberByFirebaseUid(String firebaseUid) async {
+    // Since the backend doesn't store Firebase UID, we'll use the email from Firebase Auth
+    // This method should be called with the user's email, not UID
+    // For now, return an error indicating this needs to be updated
+    developer.log('getMemberByFirebaseUid called with UID: $firebaseUid', name: 'ApiService');
+    return {
+      'success': false, 
+      'message': 'getMemberByFirebaseUid needs to be updated to use email instead of UID'
+    };
+  }
 
-      if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'exists': jsonDecode(response.body)['exists'],
-        };
-      } else {
-        return {
-          'success': false,
-          'error': 'Failed to check phone number',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'error': 'Network error: ${e.toString()}',
-      };
+  // Get member by email (alternative to getMemberByFirebaseUid)
+  static Future<Map<String,dynamic>> getMemberByEmail(String email) async {
+    final url = Uri.parse('$baseUrl/members/by-email?email=${Uri.encodeComponent(email)}');
+    developer.log('GET $url', name: 'ApiService');
+
+    final resp = await http.get(url, headers: {'Content-Type': 'application/json'});
+    developer.log('status: ${resp.statusCode}', name: 'ApiService');
+    developer.log('body: ${resp.body}', name: 'ApiService');
+
+    // Create a temporary instance to use jsonDecodeSafe
+    final apiService = ApiService();
+    final body = apiService.jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'success': true, 'data': body['data']};
+    } else {
+      return {'success': false, 'status': resp.statusCode, 'body': body};
     }
   }
 
-  // Update user profile
-  static Future<Map<String, dynamic>> updateUserProfile({
-    required String userId,
-    required String fullName,
-    required String phoneNumber,
-    required DateTime dateOfBirth,
-    required String state,
-    required String district,
-    required String completeAddress,
-  }) async {
-    try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/user/$userId/profile'),
-        headers: headers,
-        body: jsonEncode({
-          'fullName': fullName,
-          'phoneNumber': phoneNumber,
-          'dateOfBirth': dateOfBirth.toIso8601String(),
-          'state': state,
-          'district': district,
-          'completeAddress': completeAddress,
-        }),
-      );
+  // Get business information by member ID
+  static Future<Map<String,dynamic>> getBusinessInfo(String memberId) async {
+    final url = Uri.parse('$baseUrl/profile/business-info/$memberId');
+    developer.log('GET $url', name: 'ApiService');
 
-      if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'data': jsonDecode(response.body),
-        };
-      } else {
-        return {
-          'success': false,
-          'error': jsonDecode(response.body)['message'] ?? 'Failed to update profile',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'error': 'Network error: ${e.toString()}',
-      };
+    final resp = await http.get(url, headers: {'Content-Type': 'application/json'});
+    developer.log('status: ${resp.statusCode}', name: 'ApiService');
+    developer.log('body: ${resp.body}', name: 'ApiService');
+
+    // Create a temporary instance to use jsonDecodeSafe
+    final apiService = ApiService();
+    final body = apiService.jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'success': true, 'data': body['data']};
+    } else {
+      return {'success': false, 'status': resp.statusCode, 'body': body};
     }
   }
 
-  // Upload profile picture
-  static Future<Map<String, dynamic>> uploadProfilePicture({
-    required String userId,
-    required String imagePath,
-  }) async {
-    try {
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$baseUrl/user/$userId/profile-picture'),
-      );
+  // Save business information
+  static Future<Map<String,dynamic>> saveBusinessInfo(String memberId, Map<String,dynamic> businessData) async {
+    final url = Uri.parse('$baseUrl/profile/business-info');
+    final payload = {
+      'memberId': memberId,
+      ...businessData,
+    };
+    developer.log('POST $url', name: 'ApiService');
+    developer.log('payload: ${jsonEncode(payload)}', name: 'ApiService');
 
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'profilePicture',
-          imagePath,
-        ),
-      );
+    final resp = await http.post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode(payload));
+    developer.log('status: ${resp.statusCode}', name: 'ApiService');
+    developer.log('body: ${resp.body}', name: 'ApiService');
 
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'data': jsonDecode(response.body),
-        };
-      } else {
-        return {
-          'success': false,
-          'error': jsonDecode(response.body)['message'] ?? 'Failed to upload profile picture',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'error': 'Network error: ${e.toString()}',
-      };
+    // Create a temporary instance to use jsonDecodeSafe
+    final apiService = ApiService();
+    final body = apiService.jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'success': true, 'data': body['data']};
+    } else {
+      return {'success': false, 'status': resp.statusCode, 'body': body};
     }
   }
 
-  // Get members
-  static Future<Map<String, dynamic>> getMembers() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/members'),
-        headers: headers,
-      );
+  // Save financial & compliance information
+  static Future<Map<String, dynamic>> saveFinancialInfo(String memberId, Map<String, dynamic> financialData) async {
+    final url = Uri.parse('$baseUrl/profile/financial-info');
+    final payload = {
+      'memberId': memberId,
+      ...financialData,
+    };
+    developer.log('POST $url', name: 'ApiService');
+    developer.log('payload: ${jsonEncode(payload)}', name: 'ApiService');
 
-      if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'data': jsonDecode(response.body),
-        };
-      } else {
-        return {
-          'success': false,
-          'error': 'Failed to fetch members',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'error': 'Network error: ${e.toString()}',
-      };
+    final resp = await http.post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode(payload));
+    developer.log('status: ${resp.statusCode}', name: 'ApiService');
+    developer.log('body: ${resp.body}', name: 'ApiService');
+
+    final apiService = ApiService();
+    final body = apiService.jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'success': true, 'data': body['data']};
+    } else {
+      return {'success': false, 'status': resp.statusCode, 'body': body};
     }
   }
+
+  // Save declaration information
+  static Future<Map<String, dynamic>> saveDeclaration(String memberId, Map<String, dynamic> declarationData) async {
+    final url = Uri.parse('$baseUrl/profile/declaration');
+    final payload = {
+      'memberId': memberId,
+      ...declarationData,
+    };
+    developer.log('POST $url', name: 'ApiService');
+    developer.log('payload: ${jsonEncode(payload)}', name: 'ApiService');
+
+    final resp = await http.post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode(payload));
+    developer.log('status: ${resp.statusCode}', name: 'ApiService');
+    developer.log('body: ${resp.body}', name: 'ApiService');
+
+    final apiService = ApiService();
+    final body = apiService.jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'success': true, 'data': body['data']};
+    } else {
+      return {'success': false, 'status': resp.statusCode, 'body': body};
+    }
+  }
+
 }
