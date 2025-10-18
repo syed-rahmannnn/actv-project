@@ -23,9 +23,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const AuthWrapper(),
-      routes: {
-        '/login': (context) => LoginScreen(),
-      },
+      routes: {'/login': (context) => LoginScreen()},
     );
   }
 }
@@ -43,7 +41,7 @@ class AuthWrapper extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        
+
         if (snapshot.data == true) {
           return FutureBuilder<Map<String, dynamic>?>(
             future: AuthService.getUserData(),
@@ -53,16 +51,16 @@ class AuthWrapper extends StatelessWidget {
                   body: Center(child: CircularProgressIndicator()),
                 );
               }
-              
+
               if (userSnapshot.data != null) {
                 return DashboardScreen(userData: userSnapshot.data!);
               }
-              
+
               return const OnboardingScreen();
             },
           );
         }
-        
+
         return const OnboardingScreen();
       },
     );

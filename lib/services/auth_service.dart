@@ -17,6 +17,14 @@ class AuthService {
     await prefs.setBool(_isLoggedInKey, true);
   }
 
+  // NEW: Update only the stored user data (do not touch token)
+  static Future<void> updateUserData(Map<String, dynamic> userData) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userDataKey, jsonEncode(userData));
+    // Keep logged-in state true when updating userData
+    await prefs.setBool(_isLoggedInKey, true);
+  }
+
   // Get saved token
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
