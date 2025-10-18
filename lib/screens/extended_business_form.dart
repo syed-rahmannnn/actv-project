@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'financial_compliance_form.dart';
+import 'package:activ/services/api_service.dart';
 
 class ExtendedBusinessForm extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -414,7 +415,7 @@ class _ExtendedBusinessFormState extends State<ExtendedBusinessForm> {
     );
   }
 
-  void _proceedToNext() {
+  Future<void> _proceedToNext() async {
     // Validate required fields
     if (_additionalBusinessController.text.isEmpty ||
         _businessLocationController.text.isEmpty ||
@@ -426,6 +427,39 @@ class _ExtendedBusinessFormState extends State<ExtendedBusinessForm> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please fill in all required fields'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Save to backend (Extended Business Info)
+    try {
+      final memberId = widget.userData['memberId'];
+      if (memberId == null) {
+        throw Exception('Member ID not found');
+      }
+
+      final businessData = {
+        'additionalBusiness': _additionalBusinessController.text,
+        'businessLocation': _businessLocationController.text,
+        'businessWebsite': _businessWebsiteController.text,
+        'businessScale': _selectedBusinessScale,
+        'exportStatus': _selectedExportStatus,
+        'hasExportLicense': _hasExportLicense,
+        'exportLicense': _exportLicenseController.text,
+        'businessDescription': _businessDescriptionController.text,
+      };
+
+      final result = await ApiService.saveBusinessInfo(memberId, businessData);
+      if (result['success'] != true) {
+        throw Exception(result['body']?['message'] ?? 'Failed to save extended business info');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save extended business info: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -448,6 +482,7 @@ class _ExtendedBusinessFormState extends State<ExtendedBusinessForm> {
     updatedUserData['registrationForm']['businessDescription'] = _businessDescriptionController.text;
 
     // Navigate to financial compliance form
+    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
