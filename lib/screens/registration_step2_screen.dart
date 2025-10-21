@@ -15,7 +15,7 @@ class RegistrationStep2Screen extends StatefulWidget {
 class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
   final _formKey = GlobalKey<FormState>();
   final _blockController = TextEditingController();
-  final _addressController = TextEditingController();
+  final _cityController = TextEditingController();
 
   String? _selectedState;
   String? _selectedDistrict;
@@ -322,6 +322,43 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                     ),
                     const SizedBox(height: 16),
 
+                    // City Field
+                    const Text(
+                      'City*',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _cityController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter city',
+                        hintStyle: TextStyle(color: Colors.grey[400]),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Colors.blue),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter city';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
                     // Block Field
                     const Text(
                       'Block*',
@@ -359,42 +396,6 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Complete Address Field
-                    const Text(
-                      'Complete Address*',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _addressController,
-                      maxLines: 4,
-                      decoration: InputDecoration(
-                        hintText: 'Enter your complete address',
-                        hintStyle: TextStyle(color: Colors.grey[400]),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: Colors.blue),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your complete address';
-                        }
-                        return null;
-                      },
-                    ),
                     const SizedBox(height: 40),
 
                     // Action Buttons
@@ -502,9 +503,8 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
         "dateOfBirth": dateOfBirthDDMMYYYY,
         "gender": widget.personalData['gender'],
         "password": widget.personalData['password'],
-        "address": _addressController.text,
         "block": _blockController.text,
-        "city": _selectedDistrict ?? '',
+        "city": _cityController.text,
         "district": _selectedDistrict!,
         "state": _selectedState!,
         "pincode": widget.personalData['pincode'] ?? '000000',
@@ -521,7 +521,6 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
             'state': _selectedState,
             'district': _selectedDistrict,
             'block': _blockController.text,
-            'address': _addressController.text,
             'member': result['body']['data']['member'],
             'token': result['token'],
           };
@@ -598,7 +597,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
   @override
   void dispose() {
     _blockController.dispose();
-    _addressController.dispose();
+    _cityController.dispose();
     super.dispose();
   }
 }

@@ -46,11 +46,10 @@ const memberDetailsSchema = new mongoose.Schema({
     required: [true, 'Block is required'],
     trim: true
   },
-  address: {
+  city: {
     type: String,
-    required: [true, 'Address is required'],
-    trim: true,
-    maxlength: [500, 'Address cannot exceed 500 characters']
+    required: [true, 'City is required'],
+    trim: true
   },
   // Personal & Demographic Details (moved from BusinessInfo)
   aadhaarNumber: {

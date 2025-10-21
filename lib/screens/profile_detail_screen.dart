@@ -11,16 +11,27 @@ class ProfileDetailScreen extends StatefulWidget {
 
 class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   bool personalExpanded = true; // Start expanded
+  bool businessExpanded = false;
+  bool financialExpanded = false;
+  bool declarationExpanded = false;
+
+  late Future<Map<String, dynamic>?> _profileFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileFuture = _loadMemberProfile();
+  }
 
   Future<Map<String, dynamic>?> _loadMemberFromBackend() async {
     try {
       // Get user data from AuthService instead of Firebase
       final userData = await AuthService.getUserData();
       if (userData == null) return null;
-      
+
       final email = userData['email'] ?? userData['member']?['email'];
       if (email == null) return userData;
-      
+
       final res = await ApiService.getMemberByEmail(email);
       if (res['success'] == true) {
         // Normalize to structure similar to previous userData for minimal UI changes
@@ -37,13 +48,42 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
             'state': member['state'],
             'district': member['district'],
             'block': member['block'],
-            'completeAddress': member['address'],
-          }
+            'city': member['city'],
+          },
         };
       }
       return await AuthService.getUserData();
     } catch (_) {
       return await AuthService.getUserData();
+    }
+  }
+
+  Future<Map<String, dynamic>?> _loadMemberProfile() async {
+    try {
+      final localUser = await AuthService.getUserData();
+      if (localUser == null) return null;
+
+      final email = localUser['email'] ?? localUser['member']?['email'];
+      if (email == null) return null;
+
+      final memberRes = await ApiService.getMemberByEmail(email);
+      if (memberRes['success'] == true) {
+        final member = Map<String, dynamic>.from(memberRes['data'] as Map);
+        final memberId = member['_id'] ?? member['id'];
+        if (memberId == null) {
+          return {'member': member};
+        }
+        final profileRes = await ApiService.getMemberProfile(
+          memberId.toString(),
+        );
+        if (profileRes['success'] == true) {
+          return Map<String, dynamic>.from(profileRes['data'] as Map);
+        }
+        return {'member': member};
+      }
+      return null;
+    } catch (e) {
+      return null;
     }
   }
 
@@ -82,10 +122,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                       height: 100,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.grey[300]!,
-                          width: 2,
-                        ),
+                        border: Border.all(color: Colors.grey[300]!, width: 2),
                       ),
                       child: ClipOval(
                         child: Image.asset(
@@ -107,16 +144,20 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // User Name
                     FutureBuilder<Map<String, dynamic>?>(
                       future: AuthService.getUserData(),
                       builder: (context, snapshot) {
                         if (snapshot.hasData && snapshot.data != null) {
                           final userData = snapshot.data!;
-                          final registrationForm = userData['registrationForm'] as Map<String, dynamic>?;
+                          final registrationForm =
+                              userData['registrationForm']
+                                  as Map<String, dynamic>?;
                           return Text(
-                            registrationForm?['fullName'] ?? userData['fullName'] ?? 'Tamilarasan',
+                            registrationForm?['fullName'] ??
+                                userData['fullName'] ??
+                                'Tamilarasan',
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -137,9 +178,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 30),
-              
+
               // Personal & Demographic Details Section
               Container(
                 width: double.infinity,
@@ -179,7 +220,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                               ),
                             ),
                             Icon(
-                              personalExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+                              personalExpanded
+                                  ? Icons.keyboard_arrow_down
+                                  : Icons.keyboard_arrow_right,
                               color: Colors.grey[600],
                               size: 24,
                             ),
@@ -187,7 +230,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                         ),
                       ),
                     ),
-                    
+
                     // Personal Details Content
                     if (personalExpanded) ...[
                       const Divider(height: 1, color: Colors.grey),
@@ -198,27 +241,546 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                           builder: (context, snapshot) {
                             if (snapshot.hasData && snapshot.data != null) {
                               final userData = snapshot.data!;
-                              final registrationForm = userData['registrationForm'] as Map<String, dynamic>?;
-                              
-                              String s(dynamic v) => (v == null || (v is String && v.isEmpty)) ? '—' : v.toString();
+                              final registrationForm =
+                                  userData['registrationForm']
+                                      as Map<String, dynamic>?;
+
+                              String s(dynamic v) =>
+                                  (v == null || (v is String && v.isEmpty))
+                                  ? '—'
+                                  : v.toString();
                               return Column(
                                 children: [
-                                  _buildDetailRow('Name', s(registrationForm?['fullName'] ?? userData['fullName'])),
-                                  _buildDetailRow('Block', s(registrationForm?['block'])),
-                                  _buildDetailRow('State', s(registrationForm?['state'])),
-                                  _buildDetailRow('District', s(registrationForm?['district'])),
-                                  _buildDetailRow('Phone Number', s(registrationForm?['phoneNumber'] ?? userData['phoneNumber'])),
-                                  _buildDetailRow('Email ID', s(userData['email'])),
-                                  _buildDetailRow('Date of Birth', s(_formatDate(registrationForm?['dateOfBirth'] ?? userData['dateOfBirth']))),
-                                  _buildDetailRow('Street Name', s(registrationForm?['completeAddress'])),
+                                  _buildDetailRow(
+                                    'Name',
+                                    s(
+                                      registrationForm?['fullName'] ??
+                                          userData['fullName'],
+                                    ),
+                                  ),
+                                  _buildDetailRow(
+                                    'Block',
+                                    s(registrationForm?['block']),
+                                  ),
+                                  _buildDetailRow(
+                                    'State',
+                                    s(registrationForm?['state']),
+                                  ),
+                                  _buildDetailRow(
+                                    'District',
+                                    s(registrationForm?['district']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Phone Number',
+                                    s(
+                                      registrationForm?['phoneNumber'] ??
+                                          userData['phoneNumber'],
+                                    ),
+                                  ),
+                                  _buildDetailRow(
+                                    'Email ID',
+                                    s(userData['email']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Date of Birth',
+                                    s(
+                                      _formatDate(
+                                        registrationForm?['dateOfBirth'] ??
+                                            userData['dateOfBirth'],
+                                      ),
+                                    ),
+                                  ),
+                                  _buildDetailRow(
+                                    'City',
+                                    s(registrationForm?['city']),
+                                  ),
                                 ],
                               );
                             }
-                            
+
                             // Default data when no user data is available (matching the image)
                             return const Center(
                               child: Text(
                                 'No profile data found',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Business Information
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withValues(alpha: 0.1),
+                      spreadRadius: 1,
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          businessExpanded = !businessExpanded;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Business Information',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              businessExpanded
+                                  ? Icons.keyboard_arrow_down
+                                  : Icons.keyboard_arrow_right,
+                              color: Colors.grey[600],
+                              size: 24,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (businessExpanded) ...[
+                      const Divider(height: 1, color: Colors.grey),
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: FutureBuilder<Map<String, dynamic>?>(
+                          future: _profileFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData && snapshot.data != null) {
+                              final data = snapshot.data!;
+                              final business =
+                                  data['businessInfo'] as Map<String, dynamic>?;
+
+                              String s(dynamic v) =>
+                                  (v == null || (v is String && v.isEmpty))
+                                  ? '—'
+                                  : v.toString();
+                              String b(bool? v) =>
+                                  v == null ? '—' : (v ? 'Yes' : 'No');
+                              String listToString(List<dynamic>? v) =>
+                                  (v == null || v.isEmpty) ? '—' : v.join(', ');
+
+                              if (business == null) {
+                                return const Center(
+                                  child: Text(
+                                    'No business information found',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                );
+                              }
+
+                              return Column(
+                                children: [
+                                  _buildDetailRow(
+                                    'Organization Name',
+                                    s(business['organizationName']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Constitution Type',
+                                    s(business['constitutionType']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Business Type',
+                                    s(business['businessType']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Activities',
+                                    s(business['businessActivities']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Commencement Year',
+                                    s(business['businessCommencementYear']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Number of Employees',
+                                    s(business['numberOfEmployees']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Member of Other Chamber',
+                                    b(
+                                      business['memberOfOtherChamber'] as bool?,
+                                    ),
+                                  ),
+                                  _buildDetailRow(
+                                    'Other Chamber',
+                                    s(business['otherChamber']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Govt Registrations',
+                                    listToString(
+                                      (business['registeredWithGovtOrganization']
+                                              as List?)
+                                          ?.cast<dynamic>(),
+                                    ),
+                                  ),
+                                  _buildDetailRow(
+                                    'Doing Business',
+                                    b(business['doingBusiness'] as bool?),
+                                  ),
+                                  _buildDetailRow(
+                                    'Additional Business',
+                                    s(business['additionalBusiness']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Business Location',
+                                    s(business['businessLocation']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Website',
+                                    s(business['businessWebsite']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Business Scale',
+                                    s(business['businessScale']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Export Status',
+                                    s(business['exportStatus']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Has Export License',
+                                    b(business['hasExportLicense'] as bool?),
+                                  ),
+                                  _buildDetailRow(
+                                    'Export License',
+                                    s(business['exportLicense']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Description',
+                                    s(business['businessDescription']),
+                                  ),
+                                ],
+                              );
+                            }
+                            return const Center(
+                              child: Text(
+                                'Loading...',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Financial & Compliance
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withValues(alpha: 0.1),
+                      spreadRadius: 1,
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          financialExpanded = !financialExpanded;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Financial & Compliance',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              financialExpanded
+                                  ? Icons.keyboard_arrow_down
+                                  : Icons.keyboard_arrow_right,
+                              color: Colors.grey[600],
+                              size: 24,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (financialExpanded) ...[
+                      const Divider(height: 1, color: Colors.grey),
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: FutureBuilder<Map<String, dynamic>?>(
+                          future: _profileFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData && snapshot.data != null) {
+                              final data = snapshot.data!;
+                              final financial =
+                                  data['financialInfo']
+                                      as Map<String, dynamic>?;
+
+                              String s(dynamic v) =>
+                                  (v == null || (v is String && v.isEmpty))
+                                  ? '—'
+                                  : v.toString();
+                              String b(bool? v) =>
+                                  v == null ? '—' : (v ? 'Yes' : 'No');
+
+                              if (financial == null) {
+                                return const Center(
+                                  child: Text(
+                                    'No financial information found',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                );
+                              }
+
+                              return Column(
+                                children: [
+                                  _buildDetailRow(
+                                    'PAN Number',
+                                    s(financial['panNumber']),
+                                  ),
+                                  _buildDetailRow(
+                                    'GST Number',
+                                    s(financial['gstNumber']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Udyam Number',
+                                    s(financial['udyamNumber']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Filed ITR',
+                                    b(financial['filedITR'] as bool?),
+                                  ),
+                                  _buildDetailRow(
+                                    'ITR Years',
+                                    s(financial['itrYears']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Turnover Range',
+                                    s(financial['turnoverRange']),
+                                  ),
+                                  _buildDetailRow(
+                                    'FY 2021',
+                                    s(financial['fy2021']),
+                                  ),
+                                  _buildDetailRow(
+                                    'FY 2020',
+                                    s(financial['fy2020']),
+                                  ),
+                                  _buildDetailRow(
+                                    'FY 2019',
+                                    s(financial['fy2019']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Govt Scheme Benefit',
+                                    b(financial['govtSchemeBenefit'] as bool?),
+                                  ),
+                                  _buildDetailRow(
+                                    'Scheme 1',
+                                    s(financial['scheme1']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Scheme 2',
+                                    s(financial['scheme2']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Scheme 3',
+                                    s(financial['scheme3']),
+                                  ),
+                                ],
+                              );
+                            }
+                            return const Center(
+                              child: Text(
+                                'Loading...',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Declaration
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withValues(alpha: 0.1),
+                      spreadRadius: 1,
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          declarationExpanded = !declarationExpanded;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Declaration',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              declarationExpanded
+                                  ? Icons.keyboard_arrow_down
+                                  : Icons.keyboard_arrow_right,
+                              color: Colors.grey[600],
+                              size: 24,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (declarationExpanded) ...[
+                      const Divider(height: 1, color: Colors.grey),
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: FutureBuilder<Map<String, dynamic>?>(
+                          future: _profileFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData && snapshot.data != null) {
+                              final data = snapshot.data!;
+                              final declaration =
+                                  data['declaration'] as Map<String, dynamic>?;
+
+                              String s(dynamic v) =>
+                                  (v == null || (v is String && v.isEmpty))
+                                  ? '—'
+                                  : v.toString();
+                              String b(bool? v) =>
+                                  v == null ? '—' : (v ? 'Yes' : 'No');
+                              String listToString(List<dynamic>? v) =>
+                                  (v == null || v.isEmpty) ? '—' : v.join(', ');
+
+                              if (declaration == null) {
+                                return const Center(
+                                  child: Text(
+                                    'No declaration found',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                );
+                              }
+
+                              return Column(
+                                children: [
+                                  _buildDetailRow(
+                                    'Sister Concerns',
+                                    s(declaration['sisterConcerns']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Company Names',
+                                    listToString(
+                                      (declaration['companyNames'] as List?)
+                                          ?.cast<dynamic>(),
+                                    ),
+                                  ),
+                                  _buildDetailRow(
+                                    'Show One Field Per Name',
+                                    b(
+                                      declaration['showOneFieldPerName']
+                                          as bool?,
+                                    ),
+                                  ),
+                                  _buildDetailRow(
+                                    'Agree To Declaration',
+                                    b(
+                                      declaration['agreeToDeclaration']
+                                          as bool?,
+                                    ),
+                                  ),
+                                  _buildDetailRow(
+                                    'Profile Completed',
+                                    b(declaration['profileCompleted'] as bool?),
+                                  ),
+                                  _buildDetailRow(
+                                    'Submission Date',
+                                    s(
+                                      _formatDate(
+                                        declaration['submissionDate'],
+                                      ),
+                                    ),
+                                  ),
+                                  _buildDetailRow(
+                                    'Status',
+                                    s(declaration['status']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Review Notes',
+                                    s(declaration['reviewNotes']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Reviewed By',
+                                    s(declaration['reviewedBy']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Reviewed At',
+                                    s(_formatDate(declaration['reviewedAt'])),
+                                  ),
+                                ],
+                              );
+                            }
+                            return const Center(
+                              child: Text(
+                                'Loading...',
                                 style: TextStyle(color: Colors.grey),
                               ),
                             );
@@ -240,12 +802,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey,
-            width: 0.5,
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: Colors.grey, width: 0.5)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -263,10 +820,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           Expanded(
             child: Text(
               value,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               textAlign: TextAlign.right,
             ),
           ),
@@ -277,19 +831,53 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
   String? _formatDate(dynamic date) {
     if (date == null) return null;
-    
+
     try {
-      DateTime dateTime;
-      if (date is String) {
-        dateTime = DateTime.parse(date);
-      } else if (date is DateTime) {
-        dateTime = date;
-      } else {
-        return null;
+      // Handle DateTime directly
+      if (date is DateTime) {
+        final d = date;
+        return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
       }
-      
-      return '${dateTime.day.toString().padLeft(2, '0')}/${dateTime.month.toString().padLeft(2, '0')}/${dateTime.year}';
-    } catch (e) {
+
+      // Handle numeric timestamps (ms or sec)
+      if (date is num) {
+        final millis = date > 1000000000000 ? date.toInt() : (date.toInt() * 1000);
+        final d = DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true).toLocal();
+        return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+      }
+
+      // Handle strings in various common formats
+      if (date is String) {
+        final raw = date.trim();
+        if (raw.isEmpty) return null;
+
+        // If already in dd/MM/yyyy, return as-is
+        final ddmmyyyySlash = RegExp(r'^\d{2}/\d{2}/\d{4}$');
+        if (ddmmyyyySlash.hasMatch(raw)) return raw;
+
+        // Convert dd-MM-yyyy to dd/MM/yyyy
+        final ddmmyyyyDash = RegExp(r'^(\d{2})-(\d{2})-(\d{4})$');
+        final dashMatch = ddmmyyyyDash.firstMatch(raw);
+        if (dashMatch != null) {
+          final d = dashMatch.group(1)!;
+          final m = dashMatch.group(2)!;
+          final y = dashMatch.group(3)!;
+          return '$d/$m/$y';
+        }
+
+        // Parse ISO-like formats (e.g., yyyy-MM-dd or ISO timestamps)
+        try {
+          final parsed = DateTime.parse(raw);
+          return '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year}';
+        } catch (_) {
+          // Fallback: return the original string if parsing fails
+          return raw;
+        }
+      }
+
+      // Fallback for unexpected types
+      return null;
+    } catch (_) {
       return null;
     }
   }

@@ -72,7 +72,7 @@ router.post('/login', async (req, res) => {
           state: member.state,
           district: member.district,
           block: member.block,
-          address: member.address,
+          city: member.city,
           profileCompleted: member.profileCompleted
         }
       }
@@ -98,7 +98,6 @@ router.post('/register', async (req, res) => {
       dateOfBirth,
       gender,
       password,
-      address,
       block,
       city,
       district,
@@ -109,7 +108,7 @@ router.post('/register', async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!fullName || !phoneNumber || !email || !dateOfBirth || !gender || !password || !address || !block || !district || !state) {
+    if (!fullName || !phoneNumber || !email || !dateOfBirth || !gender || !password || !city || !block || !district || !state) {
       return res.status(400).json({
         success: false,
         message: 'All required fields must be provided'
@@ -135,7 +134,7 @@ router.post('/register', async (req, res) => {
       state,
       district,
       block,
-      address
+      city
     });
 
     await memberDetails.save();
@@ -173,7 +172,7 @@ router.post('/register', async (req, res) => {
           state: memberDetails.state,
           district: memberDetails.district,
           block: memberDetails.block,
-          address: memberDetails.address,
+          city: memberDetails.city,
           profileCompleted: memberDetails.profileCompleted
         }
       }
@@ -216,7 +215,7 @@ router.get('/member/:memberId', async (req, res) => {
           state: member.state,
           district: member.district,
           block: member.block,
-          address: member.address,
+          city: member.city,
           profileCompleted: member.profileCompleted
         }
       }
@@ -259,7 +258,7 @@ router.get('/member-by-email/:email', async (req, res) => {
           state: member.state,
           district: member.district,
           block: member.block,
-          address: member.address,
+          city: member.city,
           profileCompleted: member.profileCompleted
         }
       }

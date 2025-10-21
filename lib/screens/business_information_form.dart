@@ -1,19 +1,15 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'financial_compliance_form.dart';
-import 'package:activ/services/api_service.dart';
-import 'extended_business_form.dart';
 
 class BusinessInformationForm extends StatefulWidget {
   final Map<String, dynamic> userData;
 
-  const BusinessInformationForm({
-    super.key,
-    required this.userData,
-  });
+  const BusinessInformationForm({super.key, required this.userData});
 
   @override
-  State<BusinessInformationForm> createState() => _BusinessInformationFormState();
+  State<BusinessInformationForm> createState() =>
+      _BusinessInformationFormState();
 }
 
 class _BusinessInformationFormState extends State<BusinessInformationForm> {
@@ -21,12 +17,12 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
   final _businessActivitiesController = TextEditingController();
   final _employeesController = TextEditingController();
   final _otherChamberController = TextEditingController();
-  
+
   bool? _doingBusiness;
   String? _selectedConstitution;
   String? _selectedYear;
   bool? _memberOfOtherChamber;
-  
+
   final List<String> _constitutionTypes = [
     'Proprietorship',
     'Partnership',
@@ -34,28 +30,31 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
     'Public Limited',
     'LLP',
     'Sole Proprietorship',
-    'Other'
+    'Other',
   ];
-  
-  final List<String> _years = List.generate(50, (index) => (2024 - index).toString());
-  
+
+  final List<String> _years = List.generate(
+    50,
+    (index) => (2024 - index).toString(),
+  );
+
   final List<String> _businessTypes = [
     'Agriculture',
     'Manufacturing',
     'Trader',
     'Retailer',
     'Service Provider',
-    'Others'
+    'Others',
   ];
-  
+
   final List<String> _govtOrganizations = [
     'MSME',
     'KVIC',
     'NABARD',
     'None',
-    'Others'
+    'Others',
   ];
-  
+
   Set<String> _selectedBusinessTypes = {};
   Set<String> _selectedGovtOrganizations = {};
 
@@ -68,20 +67,26 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
   void _populateFields() {
     final registrationForm = widget.userData['registrationForm'];
     if (registrationForm != null) {
-      _organizationNameController.text = registrationForm['organizationName'] ?? '';
-      _businessActivitiesController.text = registrationForm['businessActivities'] ?? '';
+      _organizationNameController.text =
+          registrationForm['organizationName'] ?? '';
+      _businessActivitiesController.text =
+          registrationForm['businessActivities'] ?? '';
       _employeesController.text = registrationForm['numberOfEmployees'] ?? '';
       _otherChamberController.text = registrationForm['otherChamber'] ?? '';
       _doingBusiness = registrationForm['doingBusiness'];
       _selectedConstitution = registrationForm['constitutionType'];
       _selectedYear = registrationForm['businessCommencementYear'];
       _memberOfOtherChamber = registrationForm['memberOfOtherChamber'];
-      
+
       if (registrationForm['businessTypes'] != null) {
-        _selectedBusinessTypes = Set<String>.from(registrationForm['businessTypes']);
+        _selectedBusinessTypes = Set<String>.from(
+          registrationForm['businessTypes'],
+        );
       }
       if (registrationForm['govtOrganizations'] != null) {
-        _selectedGovtOrganizations = Set<String>.from(registrationForm['govtOrganizations']);
+        _selectedGovtOrganizations = Set<String>.from(
+          registrationForm['govtOrganizations'],
+        );
       }
     }
   }
@@ -119,7 +124,7 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
                   ),
                 ),
               ),
-              
+
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -136,13 +141,10 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
                     const SizedBox(height: 8),
                     const Text(
                       'Member Registration',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Progress Indicator
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -154,14 +156,18 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: isActive ? Colors.blue : Colors.grey[300],
+                                color: isActive
+                                    ? Colors.blue
+                                    : Colors.grey[300],
                                 shape: BoxShape.circle,
                               ),
                               child: Center(
                                 child: Text(
                                   '${index + 1}',
                                   style: TextStyle(
-                                    color: isActive ? Colors.white : Colors.grey[600],
+                                    color: isActive
+                                        ? Colors.white
+                                        : Colors.grey[600],
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -180,13 +186,10 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
                     const SizedBox(height: 12),
                     const Text(
                       'Step 2 of 4',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                     const SizedBox(height: 30),
-                    
+
                     // Business Information Section
                     Container(
                       width: double.infinity,
@@ -216,7 +219,7 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          
+
                           // Doing Business
                           _buildRadioGroup(
                             'Doing Business',
@@ -225,45 +228,81 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
                             ['Yes', 'No'],
                           ),
                           const SizedBox(height: 16),
-                          
+
                           // Organization Name
-                          _buildTextField('Name of the Organization', _organizationNameController, 'Enter organization name'),
-                          
+                          _buildTextField(
+                            'Name of the Organization',
+                            _organizationNameController,
+                            'Enter organization name',
+                          ),
+
                           // Constitution
-                          _buildDropdownField('Constitution of the Company', _selectedConstitution, _constitutionTypes, 'Select constitution type'),
-                          
+                          _buildDropdownField(
+                            'Constitution of the Company',
+                            _selectedConstitution,
+                            _constitutionTypes,
+                            'Select constitution type',
+                          ),
+
                           // Business Types
-                          _buildCheckboxGroup('Type of Business', _selectedBusinessTypes, _businessTypes),
-                          
+                          _buildCheckboxGroup(
+                            'Type of Business',
+                            _selectedBusinessTypes,
+                            _businessTypes,
+                          ),
+
                           // Business Activities
-                          _buildTextField('Business Activities', _businessActivitiesController, 'Enter business activities', maxLines: 3),
-                          
+                          _buildTextField(
+                            'Business Activities',
+                            _businessActivitiesController,
+                            'Enter business activities',
+                            maxLines: 3,
+                          ),
+
                           // Commencement Year
-                          _buildDropdownField('Business Commencement Year', _selectedYear, _years, 'Select year'),
-                          
+                          _buildDropdownField(
+                            'Business Commencement Year',
+                            _selectedYear,
+                            _years,
+                            'Select year',
+                          ),
+
                           // Number of Employees
-                          _buildTextField('Number of Employees', _employeesController, 'Enter number of employees'),
-                          
+                          _buildTextField(
+                            'Number of Employees',
+                            _employeesController,
+                            'Enter number of employees',
+                          ),
+
                           // Member of other Chamber/Association
                           _buildRadioGroup(
                             'Member of any other Chamber/Association',
                             _memberOfOtherChamber,
-                            (value) => setState(() => _memberOfOtherChamber = value),
+                            (value) =>
+                                setState(() => _memberOfOtherChamber = value),
                             ['Yes', 'No'],
                           ),
-                          
+
                           if (_memberOfOtherChamber == true) ...[
                             const SizedBox(height: 16),
-                            _buildTextField('Name of Chamber/Association', _otherChamberController, 'Enter chamber/association name'),
+                            _buildTextField(
+                              'Name of Chamber/Association',
+                              _otherChamberController,
+                              'Enter chamber/association name',
+                            ),
                           ],
-                          
+
                           // Government Organizations
-                          _buildCheckboxGroup('Registered with Govt. Organization', _selectedGovtOrganizations, _govtOrganizations),
+                          _buildCheckboxGroup(
+                            'Registered with Govt. Organization',
+                            _selectedGovtOrganizations,
+                            _govtOrganizations,
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 30),
-                    
+
                     // Navigation Buttons
                     Row(
                       children: [
@@ -324,7 +363,12 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
     );
   }
 
-  Widget _buildRadioGroup(String label, bool? selectedValue, Function(bool?) onChanged, List<String> options) {
+  Widget _buildRadioGroup(
+    String label,
+    bool? selectedValue,
+    Function(bool?) onChanged,
+    List<String> options,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -359,7 +403,12 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, String placeholder, {int maxLines = 1}) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller,
+    String placeholder, {
+    int maxLines = 1,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -391,7 +440,10 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: Colors.blue),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -399,7 +451,12 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
     );
   }
 
-  Widget _buildDropdownField(String label, String? selectedValue, List<String> options, String placeholder) {
+  Widget _buildDropdownField(
+    String label,
+    String? selectedValue,
+    List<String> options,
+    String placeholder,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -451,7 +508,11 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
     );
   }
 
-  Widget _buildCheckboxGroup(String label, Set<String> selectedValues, List<String> options) {
+  Widget _buildCheckboxGroup(
+    String label,
+    Set<String> selectedValues,
+    List<String> options,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -505,7 +566,8 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
         _selectedYear == null ||
         _employeesController.text.isEmpty ||
         _memberOfOtherChamber == null ||
-        (_memberOfOtherChamber == true && _otherChamberController.text.isEmpty)) {
+        (_memberOfOtherChamber == true &&
+            _otherChamberController.text.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please fill in all required fields'),
@@ -515,77 +577,42 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
       return;
     }
 
-    // Save to backend (Business Info)
-    try {
-      final memberId = widget.userData['memberId'];
-      if (memberId == null) {
-        throw Exception('Member ID not found');
-      }
-
-      final businessData = {
-        'doingBusiness': _doingBusiness,
-        'organizationName': _organizationNameController.text,
-        'constitutionType': _selectedConstitution,
-        // map multi-select to first chosen for single businessType
-        'businessType': _selectedBusinessTypes.isNotEmpty ? _selectedBusinessTypes.first : null,
-        'businessActivities': _businessActivitiesController.text,
-        'businessCommencementYear': _selectedYear,
-        'numberOfEmployees': _employeesController.text,
-        'memberOfOtherChamber': _memberOfOtherChamber,
-        'otherChamber': _otherChamberController.text,
-        'registeredWithGovtOrganization': _selectedGovtOrganizations.toList(),
-      };
-
-      final result = await ApiService.saveBusinessInfo(memberId, businessData);
-      if (result['success'] != true) {
-        throw Exception(result['body']?['message'] ?? 'Failed to save business info');
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to save business info: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
+    // Backend calls removed per request; proceeding with local data only.
 
     // Save form data to userData
     final updatedUserData = Map<String, dynamic>.from(widget.userData);
     if (updatedUserData['registrationForm'] == null) {
       updatedUserData['registrationForm'] = {};
     }
-    
-    updatedUserData['registrationForm']['doingBusiness'] = _doingBusiness;
-    updatedUserData['registrationForm']['organizationName'] = _organizationNameController.text;
-    updatedUserData['registrationForm']['constitutionType'] = _selectedConstitution;
-    updatedUserData['registrationForm']['businessType'] = _selectedBusinessTypes.isNotEmpty ? _selectedBusinessTypes.first : null;
-    updatedUserData['registrationForm']['businessActivities'] = _businessActivitiesController.text;
-    updatedUserData['registrationForm']['businessCommencementYear'] = _selectedYear;
-    updatedUserData['registrationForm']['numberOfEmployees'] = _employeesController.text;
-    updatedUserData['registrationForm']['memberOfOtherChamber'] = _memberOfOtherChamber;
-    updatedUserData['registrationForm']['otherChamber'] = _otherChamberController.text;
-    updatedUserData['registrationForm']['registeredWithGovtOrganization'] = _selectedGovtOrganizations.toList();
 
-    // Navigate based on business selection
+    updatedUserData['registrationForm']['doingBusiness'] = _doingBusiness;
+    updatedUserData['registrationForm']['organizationName'] =
+        _organizationNameController.text;
+    updatedUserData['registrationForm']['constitutionType'] =
+        _selectedConstitution;
+    updatedUserData['registrationForm']['businessType'] =
+        _selectedBusinessTypes.isNotEmpty ? _selectedBusinessTypes.first : null;
+    updatedUserData['registrationForm']['businessActivities'] =
+        _businessActivitiesController.text;
+    updatedUserData['registrationForm']['businessCommencementYear'] =
+        _selectedYear;
+    updatedUserData['registrationForm']['numberOfEmployees'] =
+        _employeesController.text;
+    updatedUserData['registrationForm']['memberOfOtherChamber'] =
+        _memberOfOtherChamber;
+    updatedUserData['registrationForm']['otherChamber'] =
+        _otherChamberController.text;
+    updatedUserData['registrationForm']['registeredWithGovtOrganization'] =
+        _selectedGovtOrganizations.toList();
+
+    // Navigate to financial compliance form
     if (!mounted) return;
-    if (_doingBusiness == true) {
-      // Navigate to extended business form
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ExtendedBusinessForm(userData: updatedUserData),
-        ),
-      );
-    } else {
-      // Navigate directly to financial compliance form
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => FinancialComplianceForm(userData: updatedUserData),
-        ),
-      );
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            FinancialComplianceForm(userData: updatedUserData),
+      ),
+    );
   }
 }

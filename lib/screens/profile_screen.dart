@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:activ/services/auth_service.dart';
 import 'package:activ/screens/profile_detail_screen.dart';
+import 'package:activ/services/api_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -10,6 +11,47 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  late Future<String> _userNameFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _userNameFuture = _loadUserName();
+  }
+
+  bool _isTruthy(dynamic v) {
+    return v == true || v == 'true' || v == 1 || v == '1';
+  }
+
+  Future<String> _loadUserName() async {
+    try {
+      final localUser = await AuthService.getUserData();
+      if (localUser == null) return 'Tamilarasan';
+
+      final registrationForm = localUser['registrationForm'] as Map<String, dynamic>?;
+      final email = localUser['email'] ?? localUser['member']?['email'];
+      final localName = registrationForm?['fullName'] ?? localUser['fullName'];
+
+      if (email != null && registrationForm != null && _isTruthy(registrationForm['profileCompleted'])) {
+        final res = await ApiService.getMemberByEmail(email);
+        if (res['success'] == true) {
+          final member = Map<String, dynamic>.from(res['data'] as Map);
+          final backendName = member['fullName'];
+          if (backendName is String && backendName.trim().isNotEmpty) {
+            return backendName;
+          }
+        }
+      }
+
+      return (localName is String && localName.trim().isNotEmpty) ? localName : 'Tamilarasan';
+    } catch (_) {
+      final localUser = await AuthService.getUserData();
+      final registrationForm = localUser?['registrationForm'] as Map<String, dynamic>?;
+      final fallbackName = registrationForm?['fullName'] ?? localUser?['fullName'];
+      return (fallbackName is String && fallbackName.trim().isNotEmpty) ? fallbackName : 'Tamilarasan';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -61,24 +103,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 20),
               
               // User Name
-              FutureBuilder<Map<String, dynamic>?>(
-                future: AuthService.getUserData(),
+              FutureBuilder<String>(
+                future: _userNameFuture,
                 builder: (context, snapshot) {
-                  if (snapshot.hasData && snapshot.data != null) {
-                    final userData = snapshot.data!;
-                    final registrationForm = userData['registrationForm'] as Map<String, dynamic>?;
-                    return Text(
-                      registrationForm?['fullName'] ?? userData['fullName'] ?? 'Tamilarasan',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    );
-                  }
-                  return const Text(
-                    'Tamilarasan',
-                    style: TextStyle(
+                  final name = snapshot.data ?? 'Tamilarasan';
+                  return Text(
+                    name,
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,

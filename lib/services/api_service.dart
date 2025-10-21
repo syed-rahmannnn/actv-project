@@ -203,6 +203,27 @@ class ApiService {
     }
   }
 
+  // Get complete profile by member ID
+  static Future<Map<String, dynamic>> getMemberProfile(String memberId) async {
+    final url = Uri.parse('$baseUrl/profile/$memberId');
+    developer.log('GET $url', name: 'ApiService');
+
+    final resp = await http.get(
+      url,
+      headers: {'Content-Type': 'application/json'},
+    );
+    developer.log('status: ${resp.statusCode}', name: 'ApiService');
+    developer.log('body: ${resp.body}', name: 'ApiService');
+
+    final apiService = ApiService();
+    final body = apiService.jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'success': true, 'data': body['data']};
+    } else {
+      return {'success': false, 'status': resp.statusCode, 'body': body};
+    }
+  }
+
   // Save business information
   static Future<Map<String, dynamic>> saveBusinessInfo(
     String memberId,
