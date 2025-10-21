@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 
 class RegistrationStep2Screen extends StatefulWidget {
   final Map<String, dynamic> personalData;
@@ -511,44 +512,50 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
       };
 
       final result = await apiService.register(payload);
+      if (!mounted) return;
 
       if (result['ok'] == true) {
         // Registration successful
-        if (mounted) {
-          // Combine all data for dashboard display
-          final completeData = {
-            ...widget.personalData,
-            'state': _selectedState,
-            'district': _selectedDistrict,
-            'block': _blockController.text,
-            'member': result['body']['data']['member'],
-            'token': result['token'],
-          };
+        // Persist token and member for subsequent screens
+        final member = Map<String, dynamic>.from(
+          result['body']['data']['member'] as Map,
+        );
+        final token = result['token'] as String;
+        await AuthService.saveLoginData(token: token, userData: member);
+        if (!mounted) return;
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DashboardScreen(userData: completeData),
-            ),
-          );
+        // Combine all data for dashboard display
+        final completeData = {
+          ...widget.personalData,
+          'state': _selectedState,
+          'district': _selectedDistrict,
+          'block': _blockController.text,
+          'member': result['body']['data']['member'],
+          'token': result['token'],
+        };
 
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Registration successful!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DashboardScreen(userData: completeData),
+          ),
+        );
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registration successful!'),
+            backgroundColor: Colors.green,
+          ),
+        );
       } else {
+        if (!mounted) return;
         // Registration failed
-        if (mounted) {
-          final errorMessage =
-              result['body']?['message'] ?? 'Registration failed';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-          );
-        }
+        final errorMessage =
+            result['body']?['message'] ?? 'Registration failed';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+        );
       }
     } catch (e) {
       if (mounted) {

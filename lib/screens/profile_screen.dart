@@ -19,20 +19,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _userNameFuture = _loadUserName();
   }
 
-  bool _isTruthy(dynamic v) {
-    return v == true || v == 'true' || v == 1 || v == '1';
-  }
+  // removed unused _isTruthy helper
 
   Future<String> _loadUserName() async {
     try {
       final localUser = await AuthService.getUserData();
-      if (localUser == null) return 'Tamilarasan';
+      final registrationForm =
+          localUser?['registrationForm'] as Map<String, dynamic>?;
+      final localName = registrationForm?['fullName'] ?? localUser?['fullName'];
 
-      final registrationForm = localUser['registrationForm'] as Map<String, dynamic>?;
-      final email = localUser['email'] ?? localUser['member']?['email'];
-      final localName = registrationForm?['fullName'] ?? localUser['fullName'];
-
-      if (email != null && registrationForm != null && _isTruthy(registrationForm['profileCompleted'])) {
+      final email = localUser?['email'] ?? localUser?['member']?['email'];
+      if (email is String && email.trim().isNotEmpty) {
         final res = await ApiService.getMemberByEmail(email);
         if (res['success'] == true) {
           final member = Map<String, dynamic>.from(res['data'] as Map);
@@ -43,12 +40,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       }
 
-      return (localName is String && localName.trim().isNotEmpty) ? localName : 'Tamilarasan';
+      return (localName is String && localName.trim().isNotEmpty)
+          ? localName
+          : '';
     } catch (_) {
       final localUser = await AuthService.getUserData();
-      final registrationForm = localUser?['registrationForm'] as Map<String, dynamic>?;
-      final fallbackName = registrationForm?['fullName'] ?? localUser?['fullName'];
-      return (fallbackName is String && fallbackName.trim().isNotEmpty) ? fallbackName : 'Tamilarasan';
+      final registrationForm =
+          localUser?['registrationForm'] as Map<String, dynamic>?;
+      final fallbackName =
+          registrationForm?['fullName'] ?? localUser?['fullName'];
+      return (fallbackName is String && fallbackName.trim().isNotEmpty)
+          ? fallbackName
+          : '';
     }
   }
 
@@ -71,15 +74,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              
+
               // Profile Picture
               Center(
                 child: Container(
                   width: 120,
                   height: 120,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: const BoxDecoration(shape: BoxShape.circle),
                   child: ClipOval(
                     child: Image.asset(
                       'assets/images/profile.png',
@@ -101,12 +102,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              
+
               // User Name
               FutureBuilder<String>(
                 future: _userNameFuture,
                 builder: (context, snapshot) {
-                  final name = snapshot.data ?? 'Tamilarasan';
+                  final name = snapshot.data ?? '';
                   return Text(
                     name,
                     style: const TextStyle(
@@ -118,7 +119,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
               const SizedBox(height: 40),
-              
+
               // Menu Items
               Expanded(
                 child: Column(
@@ -136,19 +137,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       },
                     ),
                     const SizedBox(height: 20),
-                    
+
                     _buildMenuItem(
                       icon: Icons.payment_outlined,
                       title: 'Payment History',
                       onTap: () {
                         // Navigate to payment history
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Payment History clicked')),
+                          const SnackBar(
+                            content: Text('Payment History clicked'),
+                          ),
                         );
                       },
                     ),
                     const SizedBox(height: 20),
-                    
+
                     _buildMenuItem(
                       icon: Icons.workspace_premium_outlined,
                       title: 'Certificates',
@@ -159,9 +162,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         );
                       },
                     ),
-                    
+
                     const Spacer(),
-                    
+
                     // Logout Button
                     _buildLogoutButton(),
                   ],
@@ -197,11 +200,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: Colors.grey[600],
-              size: 24,
-            ),
+            Icon(icon, color: Colors.grey[600], size: 24),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
@@ -213,11 +212,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
-            Icon(
-              Icons.chevron_right,
-              color: Colors.grey[400],
-              size: 24,
-            ),
+            Icon(Icons.chevron_right, color: Colors.grey[400], size: 24),
           ],
         ),
       ),
@@ -249,7 +244,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             );
           },
         );
-        
+
         if (shouldLogout == true) {
           await AuthService.logout();
           if (mounted) {
@@ -277,11 +272,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.logout,
-              color: Colors.red,
-              size: 20,
-            ),
+            Icon(Icons.logout, color: Colors.red, size: 20),
             SizedBox(width: 8),
             Text(
               'Logout',

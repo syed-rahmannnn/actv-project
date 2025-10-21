@@ -147,27 +147,14 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
                     // User Name
                     FutureBuilder<Map<String, dynamic>?>(
-                      future: AuthService.getUserData(),
+                      future: _loadMemberFromBackend(),
                       builder: (context, snapshot) {
-                        if (snapshot.hasData && snapshot.data != null) {
-                          final userData = snapshot.data!;
-                          final registrationForm =
-                              userData['registrationForm']
-                                  as Map<String, dynamic>?;
-                          return Text(
-                            registrationForm?['fullName'] ??
-                                userData['fullName'] ??
-                                'Tamilarasan',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          );
-                        }
-                        return const Text(
-                          'Tamilarasan',
-                          style: TextStyle(
+                        final userData = snapshot.data;
+                        final registrationForm = userData?['registrationForm'] as Map<String, dynamic>?;
+                        final name = (registrationForm?['fullName'] ?? userData?['fullName'] ?? '') as String;
+                        return Text(
+                          name,
+                          style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
