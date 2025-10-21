@@ -66,6 +66,7 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - assets/data/locations_nested.json
     - assets/images/google.png
     - assets/images/facebook.png
     - assets/images/linkedin.png

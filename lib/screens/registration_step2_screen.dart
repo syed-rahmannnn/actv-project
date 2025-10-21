@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../utils/locations.dart';
 
 class RegistrationStep2Screen extends StatefulWidget {
   final Map<String, dynamic> personalData;
@@ -17,90 +18,27 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
   final _formKey = GlobalKey<FormState>();
   final _blockController = TextEditingController();
   final _cityController = TextEditingController();
-
+  
+  Locations? _locations;
   String? _selectedState;
   String? _selectedDistrict;
   bool _isLoading = false;
 
-  final List<String> _states = [
-    'Andhra Pradesh',
-    'Arunachal Pradesh',
-    'Assam',
-    'Bihar',
-    'Chhattisgarh',
-    'Goa',
-    'Gujarat',
-    'Haryana',
-    'Himachal Pradesh',
-    'Jharkhand',
-    'Karnataka',
-    'Kerala',
-    'Madhya Pradesh',
-    'Maharashtra',
-    'Manipur',
-    'Meghalaya',
-    'Mizoram',
-    'Nagaland',
-    'Odisha',
-    'Punjab',
-    'Rajasthan',
-    'Sikkim',
-    'Tamil Nadu',
-    'Telangana',
-    'Tripura',
-    'Uttar Pradesh',
-    'Uttarakhand',
-    'West Bengal',
-  ];
+  // Removed unused hardcoded _states; using _locations.getStateNames()
 
-  final Map<String, List<String>> _stateDistricts = {
-    'Maharashtra': ['Mumbai', 'Pune', 'Nagpur', 'Nashik', 'Aurangabad'],
-    'Karnataka': ['Bangalore', 'Mysore', 'Hubli', 'Belgaum', 'Mangalore'],
-    'Tamil Nadu': [
-      'Ariyalur',
-      'Chengalpattu',
-      'Chennai',
-      'Coimbatore',
-      'Cuddalore',
-      'Dharmapuri',
-      'Dindigul',
-      'Erode',
-      'Kallakurichi',
-      'Kanchipuram',
-      'Kanyakumari',
-      'Karur',
-      'Krishnagiri',
-      'Madurai',
-      'Mayiladuthurai',
-      'Nagapattinam',
-      'Namakkal',
-      'Nilgiris',
-      'Perambalur',
-      'Pudukkottai',
-      'Ramanathapuram',
-      'Ranipet',
-      'Salem',
-      'Sivaganga',
-      'Tenkasi',
-      'Thanjavur',
-      'Theni',
-      'Thoothukudi',
-      'Tiruchirappalli',
-      'Tirunelveli',
-      'Tirupathur',
-      'Tiruppur',
-      'Tiruvallur',
-      'Tiruvannamalai',
-      'Tiruvarur',
-      'Vellore',
-      'Viluppuram',
-      'Virudhunagar',
-    ],
-    'Gujarat': ['Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar'],
-    // Add more states and districts as needed
-  };
+  // Removed unused _stateDistricts; using Locations.districtsForState()
 
-  List<String> get _districts => _stateDistricts[_selectedState] ?? [];
+  // Removed unused _districts getter; districts now derived via _locations.districtsForState
+
+  @override
+  void initState() {
+    super.initState();
+    loadLocationsFromAsset().then((loc) {
+      if (mounted) {
+        setState(() => _locations = loc);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -254,17 +192,16 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                           borderSide: const BorderSide(color: Colors.blue),
                         ),
                       ),
-                      items: _states.map((String state) {
-                        return DropdownMenuItem<String>(
-                          value: state,
-                          child: Text(state),
-                        );
-                      }).toList(),
+                      items: (_locations?.getStateNames() ?? [])
+                          .map((String state) => DropdownMenuItem<String>(
+                                value: state,
+                                child: Text(state),
+                              ))
+                          .toList(),
                       onChanged: (String? newValue) {
                         setState(() {
                           _selectedState = newValue;
-                          _selectedDistrict =
-                              null; // Reset district when state changes
+                          _selectedDistrict = null;
                         });
                       },
                       validator: (value) {
@@ -303,12 +240,14 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                           borderSide: const BorderSide(color: Colors.blue),
                         ),
                       ),
-                      items: _districts.map((String district) {
-                        return DropdownMenuItem<String>(
-                          value: district,
-                          child: Text(district),
-                        );
-                      }).toList(),
+                      items: (_selectedState == null || _locations == null
+                              ? <String>[]
+                              : _locations!.districtsForState(_selectedState!))
+                          .map((String district) => DropdownMenuItem<String>(
+                                value: district,
+                                child: Text(district),
+                              ))
+                          .toList(),
                       onChanged: (String? newValue) {
                         setState(() {
                           _selectedDistrict = newValue;
@@ -336,7 +275,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                     TextFormField(
                       controller: _cityController,
                       decoration: InputDecoration(
-                        hintText: 'Enter city',
+                        hintText: 'Enter city name',
                         hintStyle: TextStyle(color: Colors.grey[400]),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -353,7 +292,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Please enter city';
+                          return 'Please enter city name';
                         }
                         return null;
                       },
@@ -529,6 +468,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
           ...widget.personalData,
           'state': _selectedState,
           'district': _selectedDistrict,
+          'city': _cityController.text,
           'block': _blockController.text,
           'member': result['body']['data']['member'],
           'token': result['token'],
