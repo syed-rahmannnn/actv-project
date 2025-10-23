@@ -48,12 +48,13 @@ router.post('/login', async (req, res) => {
     await memberAuth.updateLastLogin();
 
     // Generate JWT token
+    console.log("JWTSECRET value at runtime:", process.env.JWTSECRET);
     const token = jwt.sign(
       { 
         userId: member._id, 
         email: member.email 
       },
-      process.env.JWT_SECRET,
+      process.env.JWTSECRET,
       { expiresIn: '24h' }
     );
 
@@ -148,12 +149,13 @@ router.post('/register', async (req, res) => {
     await memberAuth.save();
 
     // Generate JWT token
+    console.log("JWTSECRET value at runtime:", process.env.JWTSECRET);
     const token = jwt.sign(
       { 
         userId: memberDetails._id, 
         email: memberDetails.email 
       },
-      process.env.JWT_SECRET,
+      process.env.JWTSECRET,
       { expiresIn: '24h' }
     );
 
