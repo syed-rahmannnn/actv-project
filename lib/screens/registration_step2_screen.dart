@@ -456,10 +456,16 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
       if (result['ok'] == true) {
         // Registration successful
         // Persist token and member for subsequent screens
-        final member = Map<String, dynamic>.from(
-          result['body']['data']['member'] as Map,
-        );
-        final token = result['token'] as String;
+        final dynamic body = result['body'];
+        final Map<String, dynamic> dataMap =
+            body is Map && body['data'] is Map
+                ? Map<String, dynamic>.from(body['data'])
+                : <String, dynamic>{};
+        final Map<String, dynamic> member =
+            dataMap['member'] is Map
+                ? Map<String, dynamic>.from(dataMap['member'])
+                : <String, dynamic>{};
+        final String token = (result['token'] ?? dataMap['token'] ?? '') as String;
         await AuthService.saveLoginData(token: token, userData: member);
         if (!mounted) return;
 
@@ -470,8 +476,8 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
           'district': _selectedDistrict,
           'city': _cityController.text,
           'block': _blockController.text,
-          'member': result['body']['data']['member'],
-          'token': result['token'],
+          'member': member,
+          'token': token,
         };
 
         Navigator.pushReplacement(
@@ -512,6 +518,8 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
               'Network error. Please check your internet connection and try again.';
         } else if (e.toString().contains('timeout')) {
           errorMessage = 'Request timed out. Please try again.';
+        } else if (e.toString().contains("is not a subtype of type 'int' of 'index'")) {
+          errorMessage = 'Unexpected server response. Please try again in a moment.';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
