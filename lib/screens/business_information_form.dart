@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'financial_compliance_form.dart';
+import '../services/api_service.dart';
 
 class BusinessInformationForm extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -229,50 +230,53 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Organization Name
-                          _buildTextField(
-                            'Name of the Organization',
-                            _organizationNameController,
-                            'Enter organization name',
-                          ),
+                          // Show business-specific fields only when doing business is "Yes"
+                          if (_doingBusiness == true) ...[
+                            // Organization Name
+                            _buildTextField(
+                              'Name of the Organization',
+                              _organizationNameController,
+                              'Enter organization name',
+                            ),
 
-                          // Constitution
-                          _buildDropdownField(
-                            'Constitution of the Company',
-                            _selectedConstitution,
-                            _constitutionTypes,
-                            'Select constitution type',
-                          ),
+                            // Constitution
+                            _buildDropdownField(
+                              'Constitution of the Company',
+                              _selectedConstitution,
+                              _constitutionTypes,
+                              'Select constitution type',
+                            ),
 
-                          // Business Types
-                          _buildCheckboxGroup(
-                            'Type of Business',
-                            _selectedBusinessTypes,
-                            _businessTypes,
-                          ),
+                            // Business Types
+                            _buildCheckboxGroup(
+                              'Type of Business',
+                              _selectedBusinessTypes,
+                              _businessTypes,
+                            ),
 
-                          // Business Activities
-                          _buildTextField(
-                            'Business Activities',
-                            _businessActivitiesController,
-                            'Enter business activities',
-                            maxLines: 3,
-                          ),
+                            // Business Activities
+                            _buildTextField(
+                              'Business Activities',
+                              _businessActivitiesController,
+                              'Enter business activities',
+                              maxLines: 3,
+                            ),
 
-                          // Commencement Year
-                          _buildDropdownField(
-                            'Business Commencement Year',
-                            _selectedYear,
-                            _years,
-                            'Select year',
-                          ),
+                            // Commencement Year
+                            _buildDropdownField(
+                              'Business Commencement Year',
+                              _selectedYear,
+                              _years,
+                              'Select year',
+                            ),
 
-                          // Number of Employees
-                          _buildTextField(
-                            'Number of Employees',
-                            _employeesController,
-                            'Enter number of employees',
-                          ),
+                            // Number of Employees
+                            _buildTextField(
+                              'Number of Employees',
+                              _employeesController,
+                              'Enter number of employees',
+                            ),
+                          ],
 
                           // Member of other Chamber/Association
                           _buildRadioGroup(
@@ -559,12 +563,6 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
   Future<void> _proceedToNext() async {
     // Validate required fields
     if (_doingBusiness == null ||
-        _organizationNameController.text.isEmpty ||
-        _selectedConstitution == null ||
-        _selectedBusinessTypes.isEmpty ||
-        _businessActivitiesController.text.isEmpty ||
-        _selectedYear == null ||
-        _employeesController.text.isEmpty ||
         _memberOfOtherChamber == null ||
         (_memberOfOtherChamber == true &&
             _otherChamberController.text.isEmpty)) {
@@ -577,7 +575,23 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
       return;
     }
 
-    // Backend calls removed per request; proceeding with local data only.
+    // Validate business-specific fields only if doing business is "Yes"
+    if (_doingBusiness == true) {
+      if (_organizationNameController.text.isEmpty ||
+          _selectedConstitution == null ||
+          _selectedBusinessTypes.isEmpty ||
+          _businessActivitiesController.text.isEmpty ||
+          _selectedYear == null ||
+          _employeesController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please fill in all business-related fields'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
 
     // Save form data to userData
     final updatedUserData = Map<String, dynamic>.from(widget.userData);
@@ -586,24 +600,81 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
     }
 
     updatedUserData['registrationForm']['doingBusiness'] = _doingBusiness;
-    updatedUserData['registrationForm']['organizationName'] =
-        _organizationNameController.text;
-    updatedUserData['registrationForm']['constitutionType'] =
-        _selectedConstitution;
-    updatedUserData['registrationForm']['businessType'] =
-        _selectedBusinessTypes.isNotEmpty ? _selectedBusinessTypes.first : null;
-    updatedUserData['registrationForm']['businessActivities'] =
-        _businessActivitiesController.text;
-    updatedUserData['registrationForm']['businessCommencementYear'] =
-        _selectedYear;
-    updatedUserData['registrationForm']['numberOfEmployees'] =
-        _employeesController.text;
+    
+    // Only save business-specific data if doing business is "Yes"
+    if (_doingBusiness == true) {
+      updatedUserData['registrationForm']['organizationName'] =
+          _organizationNameController.text;
+      updatedUserData['registrationForm']['constitutionType'] =
+          _selectedConstitution;
+      updatedUserData['registrationForm']['businessType'] =
+          _selectedBusinessTypes.isNotEmpty ? _selectedBusinessTypes.first : null;
+      updatedUserData['registrationForm']['businessActivities'] =
+          _businessActivitiesController.text;
+      updatedUserData['registrationForm']['businessCommencementYear'] =
+          _selectedYear;
+      updatedUserData['registrationForm']['numberOfEmployees'] =
+          _employeesController.text;
+    } else {
+      // Clear business-specific data if not doing business
+      updatedUserData['registrationForm']['organizationName'] = null;
+      updatedUserData['registrationForm']['constitutionType'] = null;
+      updatedUserData['registrationForm']['businessType'] = null;
+      updatedUserData['registrationForm']['businessActivities'] = null;
+      updatedUserData['registrationForm']['businessCommencementYear'] = null;
+      updatedUserData['registrationForm']['numberOfEmployees'] = null;
+    }
+    
     updatedUserData['registrationForm']['memberOfOtherChamber'] =
         _memberOfOtherChamber;
     updatedUserData['registrationForm']['otherChamber'] =
         _otherChamberController.text;
     updatedUserData['registrationForm']['registeredWithGovtOrganization'] =
         _selectedGovtOrganizations.toList();
+
+    // Save business information to database
+    try {
+      final memberId = widget.userData['member']?['id'] ?? 
+                      widget.userData['data']?['member']?['id'];
+      
+      if (memberId != null) {
+        final businessInfoPayload = {
+          'memberId': memberId,
+          'doingBusiness': _doingBusiness,
+          'organizationName': _doingBusiness == true ? _organizationNameController.text : null,
+          'constitutionType': _doingBusiness == true ? _selectedConstitution : null,
+          'businessType': _doingBusiness == true && _selectedBusinessTypes.isNotEmpty ? _selectedBusinessTypes.first : null,
+          'businessActivities': _doingBusiness == true ? _businessActivitiesController.text : null,
+          'businessCommencementYear': _doingBusiness == true ? _selectedYear : null,
+          'numberOfEmployees': _doingBusiness == true ? _employeesController.text : null,
+          'memberOfOtherChamber': _memberOfOtherChamber,
+          'otherChamber': _otherChamberController.text,
+          'registeredWithGovtOrganization': _selectedGovtOrganizations.toList(),
+        };
+
+        final result = await ApiService.saveBusinessInfo(memberId, businessInfoPayload);
+        
+        if (!result['success']) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to save business information: ${result['error']}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error saving business information: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     // Navigate to financial compliance form
     if (!mounted) return;

@@ -5,10 +5,7 @@ import 'package:activ/services/api_service.dart';
 class DeclarationForm extends StatefulWidget {
   final Map<String, dynamic> userData;
 
-  const DeclarationForm({
-    super.key,
-    required this.userData,
-  });
+  const DeclarationForm({super.key, required this.userData});
 
   @override
   State<DeclarationForm> createState() => _DeclarationFormState();
@@ -67,7 +64,7 @@ class _DeclarationFormState extends State<DeclarationForm> {
                   ),
                 ),
               ),
-              
+
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -84,13 +81,10 @@ class _DeclarationFormState extends State<DeclarationForm> {
                     const SizedBox(height: 8),
                     const Text(
                       'Member Registration',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Progress Indicator
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -102,14 +96,18 @@ class _DeclarationFormState extends State<DeclarationForm> {
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: isActive ? Colors.blue : Colors.grey[300],
+                                color: isActive
+                                    ? Colors.blue
+                                    : Colors.grey[300],
                                 shape: BoxShape.circle,
                               ),
                               child: Center(
                                 child: Text(
                                   '${index + 1}',
                                   style: TextStyle(
-                                    color: isActive ? Colors.white : Colors.grey[600],
+                                    color: isActive
+                                        ? Colors.white
+                                        : Colors.grey[600],
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -128,13 +126,10 @@ class _DeclarationFormState extends State<DeclarationForm> {
                     const SizedBox(height: 12),
                     const Text(
                       'Step 4 of 4',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                     const SizedBox(height: 30),
-                    
+
                     // Declaration Section
                     Container(
                       width: double.infinity,
@@ -162,22 +157,27 @@ class _DeclarationFormState extends State<DeclarationForm> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          
+
                           // No. of Sister Concerns
-                          _buildTextField('No. of Sister Concerns', _sisterConcernsController, 'Enter number'),
+                          _buildTextField(
+                            'No. of Sister Concerns',
+                            _sisterConcernsController,
+                            'Enter number',
+                          ),
                           const Text(
                             'Positive integers only',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                           const SizedBox(height: 16),
-                          
+
                           // Name(s) of Company
-                          _buildTextField('Name(s) of Company', _companyNamesController, 'Enter company name'),
+                          _buildTextField(
+                            'Name(s) of Company',
+                            _companyNamesController,
+                            'Enter company name',
+                          ),
                           const SizedBox(height: 16),
-                          
+
                           // Add Another Company Button
                           SizedBox(
                             width: double.infinity,
@@ -205,7 +205,7 @@ class _DeclarationFormState extends State<DeclarationForm> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          
+
                           // Checkbox for showing one field per name
                           Row(
                             children: [
@@ -228,7 +228,7 @@ class _DeclarationFormState extends State<DeclarationForm> {
                             ],
                           ),
                           const SizedBox(height: 20),
-                          
+
                           // Declaration Text
                           const Text(
                             'Declaration',
@@ -248,7 +248,7 @@ class _DeclarationFormState extends State<DeclarationForm> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          
+
                           // Agreement Checkbox
                           Row(
                             children: [
@@ -276,51 +276,49 @@ class _DeclarationFormState extends State<DeclarationForm> {
                       ),
                     ),
                     const SizedBox(height: 30),
-                    
+
                     // Navigation Buttons
-                    Row(
+                    Column(
                       children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: 50,
-                            child: OutlinedButton(
-                              onPressed: () => Navigator.pop(context),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.purple),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.purple),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Text(
-                                'Previous',
-                                style: TextStyle(
-                                  color: Colors.purple,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            ),
+                            child: const Text(
+                              'Previous',
+                              style: TextStyle(
+                                color: Colors.purple,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: SizedBox(
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: _submitApplication,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: _submitApplication,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Text(
-                                'Submit Application',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            ),
+                            child: const Text(
+                              'Submit Application',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
@@ -337,7 +335,11 @@ class _DeclarationFormState extends State<DeclarationForm> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, String placeholder) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller,
+    String placeholder,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -368,7 +370,10 @@ class _DeclarationFormState extends State<DeclarationForm> {
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: Colors.blue),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -383,7 +388,9 @@ class _DeclarationFormState extends State<DeclarationForm> {
         !_agreeToDeclaration) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill in all required fields and agree to the declaration'),
+          content: Text(
+            'Please fill in all required fields and agree to the declaration',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -395,7 +402,9 @@ class _DeclarationFormState extends State<DeclarationForm> {
     if (sisterConcerns == null || sisterConcerns <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter a valid positive number for sister concerns'),
+          content: Text(
+            'Please enter a valid positive number for sister concerns',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -407,13 +416,18 @@ class _DeclarationFormState extends State<DeclarationForm> {
     if (updatedUserData['registrationForm'] == null) {
       updatedUserData['registrationForm'] = {};
     }
-    
-    updatedUserData['registrationForm']['sisterConcerns'] = _sisterConcernsController.text;
-    updatedUserData['registrationForm']['companyNames'] = _companyNamesController.text;
-    updatedUserData['registrationForm']['showOneFieldPerName'] = _showOneFieldPerName;
-    updatedUserData['registrationForm']['agreeToDeclaration'] = _agreeToDeclaration;
+
+    updatedUserData['registrationForm']['sisterConcerns'] =
+        _sisterConcernsController.text;
+    updatedUserData['registrationForm']['companyNames'] =
+        _companyNamesController.text;
+    updatedUserData['registrationForm']['showOneFieldPerName'] =
+        _showOneFieldPerName;
+    updatedUserData['registrationForm']['agreeToDeclaration'] =
+        _agreeToDeclaration;
     updatedUserData['registrationForm']['profileCompleted'] = true;
-    updatedUserData['registrationForm']['submissionDate'] = DateTime.now().toIso8601String();
+    updatedUserData['registrationForm']['submissionDate'] = DateTime.now()
+        .toIso8601String();
 
     // Save declaration to backend
     try {
@@ -440,7 +454,9 @@ class _DeclarationFormState extends State<DeclarationForm> {
 
       final result = await ApiService.saveDeclaration(memberId, payload);
       if (result['success'] != true) {
-        throw Exception(result['body']?['message'] ?? 'Failed to submit declaration');
+        throw Exception(
+          result['body']?['message'] ?? 'Failed to submit declaration',
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -458,9 +474,9 @@ class _DeclarationFormState extends State<DeclarationForm> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ApplicationSubmittedScreen(userData: updatedUserData),
+        builder: (context) =>
+            ApplicationSubmittedScreen(userData: updatedUserData),
       ),
     );
   }
 }
-

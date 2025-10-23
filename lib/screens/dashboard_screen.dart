@@ -14,14 +14,12 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Debug the userData structure
-    debugPrint('DEBUG: Dashboard userData keys: ${userData.keys}');
-    debugPrint('DEBUG: Dashboard userData: $userData');
+    // Debug logs removed for security - no longer printing sensitive user data
     
     return Scaffold(
       backgroundColor: Colors.white,
       bottomNavigationBar: _buildBottomNavigation(context),
-  
+
       // 🔹 Body starts
       body: SingleChildScrollView(
         child: Column(
@@ -230,32 +228,26 @@ bool _isBasicRegistrationCompleted(Map<String, dynamic> data) {
 }
 
 bool _isFullProfileCompleted(Map<String, dynamic> data) {
-  // Debug logging to understand the data structure
-  debugPrint('DEBUG: Checking profile completion for data: ${data.keys}');
+  // Debug logging removed for security - no longer printing sensitive data
   final form = data['registrationForm'];
-  debugPrint('DEBUG: registrationForm exists: ${form != null}');
 
   if (form is Map<String, dynamic>) {
     final v = form['profileCompleted'];
-    debugPrint('DEBUG: profileCompleted value: $v');
     if (_isTruthy(v)) return true;
   }
 
   // Also check if profileCompleted is directly in the data
   final direct = data['profileCompleted'];
   if (_isTruthy(direct)) {
-    debugPrint('DEBUG: Found profileCompleted directly in data');
     return true;
   }
 
   // Check if member object has profileCompleted
   final member = data['member'];
   if (member is Map<String, dynamic> && _isTruthy(member['profileCompleted'])) {
-    debugPrint('DEBUG: Found profileCompleted in member object');
     return true;
   }
 
-  debugPrint('DEBUG: Profile not completed');
   return false;
 }
 

@@ -19,24 +19,33 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
     try {
       // Get email from userData instead of Firebase
       final email = widget.userData['email'] ?? widget.userData['member']?['email'];
-      if (email == null) return widget.userData;
+      if (email == null || email.toString().trim().isEmpty) {
+        // Error loading member data - logging removed for security
+        return widget.userData;
+      }
       
       // Get member details from backend
       final res = await ApiService.getMemberByEmail(email);
-      if (res['success'] == true) {
+      if (res['success'] == true && res['data'] != null) {
         final member = Map<String, dynamic>.from(res['data'] as Map);
+        final memberId = member['memberId'] ?? member['id'] ?? member['_id'];
+        
+        if (memberId == null) {
+          // Error loading member data - logging removed for security
+          return widget.userData;
+        }
         
         return {
           'email': email,
-          'memberId': member['_id'],
+          'memberId': memberId,
           'registrationForm': {
-            'fullName': member['fullName'],
-            'block': member['block'],
-            'state': member['state'],
-            'district': member['district'],
-            'phoneNumber': member['phoneNumber'],
-            'dateOfBirth': member['dateOfBirth'],
-            'city': member['city'],
+            'fullName': member['fullName'] ?? '',
+            'block': member['block'] ?? '',
+            'state': member['state'] ?? '',
+            'district': member['district'] ?? '',
+            'phoneNumber': member['phoneNumber'] ?? '',
+            'dateOfBirth': member['dateOfBirth'] ?? '',
+            'city': member['city'] ?? '',
             // Include demographic fields from memberdetails (source of truth)
             'aadhaarNumber': member['aadhaarNumber'] ?? '',
             'streetName': member['streetName'] ?? '',
@@ -48,7 +57,7 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
       }
       return widget.userData;
     } catch (e) {
-      debugPrint('Error loading member from backend: $e');
+      // Error loading member data - logging removed for security
       return widget.userData;
     }
   }

@@ -48,7 +48,7 @@ router.post('/login', async (req, res) => {
     await memberAuth.updateLastLogin();
 
     // Generate JWT token
-    console.log("JWTSECRET value at runtime:", process.env.JWTSECRET);
+    // JWT secret logging removed for security
     const token = jwt.sign(
       { 
         userId: member._id, 
@@ -65,6 +65,7 @@ router.post('/login', async (req, res) => {
         token: token,
         member: {
           id: member._id,
+          memberId: member._id, // Add memberId for frontend clarity
           fullName: member.fullName,
           email: member.email,
           phoneNumber: member.phoneNumber,
@@ -149,7 +150,7 @@ router.post('/register', async (req, res) => {
     await memberAuth.save();
 
     // Generate JWT token
-    console.log("JWTSECRET value at runtime:", process.env.JWTSECRET);
+    // JWT secret logging removed for security
     const token = jwt.sign(
       { 
         userId: memberDetails._id, 
@@ -209,6 +210,7 @@ router.get('/member/:memberId', async (req, res) => {
       data: {
         member: {
           id: member._id,
+          memberId: member._id, // Add memberId for frontend clarity
           fullName: member.fullName,
           email: member.email,
           phoneNumber: member.phoneNumber,

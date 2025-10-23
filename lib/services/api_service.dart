@@ -19,6 +19,7 @@ class ApiService {
 
   void setToken(String token) {
     _token = token;
+    // Token management logging kept for debugging auth issues (no sensitive data exposed)
     developer.log(
       'ApiService: token set length=${token.length}',
       name: 'ApiService',
@@ -35,6 +36,7 @@ class ApiService {
     try {
       return input.isNotEmpty ? jsonDecode(input) : null;
     } catch (e) {
+      // Error logging kept for debugging JSON parsing issues (no sensitive data exposed)
       developer.log('jsonDecodeSafe error: $e', name: 'ApiService');
       return input;
     }
@@ -43,16 +45,14 @@ class ApiService {
   // Register user with proper backend route
   Future<Map<String, dynamic>> register(Map<String, dynamic> payload) async {
     final url = Uri.parse('$baseUrl/auth/register'); // auth.js register route
-    developer.log('POST $url', name: 'ApiService');
-    developer.log('payload: ${jsonEncode(payload)}', name: 'ApiService');
+    // Logging removed for security - no longer exposing sensitive registration data
 
     final resp = await http.post(
       url,
       headers: _headers(),
       body: jsonEncode(payload),
     );
-    developer.log('status: ${resp.statusCode}', name: 'ApiService');
-    developer.log('body: ${resp.body}', name: 'ApiService');
+    // Response logging removed for security
 
     final body = jsonDecodeSafe(resp.body);
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
@@ -61,7 +61,7 @@ class ApiService {
       if (token != null) setToken(token as String);
       return {'ok': true, 'body': body, 'token': token};
     } else {
-      return {'ok': false, 'status': resp.statusCode, 'body': body};
+      return {'ok': false, 'body': body, 'error': 'Registration failed'};
     }
   }
 
@@ -69,16 +69,14 @@ class ApiService {
   Future<Map<String, dynamic>> login(String email, String password) async {
     final url = Uri.parse('$baseUrl/auth/login');
     final payload = {'email': email.trim(), 'password': password};
-    developer.log('POST $url', name: 'ApiService');
-    developer.log('payload: ${jsonEncode(payload)}', name: 'ApiService');
+    // Logging removed for security - no longer exposing login credentials
 
     final resp = await http.post(
       url,
       headers: _headers(),
       body: jsonEncode(payload),
     );
-    developer.log('status: ${resp.statusCode}', name: 'ApiService');
-    developer.log('body: ${resp.body}', name: 'ApiService');
+    // Response logging removed for security
 
     final body = jsonDecodeSafe(resp.body);
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
@@ -86,223 +84,324 @@ class ApiService {
       if (token != null) setToken(token as String);
       return {'ok': true, 'body': body, 'token': token};
     } else {
-      return {'ok': false, 'status': resp.statusCode, 'body': body};
+      return {'ok': false, 'body': body, 'error': 'Login failed'};
     }
   }
 
-  // Generic put for updating member by id (example)
-  Future<Map<String, dynamic>> updateMember(
-    String id,
-    Map<String, dynamic> updates,
-  ) async {
-    final url = Uri.parse('$baseUrl/members/$id');
-    developer.log('PUT $url (auth: ${_token != null})', name: 'ApiService');
-    developer.log('updates: ${jsonEncode(updates)}', name: 'ApiService');
+  // Update member profile
+  Future<Map<String, dynamic>> updateMember(String memberId, Map<String, dynamic> updates) async {
+    final url = Uri.parse('$baseUrl/members/$memberId');
+    // Logging removed for security - no longer exposing member update data
 
     final resp = await http.put(
       url,
       headers: _headers(auth: true),
       body: jsonEncode(updates),
     );
-    developer.log('status: ${resp.statusCode}', name: 'ApiService');
-    developer.log('body: ${resp.body}', name: 'ApiService');
+    // Response logging removed for security
+
     final body = jsonDecodeSafe(resp.body);
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       return {'ok': true, 'body': body};
     } else {
-      return {'ok': false, 'status': resp.statusCode, 'body': body};
+      return {'ok': false, 'body': body, 'error': 'Update failed'};
     }
   }
 
-  // Get all members (for browse members screen)
-  static Future<Map<String, dynamic>> getMembers({
-    int page = 1,
-    int limit = 10,
-  }) async {
-    final url = Uri.parse('$baseUrl/members?page=$page&limit=$limit');
-    developer.log('GET $url', name: 'ApiService');
+  // Get member profile
+  Future<Map<String, dynamic>> getMember() async {
+    final url = Uri.parse('$baseUrl/members/profile');
+    // Logging removed for security
 
     final resp = await http.get(
       url,
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers(auth: true),
     );
-    developer.log('status: ${resp.statusCode}', name: 'ApiService');
-    developer.log('body: ${resp.body}', name: 'ApiService');
+    // Response logging removed for security
 
-    // Create a temporary instance to use jsonDecodeSafe
-    final apiService = ApiService();
-    final body = apiService.jsonDecodeSafe(resp.body);
+    final body = jsonDecodeSafe(resp.body);
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
-      return {'success': true, 'data': body['data']['members']};
+      return {'ok': true, 'body': body};
     } else {
-      return {'success': false, 'status': resp.statusCode, 'body': body};
+      return {'ok': false, 'body': body, 'error': 'Failed to get member'};
     }
   }
 
-  // Get member by Firebase UID (using email from Firebase user)
-  static Future<Map<String, dynamic>> getMemberByFirebaseUid(
-    String firebaseUid,
-  ) async {
-    // Since the backend doesn't store Firebase UID, we'll use the email from Firebase Auth
-    // This method should be called with the user's email, not UID
-    // For now, return an error indicating this needs to be updated
+  // Get member by ID
+  Future<Map<String, dynamic>> getMemberById(String memberId) async {
+    final url = Uri.parse('$baseUrl/members/$memberId');
+    // Logging removed for security - no longer exposing member lookup data
     developer.log(
-      'getMemberByFirebaseUid called with UID: $firebaseUid',
+      'ApiService: getMemberById called',
       name: 'ApiService',
     );
-    return {
-      'success': false,
-      'message':
-          'getMemberByFirebaseUid needs to be updated to use email instead of UID',
-    };
+
+    final resp = await http.get(
+      url,
+      headers: _headers(auth: true),
+    );
+    // Response logging removed for security
+
+    final body = jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'ok': true, 'body': body};
+    } else {
+      return {'ok': false, 'body': body, 'error': 'Failed to get member'};
+    }
   }
 
-  // Get member by email (alternative to getMemberByFirebaseUid)
+  // Get all members
+  Future<Map<String, dynamic>> getAllMembers() async {
+    final url = Uri.parse('$baseUrl/members');
+    // Logging removed for security
+
+    final resp = await http.get(
+      url,
+      headers: _headers(auth: true),
+    );
+    // Response logging removed for security
+
+    final body = jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'ok': true, 'body': body};
+    } else {
+      return {'ok': false, 'body': body, 'error': 'Failed to get members'};
+    }
+  }
+
+  // Get member dashboard data
+  Future<Map<String, dynamic>> getMemberDashboard() async {
+    final url = Uri.parse('$baseUrl/members/dashboard');
+    // Logging removed for security
+
+    final resp = await http.get(
+      url,
+      headers: _headers(auth: true),
+    );
+    // Response logging removed for security
+
+    final body = jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'ok': true, 'body': body};
+    } else {
+      return {'ok': false, 'body': body, 'error': 'Failed to get dashboard'};
+    }
+  }
+
+  // Submit business information
+  Future<Map<String, dynamic>> submitBusinessInfo(Map<String, dynamic> payload) async {
+    final url = Uri.parse('$baseUrl/members/business-info');
+    // Logging removed for security - no longer exposing business data
+
+    final resp = await http.post(
+      url,
+      headers: _headers(auth: true),
+      body: jsonEncode(payload),
+    );
+    // Response logging removed for security
+
+    final body = jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'ok': true, 'body': body};
+    } else {
+      return {'ok': false, 'body': body, 'error': 'Business info submission failed'};
+    }
+  }
+
+  // Submit financial information
+  Future<Map<String, dynamic>> submitFinancialInfo(Map<String, dynamic> payload) async {
+    final url = Uri.parse('$baseUrl/members/financial-info');
+    // Logging removed for security - no longer exposing financial data
+
+    final resp = await http.post(
+      url,
+      headers: _headers(auth: true),
+      body: jsonEncode(payload),
+    );
+    // Response logging removed for security
+
+    final body = jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'ok': true, 'body': body};
+    } else {
+      return {'ok': false, 'body': body, 'error': 'Financial info submission failed'};
+    }
+  }
+
+  // Submit declaration
+  Future<Map<String, dynamic>> submitDeclaration(Map<String, dynamic> payload) async {
+    final url = Uri.parse('$baseUrl/members/declaration');
+    // Logging removed for security - no longer exposing declaration data
+
+    final resp = await http.post(
+      url,
+      headers: _headers(auth: true),
+      body: jsonEncode(payload),
+    );
+    // Response logging removed for security
+
+    final body = jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'ok': true, 'body': body};
+    } else {
+      return {'ok': false, 'body': body, 'error': 'Declaration submission failed'};
+    }
+  }
+
+  // Static method to get member by email (used by multiple screens)
   static Future<Map<String, dynamic>> getMemberByEmail(String email) async {
-    final url = Uri.parse(
-      '$baseUrl/members/by-email?email=${Uri.encodeComponent(email)}',
+    final url = Uri.parse('$baseUrl/auth/member-by-email/$email');
+    // Logging removed for security - no longer exposing member lookup data
+    developer.log(
+      'ApiService: getMemberByEmail called',
+      name: 'ApiService',
     );
-    developer.log('GET $url', name: 'ApiService');
 
     final resp = await http.get(
       url,
       headers: {'Content-Type': 'application/json'},
     );
-    developer.log('status: ${resp.statusCode}', name: 'ApiService');
-    developer.log('body: ${resp.body}', name: 'ApiService');
+    // Response logging removed for security
 
-    // Create a temporary instance to use jsonDecodeSafe
-    final apiService = ApiService();
-    final body = apiService.jsonDecodeSafe(resp.body);
+    final body = _jsonDecodeSafe(resp.body);
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
-      return {'success': true, 'data': body['data']};
+      // Backend returns {success: true, data: {member: {...}}}
+      // Extract the member data for compatibility
+      final memberData = body['data']?['member'];
+      return {'success': true, 'data': memberData};
     } else {
-      return {'success': false, 'status': resp.statusCode, 'body': body};
+      return {'success': false, 'error': body['message'] ?? 'Failed to get member by email'};
     }
   }
 
-  // Get business information by member ID
-  static Future<Map<String, dynamic>> getBusinessInfo(String memberId) async {
-    final url = Uri.parse('$baseUrl/profile/business-info/$memberId');
-    developer.log('GET $url', name: 'ApiService');
-
-    final resp = await http.get(
-      url,
-      headers: {'Content-Type': 'application/json'},
-    );
-    developer.log('status: ${resp.statusCode}', name: 'ApiService');
-    developer.log('body: ${resp.body}', name: 'ApiService');
-
-    // Create a temporary instance to use jsonDecodeSafe
-    final apiService = ApiService();
-    final body = apiService.jsonDecodeSafe(resp.body);
-    if (resp.statusCode >= 200 && resp.statusCode < 300) {
-      return {'success': true, 'data': body['data']};
-    } else {
-      return {'success': false, 'status': resp.statusCode, 'body': body};
-    }
-  }
-
-  // Get complete profile by member ID
+  // Static method to get complete member profile (used by profile detail screen)
   static Future<Map<String, dynamic>> getMemberProfile(String memberId) async {
     final url = Uri.parse('$baseUrl/profile/$memberId');
-    developer.log('GET $url', name: 'ApiService');
+    // Logging removed for security - no longer exposing profile lookup data
+    developer.log(
+      'ApiService: getMemberProfile called',
+      name: 'ApiService',
+    );
 
     final resp = await http.get(
       url,
       headers: {'Content-Type': 'application/json'},
     );
-    developer.log('status: ${resp.statusCode}', name: 'ApiService');
-    developer.log('body: ${resp.body}', name: 'ApiService');
+    // Response logging removed for security
 
-    final apiService = ApiService();
-    final body = apiService.jsonDecodeSafe(resp.body);
+    final body = _jsonDecodeSafe(resp.body);
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       return {'success': true, 'data': body['data']};
     } else {
-      return {'success': false, 'status': resp.statusCode, 'body': body};
+      return {'success': false, 'error': body['message'] ?? 'Failed to get member profile'};
     }
   }
 
-  // Save business information
-  static Future<Map<String, dynamic>> saveBusinessInfo(
-    String memberId,
-    Map<String, dynamic> businessData,
-  ) async {
-    final url = Uri.parse('$baseUrl/profile/business-info');
-    final payload = {'memberId': memberId, ...businessData};
-    developer.log('POST $url', name: 'ApiService');
-    developer.log('payload: ${jsonEncode(payload)}', name: 'ApiService');
+  // Static method to get all members (used by browse members screen)
+  static Future<Map<String, dynamic>> getMembers({int page = 1, int limit = 10}) async {
+    final url = Uri.parse('$baseUrl/members?page=$page&limit=$limit');
+    // Logging removed for security - no longer exposing member lookup data
+    developer.log(
+      'ApiService: getMembers called',
+      name: 'ApiService',
+    );
 
-    final resp = await http.post(
+    final resp = await http.get(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(payload),
     );
-    developer.log('status: ${resp.statusCode}', name: 'ApiService');
-    developer.log('body: ${resp.body}', name: 'ApiService');
+    // Response logging removed for security
 
-    // Create a temporary instance to use jsonDecodeSafe
-    final apiService = ApiService();
-    final body = apiService.jsonDecodeSafe(resp.body);
+    final body = _jsonDecodeSafe(resp.body);
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       return {'success': true, 'data': body['data']};
     } else {
-      return {'success': false, 'status': resp.statusCode, 'body': body};
+      return {'success': false, 'error': body['message'] ?? 'Failed to get members'};
     }
   }
 
-  // Save financial & compliance information
-  static Future<Map<String, dynamic>> saveFinancialInfo(
-    String memberId,
-    Map<String, dynamic> financialData,
-  ) async {
-    final url = Uri.parse('$baseUrl/profile/financial-info');
-    final payload = {'memberId': memberId, ...financialData};
-    developer.log('POST $url', name: 'ApiService');
-    developer.log('payload: ${jsonEncode(payload)}', name: 'ApiService');
-
-    final resp = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(payload),
-    );
-    developer.log('status: ${resp.statusCode}', name: 'ApiService');
-    developer.log('body: ${resp.body}', name: 'ApiService');
-
-    final apiService = ApiService();
-    final body = apiService.jsonDecodeSafe(resp.body);
-    if (resp.statusCode >= 200 && resp.statusCode < 300) {
-      return {'success': true, 'data': body['data']};
-    } else {
-      return {'success': false, 'status': resp.statusCode, 'body': body};
-    }
-  }
-
-  // Save declaration information
-  static Future<Map<String, dynamic>> saveDeclaration(
-    String memberId,
-    Map<String, dynamic> declarationData,
-  ) async {
+  // Static method to save declaration (used by declaration form)
+  static Future<Map<String, dynamic>> saveDeclaration(String memberId, Map<String, dynamic> payload) async {
     final url = Uri.parse('$baseUrl/profile/declaration');
-    final payload = {'memberId': memberId, ...declarationData};
-    developer.log('POST $url', name: 'ApiService');
-    developer.log('payload: ${jsonEncode(payload)}', name: 'ApiService');
+    // Logging removed for security - no longer exposing declaration data
+    developer.log(
+      'ApiService: saveDeclaration called',
+      name: 'ApiService',
+    );
 
+    final requestPayload = {'memberId': memberId, ...payload};
     final resp = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(payload),
+      body: jsonEncode(requestPayload),
     );
-    developer.log('status: ${resp.statusCode}', name: 'ApiService');
-    developer.log('body: ${resp.body}', name: 'ApiService');
+    // Response logging removed for security
 
-    final apiService = ApiService();
-    final body = apiService.jsonDecodeSafe(resp.body);
+    final body = _jsonDecodeSafe(resp.body);
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       return {'success': true, 'data': body['data']};
     } else {
-      return {'success': false, 'status': resp.statusCode, 'body': body};
+      return {'success': false, 'error': body['message'] ?? 'Failed to save declaration'};
+    }
+  }
+
+  // Static method to save business info (used by business information form)
+  static Future<Map<String, dynamic>> saveBusinessInfo(String memberId, Map<String, dynamic> payload) async {
+    final url = Uri.parse('$baseUrl/profile/business-info');
+    // Logging removed for security - no longer exposing business data
+    developer.log(
+      'ApiService: saveBusinessInfo called',
+      name: 'ApiService',
+    );
+
+    final requestPayload = {'memberId': memberId, ...payload};
+    final resp = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(requestPayload),
+    );
+    // Response logging removed for security
+
+    final body = _jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'success': true, 'data': body['data']};
+    } else {
+      return {'success': false, 'error': body['message'] ?? 'Failed to save business info'};
+    }
+  }
+
+  // Static method to save financial info (used by financial compliance form)
+  static Future<Map<String, dynamic>> saveFinancialInfo(String memberId, Map<String, dynamic> payload) async {
+    final url = Uri.parse('$baseUrl/profile/financial-info');
+    // Logging removed for security - no longer exposing financial data
+    developer.log(
+      'ApiService: saveFinancialInfo called',
+      name: 'ApiService',
+    );
+
+    final requestPayload = {'memberId': memberId, ...payload};
+    final resp = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(requestPayload),
+    );
+    // Response logging removed for security
+
+    final body = _jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'success': true, 'data': body['data']};
+    } else {
+      return {'success': false, 'error': body['message'] ?? 'Failed to save financial info'};
+    }
+  }
+
+  // Static helper for JSON decoding (used by static method)
+  static dynamic _jsonDecodeSafe(String input) {
+    try {
+      return input.isNotEmpty ? jsonDecode(input) : null;
+    } catch (e) {
+      developer.log('_jsonDecodeSafe error: $e', name: 'ApiService');
+      return input;
     }
   }
 }

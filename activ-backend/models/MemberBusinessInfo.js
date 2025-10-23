@@ -18,7 +18,11 @@ const memberBusinessInfoSchema = new mongoose.Schema({
     lowercase: true,
     trim: true
   },
-  // Business Information (restricted to requested fields)
+  // Business Information (only specified fields)
+  doingBusiness: {
+    type: Boolean,
+    default: false
+  },
   organizationName: {
     type: String,
     trim: true
@@ -54,52 +58,7 @@ const memberBusinessInfoSchema = new mongoose.Schema({
   registeredWithGovtOrganization: [{
     type: String,
     enum: ['MSME', 'KVIC', 'NABARD', 'None', 'Others']
-  }],
-  // Extended Business Information (included when applicable)
-  doingBusiness: {
-    type: Boolean,
-    default: false
-  },
-  additionalBusiness: {
-    type: String,
-    trim: true
-  },
-  businessLocation: {
-    type: String,
-    trim: true
-  },
-  businessWebsite: {
-    type: String,
-    trim: true
-  },
-  businessScale: {
-    type: String,
-    enum: ['Micro', 'Small', 'Medium', 'Large']
-  },
-  exportStatus: {
-    type: String,
-    enum: ['Domestic Only', 'Export to Neighboring Countries', 'International Export', 'Planning to Export']
-  },
-  hasExportLicense: {
-    type: Boolean,
-    default: false
-  },
-  exportLicense: {
-    type: String,
-    trim: true
-  },
-  businessDescription: {
-    type: String,
-    trim: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
+  }]
 }, {
   timestamps: true
 });

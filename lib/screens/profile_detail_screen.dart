@@ -30,10 +30,10 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       if (userData == null) return null;
 
       final email = userData['email'] ?? userData['member']?['email'];
-      if (email == null) return userData;
+      if (email == null || email.toString().trim().isEmpty) return userData;
 
       final res = await ApiService.getMemberByEmail(email);
-      if (res['success'] == true) {
+      if (res['success'] == true && res['data'] != null) {
         // Normalize to structure similar to previous userData for minimal UI changes
         final member = Map<String, dynamic>.from(res['data'] as Map);
         return {
@@ -64,12 +64,12 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
       if (localUser == null) return null;
 
       final email = localUser['email'] ?? localUser['member']?['email'];
-      if (email == null) return null;
+      if (email == null || email.toString().trim().isEmpty) return null;
 
       final memberRes = await ApiService.getMemberByEmail(email);
-      if (memberRes['success'] == true) {
+      if (memberRes['success'] == true && memberRes['data'] != null) {
         final member = Map<String, dynamic>.from(memberRes['data'] as Map);
-        final memberId = member['_id'] ?? member['id'];
+        final memberId = member['memberId'] ?? member['id'] ?? member['_id'];
         if (memberId == null) {
           return {'member': member};
         }
@@ -224,62 +224,70 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                       Padding(
                         padding: const EdgeInsets.all(20),
                         child: FutureBuilder<Map<String, dynamic>?>(
-                          future: _loadMemberFromBackend(),
+                          future: _profileFuture,
                           builder: (context, snapshot) {
                             if (snapshot.hasData && snapshot.data != null) {
-                              final userData = snapshot.data!;
-                              final registrationForm =
-                                  userData['registrationForm']
-                                      as Map<String, dynamic>?;
+                              final data = snapshot.data!;
+                              final member = data['member'] as Map<String, dynamic>?;
 
                               String s(dynamic v) =>
                                   (v == null || (v is String && v.isEmpty))
                                   ? '—'
                                   : v.toString();
+                              
                               return Column(
                                 children: [
                                   _buildDetailRow(
                                     'Name',
-                                    s(
-                                      registrationForm?['fullName'] ??
-                                          userData['fullName'],
-                                    ),
-                                  ),
-                                  _buildDetailRow(
-                                    'Block',
-                                    s(registrationForm?['block']),
-                                  ),
-                                  _buildDetailRow(
-                                    'State',
-                                    s(registrationForm?['state']),
-                                  ),
-                                  _buildDetailRow(
-                                    'District',
-                                    s(registrationForm?['district']),
+                                    s(member?['fullName']),
                                   ),
                                   _buildDetailRow(
                                     'Phone Number',
-                                    s(
-                                      registrationForm?['phoneNumber'] ??
-                                          userData['phoneNumber'],
-                                    ),
+                                    s(member?['phoneNumber']),
                                   ),
                                   _buildDetailRow(
                                     'Email ID',
-                                    s(userData['email']),
+                                    s(member?['email']),
                                   ),
                                   _buildDetailRow(
                                     'Date of Birth',
-                                    s(
-                                      _formatDate(
-                                        registrationForm?['dateOfBirth'] ??
-                                            userData['dateOfBirth'],
-                                      ),
-                                    ),
+                                    s(_formatDate(member?['dateOfBirth'])),
+                                  ),
+                                  _buildDetailRow(
+                                    'State',
+                                    s(member?['state']),
+                                  ),
+                                  _buildDetailRow(
+                                    'District',
+                                    s(member?['district']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Block',
+                                    s(member?['block']),
                                   ),
                                   _buildDetailRow(
                                     'City',
-                                    s(registrationForm?['city']),
+                                    s(member?['city']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Street Name',
+                                    s(member?['streetName']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Educational Qualification',
+                                    s(member?['educationalQualification']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Religion',
+                                    s(member?['religion']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Social Category',
+                                    s(member?['socialCategory']),
+                                  ),
+                                  _buildDetailRow(
+                                    'Aadhaar Number',
+                                    s(member?['aadhaarNumber']),
                                   ),
                                 ],
                               );
@@ -383,23 +391,27 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                               return Column(
                                 children: [
                                   _buildDetailRow(
-                                    'Organization Name',
+                                    'Doing Business',
+                                    b(business['doingBusiness'] as bool?),
+                                  ),
+                                  _buildDetailRow(
+                                    'Name of the Organization',
                                     s(business['organizationName']),
                                   ),
                                   _buildDetailRow(
-                                    'Constitution Type',
+                                    'Constitution of the Company',
                                     s(business['constitutionType']),
                                   ),
                                   _buildDetailRow(
-                                    'Business Type',
+                                    'Type of Business',
                                     s(business['businessType']),
                                   ),
                                   _buildDetailRow(
-                                    'Activities',
+                                    'Business Activities',
                                     s(business['businessActivities']),
                                   ),
                                   _buildDetailRow(
-                                    'Commencement Year',
+                                    'Business Commencement Year',
                                     s(business['businessCommencementYear']),
                                   ),
                                   _buildDetailRow(
@@ -407,58 +419,23 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                                     s(business['numberOfEmployees']),
                                   ),
                                   _buildDetailRow(
-                                    'Member of Other Chamber',
+                                    'Member of any other Chamber/Association',
                                     b(
                                       business['memberOfOtherChamber'] as bool?,
                                     ),
                                   ),
+                                  if (business['memberOfOtherChamber'] == true)
+                                    _buildDetailRow(
+                                      'Name of Chamber/Association',
+                                      s(business['otherChamber']),
+                                    ),
                                   _buildDetailRow(
-                                    'Other Chamber',
-                                    s(business['otherChamber']),
-                                  ),
-                                  _buildDetailRow(
-                                    'Govt Registrations',
+                                    'Registered with Govt. Organisations',
                                     listToString(
                                       (business['registeredWithGovtOrganization']
                                               as List?)
                                           ?.cast<dynamic>(),
                                     ),
-                                  ),
-                                  _buildDetailRow(
-                                    'Doing Business',
-                                    b(business['doingBusiness'] as bool?),
-                                  ),
-                                  _buildDetailRow(
-                                    'Additional Business',
-                                    s(business['additionalBusiness']),
-                                  ),
-                                  _buildDetailRow(
-                                    'Business Location',
-                                    s(business['businessLocation']),
-                                  ),
-                                  _buildDetailRow(
-                                    'Website',
-                                    s(business['businessWebsite']),
-                                  ),
-                                  _buildDetailRow(
-                                    'Business Scale',
-                                    s(business['businessScale']),
-                                  ),
-                                  _buildDetailRow(
-                                    'Export Status',
-                                    s(business['exportStatus']),
-                                  ),
-                                  _buildDetailRow(
-                                    'Has Export License',
-                                    b(business['hasExportLicense'] as bool?),
-                                  ),
-                                  _buildDetailRow(
-                                    'Export License',
-                                    s(business['exportLicense']),
-                                  ),
-                                  _buildDetailRow(
-                                    'Description',
-                                    s(business['businessDescription']),
                                   ),
                                 ],
                               );
