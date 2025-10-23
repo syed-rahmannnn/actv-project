@@ -54,23 +54,11 @@ class ApiService {
     developer.log('status: ${resp.statusCode}', name: 'ApiService');
     developer.log('body: ${resp.body}', name: 'ApiService');
 
-    // Decode and normalize body to a Map to avoid String index errors on Lists
-    final dynamic decoded = jsonDecodeSafe(resp.body);
-    final Map<String, dynamic> body = decoded is Map<String, dynamic>
-        ? decoded
-        : decoded is Map
-            ? Map<String, dynamic>.from(decoded)
-            : <String, dynamic>{};
-
+    final body = jsonDecodeSafe(resp.body);
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       // backend returns data.token and data.member
-      final dynamic data = body['data'];
-      final String? token = data is Map && data['token'] is String
-          ? data['token'] as String
-          : body['token'] is String
-              ? body['token'] as String
-              : null;
-      if (token != null) setToken(token);
+      final token = body['data']?['token'] ?? body['token'];
+      if (token != null) setToken(token as String);
       return {'ok': true, 'body': body, 'token': token};
     } else {
       return {'ok': false, 'status': resp.statusCode, 'body': body};
