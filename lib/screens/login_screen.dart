@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'registration_step1_screen.dart';
 import 'dashboard_screen.dart';
+import 'blockadmin_dashboard.dart';
+import 'districtadmin_dashboard.dart';
+import 'stateadmin_dashboard.dart';
+import 'superadmin_dashboard.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 
@@ -318,14 +322,128 @@ class _LoginScreenState extends State<LoginScreen> {
       // Create ApiService instance
       final apiService = ApiService();
 
-      // Login with backend
+      // Check if this looks like an admin email (contains admin-related keywords)
+      final email = _emailController.text.trim().toLowerCase();
+      final isLikelyAdmin =
+          email.contains('admin') ||
+          email.contains('blockadmin') ||
+          email.contains('districtadmin') ||
+          email.contains('stateadmin') ||
+          email.contains('superadmin');
+
+      // First try admin login with different roles
+      Map<String, dynamic>? adminResult;
+      final adminRoles = [
+        'BlockAdmin',
+        'DistrictAdmin',
+        'StateAdmin',
+        'SuperAdmin',
+      ];
+      bool adminLoginAttempted = false;
+      String? lastAdminError;
+
+      for (String role in adminRoles) {
+        try {
+          adminLoginAttempted = true;
+          adminResult = await apiService.loginAdmin(
+            _emailController.text.trim(),
+            _passwordController.text,
+            role,
+          );
+          if (adminResult['ok'] == true) {
+            // Admin login successful
+            final token = adminResult['token'];
+            final adminRole = adminResult['role'];
+            final adminId = adminResult['adminId'];
+
+            // Save admin login data
+            await AuthService.saveLoginData(
+              token: token,
+              userData: {
+                'adminId': adminId,
+                'role': adminRole,
+                'email': _emailController.text.trim(),
+                'isAdmin': true,
+              },
+            );
+
+            if (mounted) {
+              // Route based on admin role
+              if (adminRole == 'BlockAdmin') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BlockAdminDashboard(adminId: adminId),
+                  ),
+                );
+              } else if (adminRole == 'DistrictAdmin') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        DistrictAdminDashboard(adminId: adminId),
+                  ),
+                );
+              } else if (adminRole == 'StateAdmin') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => StateAdminDashboard(adminId: adminId),
+                  ),
+                );
+              } else if (adminRole == 'SuperAdmin') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SuperAdminDashboard(adminId: adminId),
+                  ),
+                );
+              } else {
+                // For any other admin roles, show a placeholder message
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('$adminRole dashboard not implemented yet'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              }
+            }
+            return; // Exit the function after successful admin login
+          } else {
+            // Store the last admin error message
+            lastAdminError =
+                adminResult['body']?['message'] ?? 'Admin login failed';
+          }
+        } catch (e) {
+          // Store the error and continue to next role
+          lastAdminError = 'Admin login error: $e';
+          continue;
+        }
+      }
+
+      // If this looks like an admin email and admin login failed, show admin error
+      if (isLikelyAdmin && adminLoginAttempted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                lastAdminError ?? 'Admin not found or invalid credentials',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return; // Don't try member login for admin emails
+      }
+
+      // If admin login failed and it's not obviously an admin email, try regular member login
       final result = await apiService.login(
         _emailController.text.trim(),
         _passwordController.text,
       );
 
       if (result['ok'] == true) {
-        // Login successful
+        // Member login successful
         final member = result['body']['data']['member'];
         final token = result['token'];
 
@@ -338,25 +456,14 @@ class _LoginScreenState extends State<LoginScreen> {
               builder: (context) => DashboardScreen(userData: member),
             ),
           );
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DashboardScreen(userData: member),
-              ),
-            );
-          }
-        } else {
-          // Login failed
-          final errorMessage = result['body']?['message'] ?? 'Login failed';
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(errorMessage),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
+        }
+      } else {
+        // Member login also failed
+        final errorMessage = result['body']?['message'] ?? 'Login failed';
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+          );
         }
       }
     } catch (e) {

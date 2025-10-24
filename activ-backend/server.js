@@ -14,6 +14,7 @@ if (process.env.NODE_ENV === 'production') {
 const authRoutes = require('./routes/auth');
 const memberRoutes = require('./routes/members');
 const profileRoutes = require('./routes/profile');
+const adminAuthRouteFactory = require('./routes/adminAuth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,6 +38,7 @@ const allowedOrigins = [
   'http://localhost:3000', 
   'http://localhost:8080', 
   'http://localhost:5000', 
+  'http://127.0.0.1:5000',
   'http://192.168.29.130:3000',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
@@ -76,6 +78,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/membersdb
 app.use('/api/auth', authRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/admin', adminAuthRouteFactory(mongoose.connection));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

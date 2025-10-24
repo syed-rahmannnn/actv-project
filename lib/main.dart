@@ -3,6 +3,7 @@ import 'package:activ/screens/login_screen.dart';
 import 'package:activ/screens/onboarding_screen.dart';
 import 'package:activ/screens/dashboard_screen.dart';
 import 'package:activ/services/auth_service.dart';
+import 'package:activ/screens/settings_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,7 +24,15 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const AuthWrapper(),
-      routes: {'/login': (context) => LoginScreen()},
+      routes: {
+        '/login': (context) => LoginScreen(),
+        '/settings': (context) => const SettingsPage(
+          adminName: "Admin",
+          adminType: "General",
+          adminEmail: "admin@example.com",
+          adminArea: "Default Area",
+        ),
+      },
     );
   }
 }

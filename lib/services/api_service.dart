@@ -1,18 +1,39 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:developer' as developer;
+import 'package:flutter/foundation.dart';
 
 class ApiService {
   // Replace with your Render domain (include https)
-  static const String baseUrl =
-      'https://actv-project.onrender.com/api'; // Render domain
+  // Make base URL configurable for device runs via --dart-define
+  static final String baseUrl = _resolveBaseUrl();
+
+  static String _resolveBaseUrl() {
+    // Full override if provided
+    const apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+    if (apiBaseUrl.isNotEmpty) return apiBaseUrl;
+
+    // In release, always use hosted backend
+    if (!kDebugMode) {
+      return 'https://actv-project.onrender.com/api';
+    }
+
+    // Debug defaults; allow host/port/scheme overrides for physical devices
+    const devHost = String.fromEnvironment('DEV_HOST', defaultValue: 'localhost');
+    const apiPort = String.fromEnvironment('API_PORT', defaultValue: '3000');
+    const apiScheme = String.fromEnvironment('API_SCHEME', defaultValue: 'http');
+    return '$apiScheme://$devHost:$apiPort/api';
+  }
 
   String? _token;
 
   // Helper to get headers, include token if present
   Map<String, String> _headers({bool json = true, bool auth = false}) {
     final headers = <String, String>{};
-    if (json) headers['Content-Type'] = 'application/json';
+    if (json) {
+      headers['Content-Type'] = 'application/json';
+      headers['Accept'] = 'application/json';
+    }
     if (auth && _token != null) headers['Authorization'] = 'Bearer $_token';
     return headers;
   }
@@ -71,11 +92,15 @@ class ApiService {
     final payload = {'email': email.trim(), 'password': password};
     // Logging removed for security - no longer exposing login credentials
 
-    final resp = await http.post(
-      url,
-      headers: _headers(),
-      body: jsonEncode(payload),
-    );
+    http.Response resp;
+    try {
+      resp = await http
+          .post(url, headers: _headers(), body: jsonEncode(payload))
+          .timeout(const Duration(seconds: 12));
+    } catch (e) {
+      developer.log('login request error: $e', name: 'ApiService');
+      return {'ok': false, 'body': null, 'error': 'Network error or timeout'};
+    }
     // Response logging removed for security
 
     final body = jsonDecodeSafe(resp.body);
@@ -85,6 +110,33 @@ class ApiService {
       return {'ok': true, 'body': body, 'token': token};
     } else {
       return {'ok': false, 'body': body, 'error': 'Login failed'};
+    }
+  }
+
+  // Admin login
+  Future<Map<String, dynamic>> loginAdmin(String email, String password, String role) async {
+    final url = Uri.parse('$baseUrl/admin/login');
+    final payload = {'email': email.trim(), 'password': password, 'role': role};
+    // Logging removed for security - no longer exposing admin login credentials
+
+    http.Response resp;
+    try {
+      resp = await http
+          .post(url, headers: _headers(), body: jsonEncode(payload))
+          .timeout(const Duration(seconds: 12));
+    } catch (e) {
+      developer.log('loginAdmin request error: $e', name: 'ApiService');
+      return {'ok': false, 'body': null, 'error': 'Admin login timeout or network error'};
+    }
+    // Response logging removed for security
+
+    final body = jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      final token = body['token'];
+      if (token != null) setToken(token as String);
+      return {'ok': true, 'body': body, 'token': token, 'role': body['role'], 'adminId': body['adminId']};
+    } else {
+      return {'ok': false, 'body': body, 'error': 'Admin login failed'};
     }
   }
 

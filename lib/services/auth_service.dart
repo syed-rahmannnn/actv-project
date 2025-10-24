@@ -41,6 +41,24 @@ class AuthService {
     return null;
   }
 
+  // Get user role
+  static Future<String?> getRole() async {
+    final userData = await getUserData();
+    return userData?['role'];
+  }
+
+  // Get admin ID
+  static Future<String?> getAdminId() async {
+    final userData = await getUserData();
+    return userData?['adminId'];
+  }
+
+  // Check if user is admin
+  static Future<bool> isAdmin() async {
+    final userData = await getUserData();
+    return userData?['isAdmin'] == true;
+  }
+
   // Check if user is logged in
   static Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
