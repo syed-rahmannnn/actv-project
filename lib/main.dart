@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:activ/screens/login_screen.dart';
 import 'package:activ/screens/onboarding_screen.dart';
 import 'package:activ/screens/dashboard_screen.dart';
 import 'package:activ/services/auth_service.dart';
+import 'package:activ/services/user_profile_provider.dart';
 import 'package:activ/screens/settings_page.dart';
 
 Future<void> main() async {
@@ -15,24 +17,22 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'ACTIV Portal',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      home: const AuthWrapper(),
-      routes: {
-        '/login': (context) => LoginScreen(),
-        '/settings': (context) => const SettingsPage(
-          adminName: "Admin",
-          adminType: "General",
-          adminEmail: "admin@example.com",
-          adminArea: "Default Area",
+    return ChangeNotifierProvider(
+      create: (context) => UserProfileProvider(),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'ACTIV Portal',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+          useMaterial3: true,
         ),
-      },
+        home: const AuthWrapper(),
+        routes: {
+          '/login': (context) => LoginScreen(),
+          '/settings': (context) => const SettingsPage(),
+        },
+      ),
     );
   }
 }

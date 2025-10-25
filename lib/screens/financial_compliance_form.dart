@@ -6,13 +6,11 @@ import 'package:activ/services/api_service.dart';
 class FinancialComplianceForm extends StatefulWidget {
   final Map<String, dynamic> userData;
 
-  const FinancialComplianceForm({
-    super.key,
-    required this.userData,
-  });
+  const FinancialComplianceForm({super.key, required this.userData});
 
   @override
-  State<FinancialComplianceForm> createState() => _FinancialComplianceFormState();
+  State<FinancialComplianceForm> createState() =>
+      _FinancialComplianceFormState();
 }
 
 class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
@@ -27,18 +25,18 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
   final _scheme1Controller = TextEditingController();
   final _scheme2Controller = TextEditingController();
   final _scheme3Controller = TextEditingController();
-  
+
   bool? _filedITR;
   bool? _govtSchemeBenefit;
   String? _selectedTurnoverRange;
-  
+
   final List<String> _turnoverRanges = [
     'Less than 25 Lakhs',
     '25 Lakhs - 50 Lakhs',
     '50 Lakhs - 1 Crore',
     '1 Crore - 5 Crores',
     '5 Crores - 10 Crores',
-    'More than 10 Crores'
+    'More than 10 Crores',
   ];
 
   @override
@@ -54,7 +52,9 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
 
   bool _isValidGst(String input) {
     final value = input.trim().toUpperCase();
-    return RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$').hasMatch(value);
+    return RegExp(
+      r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$',
+    ).hasMatch(value);
   }
 
   void _populateFields() {
@@ -117,7 +117,7 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
                   ),
                 ),
               ),
-              
+
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -134,13 +134,10 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
                     const SizedBox(height: 8),
                     const Text(
                       'Member Registration',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Progress Indicator
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -152,14 +149,18 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: isActive ? Colors.blue : Colors.grey[300],
+                                color: isActive
+                                    ? Colors.blue
+                                    : Colors.grey[300],
                                 shape: BoxShape.circle,
                               ),
                               child: Center(
                                 child: Text(
                                   '${index + 1}',
                                   style: TextStyle(
-                                    color: isActive ? Colors.white : Colors.grey[600],
+                                    color: isActive
+                                        ? Colors.white
+                                        : Colors.grey[600],
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -178,13 +179,10 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
                     const SizedBox(height: 12),
                     const Text(
                       'Step 3 of 4',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                     const SizedBox(height: 30),
-                    
+
                     // Financial & Compliance Information Section
                     Container(
                       width: double.infinity,
@@ -212,40 +210,43 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          
+
                           // PAN Number
-                          _buildTextField('PAN Number', _panController, 'Enter PAN number'),
+                          _buildTextField(
+                            'PAN Number',
+                            _panController,
+                            'Enter PAN number',
+                          ),
                           const Text(
                             'Validate PAN Number (10 chars alphanumeric)',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                           const SizedBox(height: 16),
-                          
+
                           // GST Number
-                          _buildTextField('GST Number', _gstController, 'Enter GST number'),
+                          _buildTextField(
+                            'GST Number',
+                            _gstController,
+                            'Enter GST number',
+                          ),
                           const Text(
                             'Validate GST Number (15 chars)',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                           const SizedBox(height: 16),
-                          
+
                           // Udyam Number
-                          _buildTextField('Udyam Number', _udyamController, 'Enter Udyam number'),
+                          _buildTextField(
+                            'Udyam Number',
+                            _udyamController,
+                            'Enter Udyam number',
+                          ),
                           const Text(
                             'Optional',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                           const SizedBox(height: 16),
-                          
+
                           // Filed Income Tax Returns
                           _buildRadioGroup(
                             'Filed Income Tax Returns',
@@ -253,14 +254,23 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
                             (value) => setState(() => _filedITR = value),
                             ['Yes', 'No'],
                           ),
-                          
+
                           if (_filedITR == true) ...[
-                            _buildTextField('How many continuous years have you filed ITR?', _itrYearsController, 'Enter number of years'),
+                            _buildTextField(
+                              'How many continuous years have you filed ITR?',
+                              _itrYearsController,
+                              'Enter number of years',
+                            ),
                           ],
-                          
+
                           // Turnover
-                          _buildDropdownField('Turnover', _selectedTurnoverRange, _turnoverRanges, 'Select turnover range'),
-                          
+                          _buildDropdownField(
+                            'Turnover',
+                            _selectedTurnoverRange,
+                            _turnoverRanges,
+                            'Select turnover range',
+                          ),
+
                           // Turnover for Last 3 FYs
                           const Text(
                             'Turnover for Last 3 FYs',
@@ -271,29 +281,54 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          
-                          _buildTextField('FY 2021-22', _fy2021Controller, 'Enter turnover amount'),
-                          _buildTextField('FY 2020-21', _fy2020Controller, 'Enter turnover amount'),
-                          _buildTextField('FY 2019-20', _fy2019Controller, 'Enter turnover amount'),
-                          
+
+                          _buildTextField(
+                            'FY 2021-22',
+                            _fy2021Controller,
+                            'Enter turnover amount',
+                          ),
+                          _buildTextField(
+                            'FY 2020-21',
+                            _fy2020Controller,
+                            'Enter turnover amount',
+                          ),
+                          _buildTextField(
+                            'FY 2019-20',
+                            _fy2019Controller,
+                            'Enter turnover amount',
+                          ),
+
                           // Government Schemes Benefit
                           _buildRadioGroup(
                             'Have you got benefited through any Govt. schemes in your Business?',
                             _govtSchemeBenefit,
-                            (value) => setState(() => _govtSchemeBenefit = value),
+                            (value) =>
+                                setState(() => _govtSchemeBenefit = value),
                             ['Yes', 'No'],
                           ),
-                          
+
                           if (_govtSchemeBenefit == true) ...[
-                            _buildTextField('Scheme 1', _scheme1Controller, 'Enter scheme name'),
-                            _buildTextField('Scheme 2', _scheme2Controller, 'Enter scheme name'),
-                            _buildTextField('Scheme 3', _scheme3Controller, 'Enter scheme name'),
+                            _buildTextField(
+                              'Scheme 1',
+                              _scheme1Controller,
+                              'Enter scheme name',
+                            ),
+                            _buildTextField(
+                              'Scheme 2',
+                              _scheme2Controller,
+                              'Enter scheme name',
+                            ),
+                            _buildTextField(
+                              'Scheme 3',
+                              _scheme3Controller,
+                              'Enter scheme name',
+                            ),
                           ],
                         ],
                       ),
                     ),
                     const SizedBox(height: 30),
-                    
+
                     // Navigation Buttons
                     Row(
                       children: [
@@ -354,7 +389,11 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, String placeholder) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller,
+    String placeholder,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -386,7 +425,10 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: Colors.blue),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -394,7 +436,12 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
     );
   }
 
-  Widget _buildDropdownField(String label, String? selectedValue, List<String> options, String placeholder) {
+  Widget _buildDropdownField(
+    String label,
+    String? selectedValue,
+    List<String> options,
+    String placeholder,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -442,7 +489,12 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
     );
   }
 
-  Widget _buildRadioGroup(String label, bool? selectedValue, Function(bool?) onChanged, List<String> options) {
+  Widget _buildRadioGroup(
+    String label,
+    bool? selectedValue,
+    Function(bool?) onChanged,
+    List<String> options,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -500,7 +552,10 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
         _fy2020Controller.text.isEmpty ||
         _fy2019Controller.text.isEmpty ||
         _govtSchemeBenefit == null ||
-        (_govtSchemeBenefit == true && (_scheme1Controller.text.isEmpty || _scheme2Controller.text.isEmpty || _scheme3Controller.text.isEmpty))) {
+        (_govtSchemeBenefit == true &&
+            (_scheme1Controller.text.isEmpty ||
+                _scheme2Controller.text.isEmpty ||
+                _scheme3Controller.text.isEmpty))) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please fill in all required fields'),
@@ -526,7 +581,9 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
     if (!_isValidGst(gst)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Invalid GST format. Must be 15 characters (##ABCDE1234F1Z5)'),
+          content: Text(
+            'Invalid GST format. Must be 15 characters (##ABCDE1234F1Z5)',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -540,10 +597,18 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
         throw Exception('Member ID not found');
       }
       // Sanitize dependent fields
-      final sanitizedItrYears = _filedITR == true ? _itrYearsController.text.trim() : '';
-      final scheme1 = _govtSchemeBenefit == true ? _scheme1Controller.text.trim() : '';
-      final scheme2 = _govtSchemeBenefit == true ? _scheme2Controller.text.trim() : '';
-      final scheme3 = _govtSchemeBenefit == true ? _scheme3Controller.text.trim() : '';
+      final sanitizedItrYears = _filedITR == true
+          ? _itrYearsController.text.trim()
+          : '';
+      final scheme1 = _govtSchemeBenefit == true
+          ? _scheme1Controller.text.trim()
+          : '';
+      final scheme2 = _govtSchemeBenefit == true
+          ? _scheme2Controller.text.trim()
+          : '';
+      final scheme3 = _govtSchemeBenefit == true
+          ? _scheme3Controller.text.trim()
+          : '';
 
       final financialData = {
         'panNumber': pan,
@@ -561,9 +626,14 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
         'scheme3': scheme3,
       };
 
-      final result = await ApiService.saveFinancialInfo(memberId, financialData);
+      final result = await ApiService.saveFinancialInfo(
+        memberId,
+        financialData,
+      );
       if (result['success'] != true) {
-        throw Exception(result['body']?['message'] ?? 'Failed to save financial info');
+        throw Exception(
+          result['body']?['message'] ?? 'Failed to save financial info',
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -581,20 +651,34 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
     if (updatedUserData['registrationForm'] == null) {
       updatedUserData['registrationForm'] = {};
     }
-    
+
     updatedUserData['registrationForm']['panNumber'] = pan;
     updatedUserData['registrationForm']['gstNumber'] = gst;
-    updatedUserData['registrationForm']['udyamNumber'] = _udyamController.text.trim();
+    updatedUserData['registrationForm']['udyamNumber'] = _udyamController.text
+        .trim();
     updatedUserData['registrationForm']['filedITR'] = _filedITR;
-    updatedUserData['registrationForm']['itrYears'] = _filedITR == true ? _itrYearsController.text.trim() : '';
-    updatedUserData['registrationForm']['turnoverRange'] = _selectedTurnoverRange;
-    updatedUserData['registrationForm']['fy2021'] = _fy2021Controller.text.trim();
-    updatedUserData['registrationForm']['fy2020'] = _fy2020Controller.text.trim();
-    updatedUserData['registrationForm']['fy2019'] = _fy2019Controller.text.trim();
-    updatedUserData['registrationForm']['govtSchemeBenefit'] = _govtSchemeBenefit;
-    updatedUserData['registrationForm']['scheme1'] = _govtSchemeBenefit == true ? _scheme1Controller.text.trim() : '';
-    updatedUserData['registrationForm']['scheme2'] = _govtSchemeBenefit == true ? _scheme2Controller.text.trim() : '';
-    updatedUserData['registrationForm']['scheme3'] = _govtSchemeBenefit == true ? _scheme3Controller.text.trim() : '';
+    updatedUserData['registrationForm']['itrYears'] = _filedITR == true
+        ? _itrYearsController.text.trim()
+        : '';
+    updatedUserData['registrationForm']['turnoverRange'] =
+        _selectedTurnoverRange;
+    updatedUserData['registrationForm']['fy2021'] = _fy2021Controller.text
+        .trim();
+    updatedUserData['registrationForm']['fy2020'] = _fy2020Controller.text
+        .trim();
+    updatedUserData['registrationForm']['fy2019'] = _fy2019Controller.text
+        .trim();
+    updatedUserData['registrationForm']['govtSchemeBenefit'] =
+        _govtSchemeBenefit;
+    updatedUserData['registrationForm']['scheme1'] = _govtSchemeBenefit == true
+        ? _scheme1Controller.text.trim()
+        : '';
+    updatedUserData['registrationForm']['scheme2'] = _govtSchemeBenefit == true
+        ? _scheme2Controller.text.trim()
+        : '';
+    updatedUserData['registrationForm']['scheme3'] = _govtSchemeBenefit == true
+        ? _scheme3Controller.text.trim()
+        : '';
 
     // Navigate to declaration form
     if (!mounted) return;

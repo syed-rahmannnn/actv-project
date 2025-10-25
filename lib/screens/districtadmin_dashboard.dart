@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'settings_page.dart';
+import 'dart:developer' as developer;
+import '../services/api_service.dart';
+import '../services/auth_service.dart';
 
 void main() => runApp(const DistrictAdminDashboardApp());
 
@@ -15,7 +18,7 @@ class DistrictAdminDashboardApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         scaffoldBackgroundColor: const Color(0xFFEAF6FF),
       ),
-      home: const DistrictAdminDashboardApp(),
+      home: const DistrictAdminDashboard(adminId: ''),
     );
   }
 }
@@ -27,12 +30,14 @@ class DistrictAdminDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const DistrictAdminDashboardPage();
+    return DistrictAdminDashboardPage(adminId: adminId);
   }
 }
 
 class DistrictAdminDashboardPage extends StatefulWidget {
-  const DistrictAdminDashboardPage({super.key});
+  final String adminId;
+  
+  const DistrictAdminDashboardPage({super.key, required this.adminId});
 
   @override
   State<DistrictAdminDashboardPage> createState() =>
@@ -42,17 +47,124 @@ class DistrictAdminDashboardPage extends StatefulWidget {
 class _DistrictAdminDashboardPageState
     extends State<DistrictAdminDashboardPage> {
   int _selectedIndex = 0;
+  List<Map<String, dynamic>> _pendingApplications = [];
+  bool _isLoading = false;
+  String? _districtAdminId;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAdminData();
+  }
+
+  Future<void> _initializeAdminData() async {
+    _districtAdminId = widget.adminId.isNotEmpty ? widget.adminId : await AuthService.getAdminId();
+    if (_districtAdminId != null) {
+      await _fetchPendingApplications();
+    }
+  }
+
+  Future<void> _fetchPendingApplications() async {
+    if (_districtAdminId == null) return;
+    
+    setState(() => _isLoading = true);
+    try {
+      final applications = await ApiService.getDistrictAdminApplications(_districtAdminId!);
+      setState(() {
+        _pendingApplications = applications;
+        // Update the pending count in cards
+        _cards[1]['count'] = applications.length;
+      });
+    } catch (e) {
+      developer.log('Error fetching applications: $e', name: 'DistrictAdminDashboard');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading applications: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleApplicationAction(String applicationId, String action, {String? reason}) async {
+    try {
+      await ApiService.reviewDistrictApplication(applicationId, action, reason: reason);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Application ${action}d successfully'),
+            backgroundColor: action == 'approve' ? Colors.green : Colors.red,
+          ),
+        );
+      }
+      
+      // Refresh the applications list
+      await _fetchPendingApplications();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  void _showRejectDialog(String applicationId) {
+    final TextEditingController reasonController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reject Application'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Please provide a reason for rejection:'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                hintText: 'Enter rejection reason...',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (reasonController.text.trim().isNotEmpty) {
+                Navigator.pop(context);
+                _handleApplicationAction(applicationId, 'reject', reason: reasonController.text.trim());
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Reject'),
+          ),
+        ],
+      ),
+    );
+  }
 
   final List<Map<String, dynamic>> _cards = [
     {
       'label': 'Total Members',
       'count': 12,
-      'subtitle': 'block level',
+      'subtitle': 'district level',
       'color': Colors.white,
     },
     {
       'label': 'Pending',
-      'count': 5,
+      'count': 0,
       'subtitle': 'Awaiting approval',
       'color': Color(0xFFD9F2FF),
     },
@@ -70,17 +182,6 @@ class _DistrictAdminDashboardPageState
     },
   ];
 
-  final List<Map<String, String>> _pendingMembers = List.generate(
-    2,
-    (_) => {
-      'name': 'Aditi Sharma',
-      'email': 'member1@example.com',
-      'role': 'Role: Member, Gender: female',
-      'block': 'Andheri Block',
-      'phone': '+91 98765 43210',
-    },
-  );
-
   void _onBottomNavTap(int idx) => setState(() => _selectedIndex = idx);
 
   Widget _buildTabContent() {
@@ -88,11 +189,7 @@ class _DistrictAdminDashboardPageState
       case 0:
         return _buildDashboardView();
       case 1:
-        return const SafeArea(
-          child: Center(
-            child: Text('Approvals tab', style: TextStyle(fontSize: 16)),
-          ),
-        );
+        return _buildApprovalsView();
       case 2:
         return const SafeArea(
           child: Center(
@@ -100,15 +197,59 @@ class _DistrictAdminDashboardPageState
           ),
         );
       case 3:
-        return const SettingsPage(
-          adminName: "District Admin",
-          adminType: "District",
-          adminEmail: "districtadmin@example.com",
-          adminArea: "District Area",
-        );
+        return const SettingsPage();
       default:
         return const SizedBox.shrink();
     }
+  }
+
+  Widget _buildApprovalsView() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Pending Applications',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF10345A),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _fetchPendingApplications,
+                  icon: const Icon(Icons.refresh),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _pendingApplications.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No pending applications',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _pendingApplications.length,
+                          itemBuilder: (context, index) {
+                            final application = _pendingApplications[index];
+                            return _buildApplicationCard(application);
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildDashboardView() {
@@ -122,7 +263,18 @@ class _DistrictAdminDashboardPageState
             const SizedBox(height: 12),
             _buildStatGrid(),
             const SizedBox(height: 18),
-            ..._buildPendingCards(),
+            if (_pendingApplications.isNotEmpty) ...[
+              const Text(
+                'Recent Pending Applications',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF10345A),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ..._buildPendingCards(),
+            ],
             const SizedBox(height: 80),
           ],
         ),
@@ -182,21 +334,22 @@ class _DistrictAdminDashboardPageState
                     color: Color(0xFF10345A),
                   ),
                 ),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF1E88FF),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Text(
-                      '4',
-                      style: TextStyle(color: Colors.white, fontSize: 11),
+                if (_pendingApplications.isNotEmpty)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF1E88FF),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '${_pendingApplications.length}',
+                        style: const TextStyle(color: Colors.white, fontSize: 11),
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
             const SizedBox(width: 10),
@@ -240,136 +393,151 @@ class _DistrictAdminDashboardPageState
   }
 
   List<Widget> _buildPendingCards() {
-    return _pendingMembers
-        .map(
-          (m) => Padding(
-            padding: const EdgeInsets.only(bottom: 14.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const CircleAvatar(
-                        radius: 22,
-                        backgroundColor: Color(0xFFDEEAF9),
-                        child: Icon(Icons.person, color: Colors.grey),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  m['name']!,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE6F5FF),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Text(
-                                    'pending',
-                                    style: TextStyle(
-                                      color: Color(0xFF0366A6),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              m['email']!,
-                              style: const TextStyle(color: Color(0xFF6B7280)),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              m['role']!,
-                              style: const TextStyle(color: Color(0xFF6B7280)),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              m['block']!,
-                              style: const TextStyle(color: Color(0xFF6B7280)),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              m['phone']!,
-                              style: const TextStyle(
-                                color: Color(0xFF16A34A),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF16A34A),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 22,
-                            vertical: 12,
-                          ),
-                        ),
-                        child: const Text('Approve'),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF5C5C),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 22,
-                            vertical: 12,
-                          ),
-                        ),
-                        child: const Text('Reject'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        )
+    // Show only first 3 applications in dashboard view
+    final displayApplications = _pendingApplications.take(3).toList();
+    
+    return displayApplications
+        .map((application) => Padding(
+              padding: const EdgeInsets.only(bottom: 14.0),
+              child: _buildApplicationCard(application),
+            ))
         .toList();
+  }
+
+  Widget _buildApplicationCard(Map<String, dynamic> application) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const CircleAvatar(
+                radius: 22,
+                backgroundColor: Color(0xFFDEEAF9),
+                child: Icon(Icons.person, color: Colors.grey),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          application['fullName'] ?? 'Unknown',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE6F5FF),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            application['status'] ?? 'pending',
+                            style: const TextStyle(
+                              color: Color(0xFF0366A6),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      application['email'] ?? '',
+                      style: const TextStyle(color: Color(0xFF6B7280)),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${application['state'] ?? ''}, ${application['district'] ?? ''}, ${application['block'] ?? ''}',
+                      style: const TextStyle(color: Color(0xFF6B7280)),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Submitted: ${_formatDate(application['createdAt'])}',
+                      style: const TextStyle(color: Color(0xFF6B7280)),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      application['phone'] ?? '',
+                      style: const TextStyle(
+                        color: Color(0xFF16A34A),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              ElevatedButton(
+                onPressed: () => _handleApplicationAction(application['_id'], 'approve'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF16A34A),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 12,
+                  ),
+                ),
+                child: const Text('Approve'),
+              ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: () => _showRejectDialog(application['_id']),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF5C5C),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 12,
+                  ),
+                ),
+                child: const Text('Reject'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(String? dateString) {
+    if (dateString == null) return 'Unknown';
+    try {
+      final date = DateTime.parse(dateString);
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (e) {
+      return 'Unknown';
+    }
   }
 
   Widget _buildBottomNavigationBar() {

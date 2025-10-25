@@ -15,6 +15,7 @@ const authRoutes = require('./routes/auth');
 const memberRoutes = require('./routes/members');
 const profileRoutes = require('./routes/profile');
 const adminAuthRouteFactory = require('./routes/adminAuth');
+const applicationsRouteFactory = require('./routes/applications');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -79,6 +80,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/admin', adminAuthRouteFactory(mongoose.connection));
+app.use('/api/applications', applicationsRouteFactory(mongoose.connection));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

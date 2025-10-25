@@ -44,7 +44,13 @@ module.exports = (mongooseConnection) => {
         token,
         fullName: admin.fullName,
         role: admin.role,
-        adminId: admin.adminId
+        adminId: admin.adminId,
+        mustResetPassword: admin.meta?.mustResetPassword || false,
+        location: {
+          state: admin.meta?.state,
+          district: admin.meta?.district,
+          block: admin.meta?.block
+        }
       });
     } catch (err) {
       console.error('admin login error', err);

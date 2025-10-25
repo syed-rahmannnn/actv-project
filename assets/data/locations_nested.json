@@ -1,2759 +1,1908 @@
 {
-  "states": [
-    {
-      "state": "Andhra Pradesh",
-      "districts": [
+    "states": [
         {
-          "district": "Anantapur",
-          "cities": [
-            "Anantapur",
-            "Dharmavaram",
-            "Guntakal",
-            "Hindupur",
-            "Tadipatri"
-          ]
+            "state": "Andhra Pradesh",
+            "districts": [
+                {
+                    "district": "Anantapur"
+                },
+                {
+                    "district": "Chittoor"
+                },
+                {
+                    "district": "East"
+                },
+                {
+                    "district": "Guntur"
+                },
+                {
+                    "district": "Kadapa"
+                },
+                {
+                    "district": "Krishna"
+                },
+                {
+                    "district": "Kurnool"
+                },
+                {
+                    "district": "Nellore"
+                },
+                {
+                    "district": "Prakasam"
+                },
+                {
+                    "district": "Srikakulam"
+                },
+                {
+                    "district": "Visakhapatnam"
+                },
+                {
+                    "district": "Vizianagaram"
+                },
+                {
+                    "district": "West"
+                }
+            ]
         },
         {
-          "district": "Chittoor",
-          "cities": [
-            "Chittoor",
-            "Madanapalle",
-            "Tirupati"
-          ]
+            "state": "Arunachal Pradesh",
+            "districts": [
+                {
+                    "district": "Papum Pare"
+                }
+            ]
         },
         {
-          "district": "East",
-          "cities": [
-            "Kakinada",
-            "Rajamahendravaram"
-          ]
+            "state": "Assam",
+            "districts": [
+                {
+                    "district": "Bongaigaon"
+                },
+                {
+                    "district": "Cachar"
+                },
+                {
+                    "district": "Dhubri"
+                },
+                {
+                    "district": "Dibrugarh"
+                },
+                {
+                    "district": "Jorhat"
+                },
+                {
+                    "district": "Kamrup"
+                },
+                {
+                    "district": "Nagaon"
+                },
+                {
+                    "district": "Sonitpur"
+                },
+                {
+                    "district": "Tinsukia"
+                }
+            ]
         },
         {
-          "district": "Guntur",
-          "cities": [
-            "Amaravati",
-            "Chilakaluripet",
-            "Guntur",
-            "Narasaraopet",
-            "Tenali"
-          ]
+            "state": "Bihar",
+            "districts": [
+                {
+                    "district": "Aurangabad"
+                },
+                {
+                    "district": "Begusarai"
+                },
+                {
+                    "district": "Bhagalpur"
+                },
+                {
+                    "district": "Bhojpur"
+                },
+                {
+                    "district": "Buxar"
+                },
+                {
+                    "district": "Darbhanga"
+                },
+                {
+                    "district": "East Champaran"
+                },
+                {
+                    "district": "Gaya"
+                },
+                {
+                    "district": "Jehanabad"
+                },
+                {
+                    "district": "Katihar"
+                },
+                {
+                    "district": "Kishanganj"
+                },
+                {
+                    "district": "Lakhisarai"
+                },
+                {
+                    "district": "Munger"
+                },
+                {
+                    "district": "Muzaffarpur"
+                },
+                {
+                    "district": "Nalanda"
+                },
+                {
+                    "district": "Nawada"
+                },
+                {
+                    "district": "Patna"
+                },
+                {
+                    "district": "Purnia"
+                },
+                {
+                    "district": "Rohtas"
+                },
+                {
+                    "district": "Saharsa"
+                },
+                {
+                    "district": "Saran"
+                },
+                {
+                    "district": "Sitamarhi"
+                },
+                {
+                    "district": "Siwan"
+                },
+                {
+                    "district": "Vaishali"
+                },
+                {
+                    "district": "West Champaran"
+                }
+            ]
         },
         {
-          "district": "Kadapa",
-          "cities": [
-            "Kadapa",
-            "Proddatur"
-          ]
+            "state": "Chandigarh",
+            "districts": [
+                {
+                    "district": "Chandigarh"
+                }
+            ]
         },
         {
-          "district": "Krishna",
-          "cities": [
-            "Gudivada",
-            "Machilipatnam",
-            "Vijayawada"
-          ]
+            "state": "Chhattisgarh",
+            "districts": [
+                {
+                    "district": "Bastar"
+                },
+                {
+                    "district": "Bilaspur"
+                },
+                {
+                    "district": "Dhamtari"
+                },
+                {
+                    "district": "Durg"
+                },
+                {
+                    "district": "Korba"
+                },
+                {
+                    "district": "Koriya"
+                },
+                {
+                    "district": "Mahasamund"
+                },
+                {
+                    "district": "Raigarh"
+                },
+                {
+                    "district": "Raipur"
+                },
+                {
+                    "district": "Rajnandgaon"
+                },
+                {
+                    "district": "Surguja"
+                },
+                {
+                    "district": "kanker"
+                }
+            ]
         },
         {
-          "district": "Kurnool",
-          "cities": [
-            "Adoni",
-            "Kurnool",
-            "Nandyal"
-          ]
+            "state": "Delhi",
+            "districts": [
+                {
+                    "district": "Delhi"
+                }
+            ]
         },
         {
-          "district": "Nellore",
-          "cities": [
-            "Nellore"
-          ]
+            "state": "Goa",
+            "districts": [
+                {
+                    "district": "North Goa"
+                },
+                {
+                    "district": "South Goa"
+                }
+            ]
         },
         {
-          "district": "Prakasam",
-          "cities": [
-            "Ongole"
-          ]
+            "state": "Gujarat",
+            "districts": [
+                {
+                    "district": "Ahmedabad"
+                },
+                {
+                    "district": "Amreli"
+                },
+                {
+                    "district": "Anand"
+                },
+                {
+                    "district": "Banaskantha"
+                },
+                {
+                    "district": "Bharuch"
+                },
+                {
+                    "district": "Bhavnagar"
+                },
+                {
+                    "district": "Botad"
+                },
+                {
+                    "district": "Dahod"
+                },
+                {
+                    "district": "Gandhinagar"
+                },
+                {
+                    "district": "Gir Somnath"
+                },
+                {
+                    "district": "Jamnagar"
+                },
+                {
+                    "district": "Junagadh"
+                },
+                {
+                    "district": "Kheda"
+                },
+                {
+                    "district": "Kutch"
+                },
+                {
+                    "district": "Mehsana"
+                },
+                {
+                    "district": "Morbi"
+                },
+                {
+                    "district": "Navsari"
+                },
+                {
+                    "district": "Palanpur"
+                },
+                {
+                    "district": "Panchmahal"
+                },
+                {
+                    "district": "Patan"
+                },
+                {
+                    "district": "Porbandar"
+                },
+                {
+                    "district": "Rajkot"
+                },
+                {
+                    "district": "Surat"
+                },
+                {
+                    "district": "Surendranagar"
+                },
+                {
+                    "district": "Vadodara"
+                },
+                {
+                    "district": "Valsad"
+                }
+            ]
         },
         {
-          "district": "Srikakulam",
-          "cities": [
-            "Srikakulam"
-          ]
+            "state": "Haryana",
+            "districts": [
+                {
+                    "district": "Ambala"
+                },
+                {
+                    "district": "Bhiwani"
+                },
+                {
+                    "district": "Faridabad"
+                },
+                {
+                    "district": "Gurgaon"
+                },
+                {
+                    "district": "Hisar"
+                },
+                {
+                    "district": "Jhajjar"
+                },
+                {
+                    "district": "Jind"
+                },
+                {
+                    "district": "Kaithal"
+                },
+                {
+                    "district": "Karnal"
+                },
+                {
+                    "district": "Kurukshetra"
+                },
+                {
+                    "district": "Palwal"
+                },
+                {
+                    "district": "Panchkula"
+                },
+                {
+                    "district": "Panipat"
+                },
+                {
+                    "district": "Rewari"
+                },
+                {
+                    "district": "Rohtak"
+                },
+                {
+                    "district": "Sirsa"
+                },
+                {
+                    "district": "Sonipat"
+                },
+                {
+                    "district": "Yamunanagar"
+                }
+            ]
         },
         {
-          "district": "Visakhapatnam",
-          "cities": [
-            "Visakhapatnam"
-          ]
+            "state": "Himachal Pradesh",
+            "districts": [
+                {
+                    "district": "Shimla"
+                }
+            ]
         },
         {
-          "district": "Vizianagaram",
-          "cities": [
-            "Vizianagaram"
-          ]
+            "state": "Jammu and Kashmir",
+            "districts": [
+                {
+                    "district": "Anantnag"
+                },
+                {
+                    "district": "Jammu"
+                },
+                {
+                    "district": "Srinagar"
+                }
+            ]
         },
         {
-          "district": "West",
-          "cities": [
-            "Bhimavaram",
-            "Eluru",
-            "Tadepalligudem"
-          ]
+            "state": "Jharkhand",
+            "districts": [
+                {
+                    "district": "Bokaro"
+                },
+                {
+                    "district": "Deoghar"
+                },
+                {
+                    "district": "Dhanbad"
+                },
+                {
+                    "district": "East Singhbhum"
+                },
+                {
+                    "district": "Giridih"
+                },
+                {
+                    "district": "Hazaribag"
+                },
+                {
+                    "district": "Koderma"
+                },
+                {
+                    "district": "Palamu"
+                },
+                {
+                    "district": "Ramgarh"
+                },
+                {
+                    "district": "Ranchi"
+                },
+                {
+                    "district": "Sahibganj"
+                }
+            ]
+        },
+        {
+            "state": "Karnataka",
+            "districts": [
+                {
+                    "district": "Bagalkot"
+                },
+                {
+                    "district": "Ballari"
+                },
+                {
+                    "district": "Belagavi"
+                },
+                {
+                    "district": "Bellary"
+                },
+                {
+                    "district": "Bengaluru Urban"
+                },
+                {
+                    "district": "Bidar"
+                },
+                {
+                    "district": "Chikkamagallooru"
+                },
+                {
+                    "district": "Chikkamagaluru"
+                },
+                {
+                    "district": "Chitradurga"
+                },
+                {
+                    "district": "Davanagere"
+                },
+                {
+                    "district": "Davangere"
+                },
+                {
+                    "district": "Dharwad"
+                },
+                {
+                    "district": "Gadag"
+                },
+                {
+                    "district": "Hassan"
+                },
+                {
+                    "district": "Haveri"
+                },
+                {
+                    "district": "Kalburgi"
+                },
+                {
+                    "district": "Kolar"
+                },
+                {
+                    "district": "Koppal"
+                },
+                {
+                    "district": "Mandya"
+                },
+                {
+                    "district": "Mysuru"
+                },
+                {
+                    "district": "Raichur"
+                },
+                {
+                    "district": "Ramnagar"
+                },
+                {
+                    "district": "Shimoga"
+                },
+                {
+                    "district": "Shivamogga"
+                },
+                {
+                    "district": "South Canara"
+                },
+                {
+                    "district": "Tumakuru"
+                },
+                {
+                    "district": "Udupi"
+                },
+                {
+                    "district": "Vijayapur"
+                }
+            ]
+        },
+        {
+            "state": "Kerala",
+            "districts": [
+                {
+                    "district": "Alappuzha"
+                },
+                {
+                    "district": "Ernakulam"
+                },
+                {
+                    "district": "Kannur"
+                },
+                {
+                    "district": "Kasaragod"
+                },
+                {
+                    "district": "Kollam"
+                },
+                {
+                    "district": "Kottayam"
+                },
+                {
+                    "district": "Kozhikode"
+                },
+                {
+                    "district": "Malappuram"
+                },
+                {
+                    "district": "Palakkad"
+                },
+                {
+                    "district": "Thiruvananthapuram"
+                },
+                {
+                    "district": "Thrissur"
+                }
+            ]
+        },
+        {
+            "state": "Lakshadweep",
+            "districts": [
+                {
+                    "district": "Lakshadweep"
+                }
+            ]
+        },
+        {
+            "state": "Madhya Pradesh",
+            "districts": [
+                {
+                    "district": "Balaghat"
+                },
+                {
+                    "district": "Betul"
+                },
+                {
+                    "district": "Bhind"
+                },
+                {
+                    "district": "Bhopal"
+                },
+                {
+                    "district": "Burhanpur"
+                },
+                {
+                    "district": "Chhatarpur"
+                },
+                {
+                    "district": "Chhindwara"
+                },
+                {
+                    "district": "Damoh"
+                },
+                {
+                    "district": "Datia"
+                },
+                {
+                    "district": "Dewas"
+                },
+                {
+                    "district": "Dhar"
+                },
+                {
+                    "district": "Guna"
+                },
+                {
+                    "district": "Gwalior"
+                },
+                {
+                    "district": "Hoshangabad"
+                },
+                {
+                    "district": "Indore"
+                },
+                {
+                    "district": "Jabalpur"
+                },
+                {
+                    "district": "Katni"
+                },
+                {
+                    "district": "Khandwa"
+                },
+                {
+                    "district": "Khargone"
+                },
+                {
+                    "district": "Mandsaur"
+                },
+                {
+                    "district": "Morena"
+                },
+                {
+                    "district": "Neemuch"
+                },
+                {
+                    "district": "Ratlam"
+                },
+                {
+                    "district": "Rewa"
+                },
+                {
+                    "district": "Sagar"
+                },
+                {
+                    "district": "Satna"
+                },
+                {
+                    "district": "Sehore"
+                },
+                {
+                    "district": "Seoni"
+                },
+                {
+                    "district": "Shahdol"
+                },
+                {
+                    "district": "Shivpuri"
+                },
+                {
+                    "district": "Singrauli"
+                },
+                {
+                    "district": "Ujjain"
+                },
+                {
+                    "district": "Vidisha"
+                }
+            ]
+        },
+        {
+            "state": "Maharashtra",
+            "districts": [
+                {
+                    "district": "Ahmednagar"
+                },
+                {
+                    "district": "Akola"
+                },
+                {
+                    "district": "Amravati"
+                },
+                {
+                    "district": "Aurangabad"
+                },
+                {
+                    "district": "Beed"
+                },
+                {
+                    "district": "Bhandara"
+                },
+                {
+                    "district": "Buldhana"
+                },
+                {
+                    "district": "Chandrapur"
+                },
+                {
+                    "district": "Dhule"
+                },
+                {
+                    "district": "Gondia"
+                },
+                {
+                    "district": "Jalgaon"
+                },
+                {
+                    "district": "Jalna"
+                },
+                {
+                    "district": "Kolhapur"
+                },
+                {
+                    "district": "Latur"
+                },
+                {
+                    "district": "Malegaon"
+                },
+                {
+                    "district": "Mumbai"
+                },
+                {
+                    "district": "Nagpur"
+                },
+                {
+                    "district": "Nanded"
+                },
+                {
+                    "district": "Nandurbar"
+                },
+                {
+                    "district": "Nashik"
+                },
+                {
+                    "district": "Osmanabad"
+                },
+                {
+                    "district": "Parbhani"
+                },
+                {
+                    "district": "Pune"
+                },
+                {
+                    "district": "Sangli"
+                },
+                {
+                    "district": "Satara"
+                },
+                {
+                    "district": "Solapur"
+                },
+                {
+                    "district": "Thane"
+                },
+                {
+                    "district": "Wardha"
+                },
+                {
+                    "district": "Yavatmal"
+                }
+            ]
+        },
+        {
+            "state": "Manipur",
+            "districts": [
+                {
+                    "district": "Imphal West; Imphal East"
+                }
+            ]
+        },
+        {
+            "state": "Meghalaya",
+            "districts": [
+                {
+                    "district": "East Khassi Hills"
+                }
+            ]
+        },
+        {
+            "state": "Mizoram",
+            "districts": [
+                {
+                    "district": "Aizwal"
+                }
+            ]
+        },
+        {
+            "state": "Nagaland",
+            "districts": [
+                {
+                    "district": "Dimapur"
+                },
+                {
+                    "district": "Kohima"
+                }
+            ]
+        },
+        {
+            "state": "Odisha",
+            "districts": [
+                {
+                    "district": "Balangir"
+                },
+                {
+                    "district": "Balasore"
+                },
+                {
+                    "district": "Bhadrak"
+                },
+                {
+                    "district": "Cuttack"
+                },
+                {
+                    "district": "Ganjam"
+                },
+                {
+                    "district": "Jharsuguda"
+                },
+                {
+                    "district": "Khurda"
+                },
+                {
+                    "district": "Koraput"
+                },
+                {
+                    "district": "Mayurbhanj"
+                },
+                {
+                    "district": "Puri"
+                },
+                {
+                    "district": "Sambalpur"
+                },
+                {
+                    "district": "Sundargarh"
+                }
+            ]
+        },
+        {
+            "state": "Puducherry",
+            "districts": [
+                {
+                    "district": "Karaikal"
+                },
+                {
+                    "district": "Puducherry"
+                }
+            ]
+        },
+        {
+            "state": "Punjab",
+            "districts": [
+                {
+                    "district": "Amritsar"
+                },
+                {
+                    "district": "Barnala"
+                },
+                {
+                    "district": "Bathinda"
+                },
+                {
+                    "district": "Fazilka"
+                },
+                {
+                    "district": "Firozpur"
+                },
+                {
+                    "district": "Gurdaspur"
+                },
+                {
+                    "district": "Hoshiarpur"
+                },
+                {
+                    "district": "Jalandhar"
+                },
+                {
+                    "district": "Kapurthala"
+                },
+                {
+                    "district": "Ludhiana"
+                },
+                {
+                    "district": "Moga"
+                },
+                {
+                    "district": "Mohali"
+                },
+                {
+                    "district": "Muktsar"
+                },
+                {
+                    "district": "Pathankot"
+                },
+                {
+                    "district": "Patiala"
+                },
+                {
+                    "district": "Sangrur"
+                }
+            ]
+        },
+        {
+            "state": "Rajasthan",
+            "districts": [
+                {
+                    "district": "Ajmer"
+                },
+                {
+                    "district": "Alwar"
+                },
+                {
+                    "district": "Banswara"
+                },
+                {
+                    "district": "Baran"
+                },
+                {
+                    "district": "Barmer"
+                },
+                {
+                    "district": "Beawar"
+                },
+                {
+                    "district": "Bharatpur"
+                },
+                {
+                    "district": "Bhilwara"
+                },
+                {
+                    "district": "Bikaner"
+                },
+                {
+                    "district": "Bundi"
+                },
+                {
+                    "district": "Chittorgarh"
+                },
+                {
+                    "district": "Churu"
+                },
+                {
+                    "district": "Dausa"
+                },
+                {
+                    "district": "Dholpur"
+                },
+                {
+                    "district": "Hanumangarh"
+                },
+                {
+                    "district": "Jaipur"
+                },
+                {
+                    "district": "Jhunjhunu"
+                },
+                {
+                    "district": "Jodhpur"
+                },
+                {
+                    "district": "Karauli"
+                },
+                {
+                    "district": "Kota"
+                },
+                {
+                    "district": "Nagaur"
+                },
+                {
+                    "district": "Pali"
+                },
+                {
+                    "district": "Sawai Madhopur"
+                },
+                {
+                    "district": "Sikar"
+                },
+                {
+                    "district": "Sri Ganganagar"
+                },
+                {
+                    "district": "Tonk"
+                },
+                {
+                    "district": "Udaipur"
+                }
+            ]
+        },
+        {
+            "state": "Sikkim",
+            "districts": [
+                {
+                    "district": "East Sikkim"
+                }
+            ]
+        },
+        {
+            "state": "Tamil Nadu",
+            "districts": [
+                {
+                    "district": "Ariyalur",
+                    "block": [
+                        "Andimadam",
+                        "Ariyalur",
+                        "Jayankondan",
+                        "Sendurai",
+                        "T.Palur",
+                        "Thirumanur"
+                    ]
+                },
+                {
+                    "district": "Chengalpattu",
+                    "block": [
+                        "Acharapakkam",
+                        "Chithamur",
+                        "Kattankolathur",
+                        "Lathur",
+                        "Madurantakam",
+                        "Parangimalai",
+                        "Thiruporur",
+                        "Tirukalukundram"
+                    ]
+                },
+                {
+                    "district": "Chennai",
+                    "block": [
+                        "-"
+                    ]
+                },
+                {
+                    "district": "Coimbatore",
+                    "block": [
+                        "Anaimalai",
+                        "Annur",
+                        "Karamadai",
+                        "Kinathukadavu",
+                        "Madukkarai",
+                        "Periyanayakkanpalayam",
+                        "Pollachi (North)",
+                        "Pollachi (South)",
+                        "Sarcarsamakulam",
+                        "Sultanpet",
+                        "Sulur",
+                        "Thondamuthur"
+                    ]
+                },
+                {
+                    "district": "Cuddalore",
+                    "block": [
+                        "Annagramam",
+                        "MelBhuvanagiri",
+                        "Cuddalore",
+                        "Kammapuram",
+                        "Kattumannar Koil",
+                        "Keerapalayam",
+                        "Kumaratchi",
+                        "Kurinjipadi",
+                        "Mangalur",
+                        "Nallur",
+                        "Panruti",
+                        "Parangipettai",
+                        "Srimushnam",
+                        "Vridhachalam"
+                    ]
+                },
+                {
+                    "district": "Dharmapuri",
+                    "block": [
+                        "Dharmapuri",
+                        "Eriyur",
+                        "Harur",
+                        "Karimangalam",
+                        "Kadathur",
+                        "Morappur",
+                        "Nallampalli",
+                        "Palacode",
+                        "Pappireddipatti",
+                        "Pennagaram"
+                    ]
+                },
+                {
+                    "district": "Dindigul",
+                    "block": [
+                        "Athoor",
+                        "Batlagundu",
+                        "Dindigul",
+                        "Guziliamparai",
+                        "Kodaikanal",
+                        "Natham",
+                        "Nilakottai",
+                        "Oddanchatram",
+                        "Palani",
+                        "Reddiarchatiram",
+                        "Shanarpatti",
+                        "Thoppampatty",
+                        "Vadamadurai",
+                        "Vedasandur"
+                    ]
+                },
+                {
+                    "district": "Erode",
+                    "block": [
+                        "Ammapet",
+                        "Anthiyur",
+                        "Bhavani",
+                        "Bhavanisagar",
+                        "Chennimalai",
+                        "Erode",
+                        "Gobichettipalayam",
+                        "Kodumudi",
+                        "Modakkurichi",
+                        "Nambiyur",
+                        "Perundurai",
+                        "Sathyamangalam",
+                        "Talavadi",
+                        "Thookanaickanpalayam"
+                    ]
+                },
+                {
+                    "district": "Kallakurichi",
+                    "block": [
+                        "Chinnasalem",
+                        "Kallakkurichi",
+                        "Kalrayan Hills",
+                        "Rishivandiyam",
+                        "Sankarapuram",
+                        "Thiyagadurgam",
+                        "Tirukoilur",
+                        "Tirunavalur",
+                        "Ulundurpet"
+                    ]
+                },
+                {
+                    "district": "Kancheepuram",
+                    "block": [
+                        "Kancheepuram",
+                        "Kundrathur",
+                        "Sriperumbudur",
+                        "Uthiramerur",
+                        "Walajabad"
+                    ]
+                },
+                {
+                    "district": "Kanniyakumari",
+                    "block": [
+                        "Agastheeswaram",
+                        "Killiyoor",
+                        "Kurunthancode",
+                        "Melpuram",
+                        "Munchirai",
+                        "Rajakkamangalam",
+                        "Thuckalay",
+                        "Thiruvattar",
+                        "Thovalai"
+                    ]
+                },
+                {
+                    "district": "Karur",
+                    "block": [
+                        "Aravakurichi",
+                        "K.Paramathi",
+                        "Kadavur",
+                        "Karur",
+                        "Krishnarayapuram",
+                        "Kulithalai",
+                        "Thanthoni",
+                        "Thogamalai"
+                    ]
+                },
+                {
+                    "district": "Krishnagiri",
+                    "block": [
+                        "Bargur",
+                        "Hosur",
+                        "Kaveripattanam",
+                        "Kelamangalam",
+                        "Krishnagiri",
+                        "Mathur",
+                        "Shoolagiri",
+                        "Thally",
+                        "Uthangarai",
+                        "Veppanapalli"
+                    ]
+                },
+                {
+                    "district": "Madurai",
+                    "block": [
+                        "Alanganallur",
+                        "Chellampatti",
+                        "Kallikudi",
+                        "Kottampatti",
+                        "Madurai East",
+                        "Madurai West",
+                        "Melur",
+                        "Sedapatti",
+                        "T.Kallupatti",
+                        "Thirumangalam",
+                        "Thirupparankundram",
+                        "Usilampatti",
+                        "Vadipatti"
+                    ]
+                },
+                {
+                    "district": "Mayiladuthurai",
+                    "block": [
+                        "Kollidam",
+                        "Kuthalam",
+                        "Mayiladuthurai",
+                        "Sembanarkoil",
+                        "Sirkali"
+                    ]
+                },
+                {
+                    "district": "Nagapattinam",
+                    "block": [
+                        "Keelaiyur",
+                        "Kilvelur",
+                        "Nagapattinam",
+                        "Thalainayar",
+                        "Thirumarugal",
+                        "Vedaranyam"
+                    ]
+                },
+                {
+                    "district": "Namakkal",
+                    "block": [
+                        "Elachipalayam",
+                        "Erumaipatty",
+                        "Kabilarmalai",
+                        "Kollihills",
+                        "Mallasamudram",
+                        "Mohanur",
+                        "Namagiripet",
+                        "Namakkal",
+                        "Pallipalayam",
+                        "Paramathy",
+                        "Puduchatram",
+                        "Rasipuram",
+                        "Sendamangalam",
+                        "Tiruchengode",
+                        "Vennandur"
+                    ]
+                },
+                {
+                    "district": "Perambalur",
+                    "block": [
+                        "Alathur",
+                        "Perambalur",
+                        "Veppanthattai",
+                        "Veppur"
+                    ]
+                },
+                {
+                    "district": "Pudukkottai",
+                    "block": [
+                        "Annavasal",
+                        "Arantangi",
+                        "Arimalam",
+                        "Avudaiyarkoil",
+                        "Gandaravakottai",
+                        "Karambakkudi",
+                        "Kunnandarkoil",
+                        "Manamelkudi",
+                        "Ponnamaravathi",
+                        "Pudukkottai",
+                        "Thiruvarankulam",
+                        "Thirumayam",
+                        "Viralimalai"
+                    ]
+                },
+                {
+                    "district": "Ramanathapuram",
+                    "block": [
+                        "Bogalur",
+                        "Kadaladi",
+                        "Kamudi",
+                        "Mandapam",
+                        "Mudukulathur",
+                        "Nainarkoil",
+                        "Paramakudi",
+                        "Rajasingamangalam",
+                        "Ramanathapuram",
+                        "Tiruppullani",
+                        "Tiruvadanai"
+                    ]
+                },
+                {
+                    "district": "Ranipet",
+                    "block": [
+                        "Arakonam",
+                        "Arcot",
+                        "Kaveripakkam",
+                        "Nemili",
+                        "Sholinghur",
+                        "Thimiri",
+                        "Walajah"
+                    ]
+                },
+                {
+                    "district": "Salem",
+                    "block": [
+                        "Attur",
+                        "Ayothiyapattinam",
+                        "Gangavalli",
+                        "Idappady",
+                        "Kadayaampatti",
+                        "Kolathur",
+                        "Konganapuram",
+                        "Magudanchavadi",
+                        "Mecheri",
+                        "Nangavalli",
+                        "Omalur",
+                        "Panaimarathupatti",
+                        "Peddanaickenpalayam",
+                        "Salem",
+                        "Sankari",
+                        "Thalaivasal",
+                        "Tharamangalam",
+                        "Valapady",
+                        "Veerapandy",
+                        "Yercaud"
+                    ]
+                },
+                {
+                    "district": "Sivagangai",
+                    "block": [
+                        "Devakottai",
+                        "Ilaiyankudi",
+                        "Kalayarkoil",
+                        "Kallal",
+                        "Kannangudi",
+                        "Manamadurai",
+                        "S.Pudur",
+                        "Sakkottai",
+                        "Singampunari",
+                        "Sivagangai",
+                        "Thiruppathur",
+                        "Thiruppuvanam"
+                    ]
+                },
+                {
+                    "district": "Tenkasi",
+                    "block": [
+                        "Alankulam",
+                        "Kadayam",
+                        "Kadayanallur",
+                        "Keelapavoor",
+                        "Kuruvikulam",
+                        "Melaneelithanallur",
+                        "Sankarankoil",
+                        "Shencottai",
+                        "Tenkasi",
+                        "Vasudevanallur"
+                    ]
+                },
+                {
+                    "district": "Thanjavur",
+                    "block": [
+                        "Ammapet",
+                        "Budalur",
+                        "Kumbakonam",
+                        "Madukkur",
+                        "Orathanadu",
+                        "Papanasam",
+                        "Pattukkottai",
+                        "Peravurani",
+                        "Sethubavachatram",
+                        "Thanjavur",
+                        "Thiruppanandal",
+                        "Thiruvaiyaru",
+                        "Thiruvidaimarudur",
+                        "Thiruvonam"
+                    ]
+                },
+                {
+                    "district": "The Nilgiris",
+                    "block": [
+                        "Coonoor",
+                        "Gudalur",
+                        "Kotagiri",
+                        "Udhagai"
+                    ]
+                },
+                {
+                    "district": "Theni",
+                    "block": [
+                        "Andipatti",
+                        "Bodinaickanur",
+                        "Chinnamanur",
+                        "Kadamalaikundru Myladumparai",
+                        "Cumbum",
+                        "Periyakulam",
+                        "Theni",
+                        "Uthamapalayam"
+                    ]
+                },
+                {
+                    "district": "Thiruvallur",
+                    "block": [
+                        "Ellapuram",
+                        "Gummidipoondi",
+                        "Kadambathur",
+                        "Minjur",
+                        "Pallipet",
+                        "Poonamallee",
+                        "Poondi",
+                        "Puzhal",
+                        "Rama Krishna Raju Pettai",
+                        "Sholavaram",
+                        "Tiruvallur",
+                        "Tiruttani",
+                        "Thiruvalangadu",
+                        "Villivakkam"
+                    ]
+                },
+                {
+                    "district": "Thiruvannamalai",
+                    "block": [
+                        "Anakkavoor",
+                        "Arni",
+                        "Chengam",
+                        "Chetpet",
+                        "Cheyyar",
+                        "Jawadhu Hills",
+                        "Kalasapakkam",
+                        "Kilpennathur",
+                        "Pernamallur",
+                        "Polur",
+                        "Pudupalayam",
+                        "Thandrampet",
+                        "Thellar",
+                        "Thurinjapuram",
+                        "Tiruvannamalai",
+                        "Vandavasi",
+                        "Vembakkam",
+                        "Arni West"
+                    ]
+                },
+                {
+                    "district": "Thiruvarur",
+                    "block": [
+                        "Kudavaasal",
+                        "Koradacheri",
+                        "Kottur",
+                        "Mannargudi",
+                        "Muthupettai",
+                        "Nannilam",
+                        "Needamangalam",
+                        "Thiruthuraipoondi",
+                        "Thiruvarur",
+                        "Valangaiman"
+                    ]
+                },
+                {
+                    "district": "Thoothukudi",
+                    "block": [
+                        "Alwarthirunagiri",
+                        "Karungulam",
+                        "Kayathar",
+                        "Kovilpatti",
+                        "Ottapidaram",
+                        "Pudur",
+                        "Sattankulam",
+                        "Srivaikuntam",
+                        "Tiruchendur",
+                        "Tuticorin",
+                        "Udangudi",
+                        "Vilathikulam"
+                    ]
+                },
+                {
+                    "district": "Tiruchirappalli",
+                    "block": [
+                        "Andhanallur",
+                        "Lalgudi",
+                        "Manachanallur",
+                        "Manapparai",
+                        "Manikandam",
+                        "Marungapuri",
+                        "Musiri",
+                        "Pullampady",
+                        "Thantthaiyangarpet",
+                        "Thiruverumbur",
+                        "Thottiam",
+                        "Thuraiyur",
+                        "Uppiliyapuram",
+                        "Vaiyampatty"
+                    ]
+                },
+                {
+                    "district": "Tirunelveli",
+                    "block": [
+                        "Ambasamudram",
+                        "Cheranmahadevi",
+                        "Kalakadu",
+                        "Manur",
+                        "Nanguneri",
+                        "Palayamkottai",
+                        "Pappakudi",
+                        "Radhapuram",
+                        "Valliyoor"
+                    ]
+                },
+                {
+                    "district": "Tirupathur",
+                    "block": [
+                        "Alangayam",
+                        "Jolarpet",
+                        "Kandhili",
+                        "Madhanur",
+                        "Natrampalli",
+                        "Tirupathur"
+                    ]
+                },
+                {
+                    "district": "Tiruppur",
+                    "block": [
+                        "Avanashi",
+                        "Dharapuram",
+                        "Gudimangalam",
+                        "Kangayam",
+                        "Kundadam",
+                        "Madathukulam",
+                        "Mulanur",
+                        "Palladam",
+                        "Pongalur",
+                        "Tiruppur",
+                        "Udumalpet",
+                        "Uthukuli",
+                        "Vellakoil"
+                    ]
+                },
+                {
+                    "district": "Vellore",
+                    "block": [
+                        "Anaicut",
+                        "Gudiyatham",
+                        "Kilvaithinankuppam",
+                        "Kaniyambadi",
+                        "Katpadi",
+                        "Peranambet",
+                        "Vellore"
+                    ]
+                },
+                {
+                    "district": "Villupuram",
+                    "block": [
+                        "Gingee",
+                        "Kanai",
+                        "Kandamangalam",
+                        "Koliyanur",
+                        "Mailam",
+                        "Merkanam",
+                        "Melmalayanur",
+                        "Mugaiyur",
+                        "Olakkur",
+                        "Thiruvennainallur",
+                        "Vallam",
+                        "Vanur",
+                        "Vikkiravandi"
+                    ]
+                },
+                {
+                    "district": "Virudhunagar",
+                    "block": [
+                        "Aruppukkottai",
+                        "Kariapatti",
+                        "Narikudi",
+                        "Rajapalayam",
+                        "Sattur",
+                        "Sivakasi",
+                        "Srivilliputhur",
+                        "Tiruchuli",
+                        "Vembakottai",
+                        "Virudhunagar",
+                        "Vathirayiruppu"
+                    ]
+                }
+            ]
+        },
+        {
+            "state": "Telangana",
+            "districts": [
+                {
+                    "district": "Adilabad"
+                },
+                {
+                    "district": "Hyderabad"
+                },
+                {
+                    "district": "Karimnagar"
+                },
+                {
+                    "district": "Khammam"
+                },
+                {
+                    "district": "Mahbubnagar"
+                },
+                {
+                    "district": "Medak"
+                },
+                {
+                    "district": "Nalgonda"
+                },
+                {
+                    "district": "Nizamabad"
+                },
+                {
+                    "district": "Warangal"
+                }
+            ]
+        },
+        {
+            "state": "Tripura",
+            "districts": [
+                {
+                    "district": "West Tripura"
+                }
+            ]
+        },
+        {
+            "state": "Uttar Pradesh",
+            "districts": [
+                {
+                    "district": "Agra"
+                },
+                {
+                    "district": "Aligarh"
+                },
+                {
+                    "district": "Allahabad"
+                },
+                {
+                    "district": "Ambedkar Nagar"
+                },
+                {
+                    "district": "Amroha"
+                },
+                {
+                    "district": "Auraiya"
+                },
+                {
+                    "district": "Azamgarh"
+                },
+                {
+                    "district": "Baghput"
+                },
+                {
+                    "district": "Bahraich"
+                },
+                {
+                    "district": "Ballia"
+                },
+                {
+                    "district": "Banda"
+                },
+                {
+                    "district": "Barabanki"
+                },
+                {
+                    "district": "Bareilly"
+                },
+                {
+                    "district": "Basti"
+                },
+                {
+                    "district": "Bijnor"
+                },
+                {
+                    "district": "Budaun"
+                },
+                {
+                    "district": "Bulandshahr"
+                },
+                {
+                    "district": "Chandauli"
+                },
+                {
+                    "district": "Deoria"
+                },
+                {
+                    "district": "Etah"
+                },
+                {
+                    "district": "Etawah"
+                },
+                {
+                    "district": "Faizabad"
+                },
+                {
+                    "district": "Farrukhabad"
+                },
+                {
+                    "district": "Fatehpur"
+                },
+                {
+                    "district": "Firozabad"
+                },
+                {
+                    "district": "Gautam Buddha Nagar"
+                },
+                {
+                    "district": "Gautam Budh Nagar"
+                },
+                {
+                    "district": "Ghaziabad"
+                },
+                {
+                    "district": "Ghazipur"
+                },
+                {
+                    "district": "Gonda"
+                },
+                {
+                    "district": "Gorakhpur"
+                },
+                {
+                    "district": "Hapur"
+                },
+                {
+                    "district": "Hardoi"
+                },
+                {
+                    "district": "Hathras"
+                },
+                {
+                    "district": "Jalaun"
+                },
+                {
+                    "district": "Jaunpur"
+                },
+                {
+                    "district": "Jhansi"
+                },
+                {
+                    "district": "Kanpur"
+                },
+                {
+                    "district": "Kasganj"
+                },
+                {
+                    "district": "Lakhimpur Kheri"
+                },
+                {
+                    "district": "Lalitpur"
+                },
+                {
+                    "district": "Lucknow"
+                },
+                {
+                    "district": "Mahoba"
+                },
+                {
+                    "district": "Mainpuri"
+                },
+                {
+                    "district": "Mathura"
+                },
+                {
+                    "district": "Mau"
+                },
+                {
+                    "district": "Meerut"
+                },
+                {
+                    "district": "Mirzapur"
+                },
+                {
+                    "district": "Moradabad"
+                },
+                {
+                    "district": "Muzaffarnagar"
+                },
+                {
+                    "district": "Noida"
+                },
+                {
+                    "district": "Pilibhit"
+                },
+                {
+                    "district": "Pratapgarh"
+                },
+                {
+                    "district": "Raebareli"
+                },
+                {
+                    "district": "Rampur"
+                },
+                {
+                    "district": "Saharanpur"
+                },
+                {
+                    "district": "Sambhal"
+                },
+                {
+                    "district": "Sant Ravidas Nagar"
+                },
+                {
+                    "district": "Shahjahanpur"
+                },
+                {
+                    "district": "Shamli"
+                },
+                {
+                    "district": "Sitapur"
+                },
+                {
+                    "district": "Sultanpur"
+                },
+                {
+                    "district": "Unnao"
+                },
+                {
+                    "district": "Varanasi"
+                }
+            ]
+        },
+        {
+            "state": "Uttarakhand",
+            "districts": [
+                {
+                    "district": "Dehradun"
+                },
+                {
+                    "district": "Haridwar"
+                },
+                {
+                    "district": "Nainital"
+                },
+                {
+                    "district": "Udham Singh Nagar"
+                }
+            ]
+        },
+        {
+            "state": "West Bengal",
+            "districts": [
+                {
+                    "district": "Alipurduar"
+                },
+                {
+                    "district": "Bankura"
+                },
+                {
+                    "district": "Bardhaman"
+                },
+                {
+                    "district": "Birbhum"
+                },
+                {
+                    "district": "Cooch Behar"
+                },
+                {
+                    "district": "Dakshin Dinajpur"
+                },
+                {
+                    "district": "Darjeeling"
+                },
+                {
+                    "district": "Darjeeling; Jalpaiguri"
+                },
+                {
+                    "district": "Hooghly"
+                },
+                {
+                    "district": "Jalpaiguri"
+                },
+                {
+                    "district": "Kolkata"
+                },
+                {
+                    "district": "Malda"
+                },
+                {
+                    "district": "Midnapore East"
+                },
+                {
+                    "district": "Murshidabad"
+                },
+                {
+                    "district": "Nadia"
+                },
+                {
+                    "district": "North 24 Parganas"
+                },
+                {
+                    "district": "Paschim Medinipur"
+                },
+                {
+                    "district": "Purba Medinipur"
+                },
+                {
+                    "district": "Purulia"
+                },
+                {
+                    "district": "Uttar Dinajpur"
+                }
+            ]
         }
-      ]
-    },
-    {
-      "state": "Arunachal Pradesh",
-      "districts": [
-        {
-          "district": "Papum Pare",
-          "cities": [
-            "Itanagar"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Assam",
-      "districts": [
-        {
-          "district": "Bongaigaon",
-          "cities": [
-            "Bongaigaon"
-          ]
-        },
-        {
-          "district": "Cachar",
-          "cities": [
-            "Silchar"
-          ]
-        },
-        {
-          "district": "Dhubri",
-          "cities": [
-            "Dhubri"
-          ]
-        },
-        {
-          "district": "Dibrugarh",
-          "cities": [
-            "Dibrugarh"
-          ]
-        },
-        {
-          "district": "Jorhat",
-          "cities": [
-            "Jorhat"
-          ]
-        },
-        {
-          "district": "Kamrup",
-          "cities": [
-            "Guwahati"
-          ]
-        },
-        {
-          "district": "Nagaon",
-          "cities": [
-            "Nagaon"
-          ]
-        },
-        {
-          "district": "Sonitpur",
-          "cities": [
-            "Tezpur"
-          ]
-        },
-        {
-          "district": "Tinsukia",
-          "cities": [
-            "Tinsukia"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Bihar",
-      "districts": [
-        {
-          "district": "Aurangabad",
-          "cities": [
-            "Aurangabad"
-          ]
-        },
-        {
-          "district": "Begusarai",
-          "cities": [
-            "Begusarai"
-          ]
-        },
-        {
-          "district": "Bhagalpur",
-          "cities": [
-            "Bhagalpur"
-          ]
-        },
-        {
-          "district": "Bhojpur",
-          "cities": [
-            "Arrah"
-          ]
-        },
-        {
-          "district": "Buxar",
-          "cities": [
-            "Buxar"
-          ]
-        },
-        {
-          "district": "Darbhanga",
-          "cities": [
-            "Darbhanga"
-          ]
-        },
-        {
-          "district": "East Champaran",
-          "cities": [
-            "Motihari"
-          ]
-        },
-        {
-          "district": "Gaya",
-          "cities": [
-            "Gaya"
-          ]
-        },
-        {
-          "district": "Jehanabad",
-          "cities": [
-            "Jehanabad"
-          ]
-        },
-        {
-          "district": "Katihar",
-          "cities": [
-            "Katihar"
-          ]
-        },
-        {
-          "district": "Kishanganj",
-          "cities": [
-            "Kishanganj"
-          ]
-        },
-        {
-          "district": "Lakhisarai",
-          "cities": [
-            "Lakhisarai"
-          ]
-        },
-        {
-          "district": "Munger",
-          "cities": [
-            "Jamalpur",
-            "Munger"
-          ]
-        },
-        {
-          "district": "Muzaffarpur",
-          "cities": [
-            "Muzaffarpur"
-          ]
-        },
-        {
-          "district": "Nalanda",
-          "cities": [
-            "Bihar Sharif"
-          ]
-        },
-        {
-          "district": "Nawada",
-          "cities": [
-            "Nawada"
-          ]
-        },
-        {
-          "district": "Patna",
-          "cities": [
-            "Patna"
-          ]
-        },
-        {
-          "district": "Purnia",
-          "cities": [
-            "Purnia"
-          ]
-        },
-        {
-          "district": "Rohtas",
-          "cities": [
-            "Dehri",
-            "Sasaram"
-          ]
-        },
-        {
-          "district": "Saharsa",
-          "cities": [
-            "Saharsa"
-          ]
-        },
-        {
-          "district": "Saran",
-          "cities": [
-            "Chhapra"
-          ]
-        },
-        {
-          "district": "Sitamarhi",
-          "cities": [
-            "Sitamarhi"
-          ]
-        },
-        {
-          "district": "Siwan",
-          "cities": [
-            "Siwan"
-          ]
-        },
-        {
-          "district": "Vaishali",
-          "cities": [
-            "Hajipur"
-          ]
-        },
-        {
-          "district": "West Champaran",
-          "cities": [
-            "Bagaha",
-            "Bettiah"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Chandigarh",
-      "districts": [
-        {
-          "district": "Chandigarh",
-          "cities": [
-            "Chandigarh"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Chhattisgarh",
-      "districts": [
-        {
-          "district": "Bastar",
-          "cities": [
-            "Jagdalpur"
-          ]
-        },
-        {
-          "district": "Bilaspur",
-          "cities": [
-            "Bilaspur"
-          ]
-        },
-        {
-          "district": "Dhamtari",
-          "cities": [
-            "Dhamtari"
-          ]
-        },
-        {
-          "district": "Durg",
-          "cities": [
-            "Durg"
-          ]
-        },
-        {
-          "district": "Korba",
-          "cities": [
-            "Korba"
-          ]
-        },
-        {
-          "district": "Koriya",
-          "cities": [
-            "Chirmiri"
-          ]
-        },
-        {
-          "district": "Mahasamund",
-          "cities": [
-            "Mahasamund"
-          ]
-        },
-        {
-          "district": "Raigarh",
-          "cities": [
-            "Raigarh"
-          ]
-        },
-        {
-          "district": "Raipur",
-          "cities": [
-            "Naya Raipur",
-            "Raipur"
-          ]
-        },
-        {
-          "district": "Rajnandgaon",
-          "cities": [
-            "Rajnandgaon"
-          ]
-        },
-        {
-          "district": "Surguja",
-          "cities": [
-            "Ambikapur"
-          ]
-        },
-        {
-          "district": "kanker",
-          "cities": [
-            "Pakhanjore"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Delhi",
-      "districts": [
-        {
-          "district": "Delhi",
-          "cities": [
-            "Delhi"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Goa",
-      "districts": [
-        {
-          "district": "North Goa",
-          "cities": [
-            "Panaji"
-          ]
-        },
-        {
-          "district": "South Goa",
-          "cities": [
-            "Margao",
-            "Mormugao",
-            "Vasco"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Gujarat",
-      "districts": [
-        {
-          "district": "Ahmedabad",
-          "cities": [
-            "Ahmedabad"
-          ]
-        },
-        {
-          "district": "Amreli",
-          "cities": [
-            "Amreli"
-          ]
-        },
-        {
-          "district": "Anand",
-          "cities": [
-            "Anand",
-            "Khambhat"
-          ]
-        },
-        {
-          "district": "Banaskantha",
-          "cities": [
-            "Deesa"
-          ]
-        },
-        {
-          "district": "Bharuch",
-          "cities": [
-            "Ankleshwar",
-            "Bharuch"
-          ]
-        },
-        {
-          "district": "Bhavnagar",
-          "cities": [
-            "Bhavnagar",
-            "Mahuva"
-          ]
-        },
-        {
-          "district": "Botad",
-          "cities": [
-            "Botad"
-          ]
-        },
-        {
-          "district": "Dahod",
-          "cities": [
-            "Dahod"
-          ]
-        },
-        {
-          "district": "Gandhinagar",
-          "cities": [
-            "Gandhinagar",
-            "Kalol"
-          ]
-        },
-        {
-          "district": "Gir Somnath",
-          "cities": [
-            "Veraval"
-          ]
-        },
-        {
-          "district": "Jamnagar",
-          "cities": [
-            "Jamnagar"
-          ]
-        },
-        {
-          "district": "Junagadh",
-          "cities": [
-            "Junagadh"
-          ]
-        },
-        {
-          "district": "Kheda",
-          "cities": [
-            "Nadiad"
-          ]
-        },
-        {
-          "district": "Kutch",
-          "cities": [
-            "Bhuj",
-            "Gandhidham"
-          ]
-        },
-        {
-          "district": "Mehsana",
-          "cities": [
-            "Mehsana"
-          ]
-        },
-        {
-          "district": "Morbi",
-          "cities": [
-            "Morbi"
-          ]
-        },
-        {
-          "district": "Navsari",
-          "cities": [
-            "Navsari"
-          ]
-        },
-        {
-          "district": "Palanpur",
-          "cities": [
-            "Palanpur"
-          ]
-        },
-        {
-          "district": "Panchmahal",
-          "cities": [
-            "Godhra"
-          ]
-        },
-        {
-          "district": "Patan",
-          "cities": [
-            "Patan"
-          ]
-        },
-        {
-          "district": "Porbandar",
-          "cities": [
-            "Porbandar"
-          ]
-        },
-        {
-          "district": "Rajkot",
-          "cities": [
-            "Gondal",
-            "Jetpur",
-            "Rajkot"
-          ]
-        },
-        {
-          "district": "Surat",
-          "cities": [
-            "Surat"
-          ]
-        },
-        {
-          "district": "Surendranagar",
-          "cities": [
-            "Surendranagar"
-          ]
-        },
-        {
-          "district": "Vadodara",
-          "cities": [
-            "Vadodara"
-          ]
-        },
-        {
-          "district": "Valsad",
-          "cities": [
-            "Valsad",
-            "Vapi"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Haryana",
-      "districts": [
-        {
-          "district": "Ambala",
-          "cities": [
-            "Ambala"
-          ]
-        },
-        {
-          "district": "Bhiwani",
-          "cities": [
-            "Bhiwani"
-          ]
-        },
-        {
-          "district": "Faridabad",
-          "cities": [
-            "Faridabad"
-          ]
-        },
-        {
-          "district": "Gurgaon",
-          "cities": [
-            "Gurgaon"
-          ]
-        },
-        {
-          "district": "Hisar",
-          "cities": [
-            "Hisar"
-          ]
-        },
-        {
-          "district": "Jhajjar",
-          "cities": [
-            "Bahadurgarh"
-          ]
-        },
-        {
-          "district": "Jind",
-          "cities": [
-            "Jind"
-          ]
-        },
-        {
-          "district": "Kaithal",
-          "cities": [
-            "Kaithal"
-          ]
-        },
-        {
-          "district": "Karnal",
-          "cities": [
-            "Karnal"
-          ]
-        },
-        {
-          "district": "Kurukshetra",
-          "cities": [
-            "Thanesar"
-          ]
-        },
-        {
-          "district": "Palwal",
-          "cities": [
-            "Palwal"
-          ]
-        },
-        {
-          "district": "Panchkula",
-          "cities": [
-            "Panchkula"
-          ]
-        },
-        {
-          "district": "Panipat",
-          "cities": [
-            "Panipat"
-          ]
-        },
-        {
-          "district": "Rewari",
-          "cities": [
-            "Rewari"
-          ]
-        },
-        {
-          "district": "Rohtak",
-          "cities": [
-            "Rohtak"
-          ]
-        },
-        {
-          "district": "Sirsa",
-          "cities": [
-            "Sirsa"
-          ]
-        },
-        {
-          "district": "Sonipat",
-          "cities": [
-            "Sonipat"
-          ]
-        },
-        {
-          "district": "Yamunanagar",
-          "cities": [
-            "Yamunanagar"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Himachal Pradesh",
-      "districts": [
-        {
-          "district": "Shimla",
-          "cities": [
-            "Shimla"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Jammu and Kashmir",
-      "districts": [
-        {
-          "district": "Anantnag",
-          "cities": [
-            "Anantnag"
-          ]
-        },
-        {
-          "district": "Jammu",
-          "cities": [
-            "Jammu"
-          ]
-        },
-        {
-          "district": "Srinagar",
-          "cities": [
-            "Srinagar"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Jharkhand",
-      "districts": [
-        {
-          "district": "Bokaro",
-          "cities": [
-            "Bokaro Steel City",
-            "Phusro"
-          ]
-        },
-        {
-          "district": "Deoghar",
-          "cities": [
-            "Deoghar"
-          ]
-        },
-        {
-          "district": "Dhanbad",
-          "cities": [
-            "Chirkunda",
-            "Dhanbad"
-          ]
-        },
-        {
-          "district": "East Singhbhum",
-          "cities": [
-            "Jamshedpur"
-          ]
-        },
-        {
-          "district": "Giridih",
-          "cities": [
-            "Giridih"
-          ]
-        },
-        {
-          "district": "Hazaribag",
-          "cities": [
-            "Hazaribagh"
-          ]
-        },
-        {
-          "district": "Koderma",
-          "cities": [
-            "Jhumri Telaiya"
-          ]
-        },
-        {
-          "district": "Palamu",
-          "cities": [
-            "Medininagar"
-          ]
-        },
-        {
-          "district": "Ramgarh",
-          "cities": [
-            "Ramgarh"
-          ]
-        },
-        {
-          "district": "Ranchi",
-          "cities": [
-            "Ranchi"
-          ]
-        },
-        {
-          "district": "Sahibganj",
-          "cities": [
-            "Sahibganj"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Karnataka",
-      "districts": [
-        {
-          "district": "Bagalkot",
-          "cities": [
-            "Bagalkot"
-          ]
-        },
-        {
-          "district": "Ballari",
-          "cities": [
-            "Bellary"
-          ]
-        },
-        {
-          "district": "Belagavi",
-          "cities": [
-            "Belgaum"
-          ]
-        },
-        {
-          "district": "Bellary",
-          "cities": [
-            "Hospet"
-          ]
-        },
-        {
-          "district": "Bengaluru Urban",
-          "cities": [
-            "Bengaluru"
-          ]
-        },
-        {
-          "district": "Bidar",
-          "cities": [
-            "Bidar"
-          ]
-        },
-        {
-          "district": "Chikkamagallooru",
-          "cities": [
-            "Chikkamagallooru"
-          ]
-        },
-        {
-          "district": "Chikkamagaluru",
-          "cities": [
-            "Chikmagalur"
-          ]
-        },
-        {
-          "district": "Chitradurga",
-          "cities": [
-            "Chitradurga"
-          ]
-        },
-        {
-          "district": "Davanagere",
-          "cities": [
-            "Harihar"
-          ]
-        },
-        {
-          "district": "Davangere",
-          "cities": [
-            "Davangere"
-          ]
-        },
-        {
-          "district": "Dharwad",
-          "cities": [
-            "Hubli"
-          ]
-        },
-        {
-          "district": "Gadag",
-          "cities": [
-            "Gadag"
-          ]
-        },
-        {
-          "district": "Hassan",
-          "cities": [
-            "Hassan"
-          ]
-        },
-        {
-          "district": "Haveri",
-          "cities": [
-            "Ranebennuru"
-          ]
-        },
-        {
-          "district": "Kalburgi",
-          "cities": [
-            "Gulbarga"
-          ]
-        },
-        {
-          "district": "Kolar",
-          "cities": [
-            "Kolar",
-            "Robertsonpet"
-          ]
-        },
-        {
-          "district": "Koppal",
-          "cities": [
-            "Gangawati"
-          ]
-        },
-        {
-          "district": "Mandya",
-          "cities": [
-            "Mandya"
-          ]
-        },
-        {
-          "district": "Mysuru",
-          "cities": [
-            "Mysore"
-          ]
-        },
-        {
-          "district": "Raichur",
-          "cities": [
-            "Raichur"
-          ]
-        },
-        {
-          "district": "Ramnagar",
-          "cities": [
-            "Ramanagara"
-          ]
-        },
-        {
-          "district": "Shimoga",
-          "cities": [
-            "Bhadravati"
-          ]
-        },
-        {
-          "district": "Shivamogga",
-          "cities": [
-            "Shimoga"
-          ]
-        },
-        {
-          "district": "South Canara",
-          "cities": [
-            "Mangalore"
-          ]
-        },
-        {
-          "district": "Tumakuru",
-          "cities": [
-            "Tumkur"
-          ]
-        },
-        {
-          "district": "Udupi",
-          "cities": [
-            "Udupi"
-          ]
-        },
-        {
-          "district": "Vijayapur",
-          "cities": [
-            "Bijapur"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Kerala",
-      "districts": [
-        {
-          "district": "Alappuzha",
-          "cities": [
-            "Alappuzha"
-          ]
-        },
-        {
-          "district": "Ernakulam",
-          "cities": [
-            "Kochi",
-            "Kothamangalam"
-          ]
-        },
-        {
-          "district": "Kannur",
-          "cities": [
-            "Kannur",
-            "Thalassery"
-          ]
-        },
-        {
-          "district": "Kasaragod",
-          "cities": [
-            "Kasaragod"
-          ]
-        },
-        {
-          "district": "Kollam",
-          "cities": [
-            "Kollam"
-          ]
-        },
-        {
-          "district": "Kottayam",
-          "cities": [
-            "Kottayam"
-          ]
-        },
-        {
-          "district": "Kozhikode",
-          "cities": [
-            "Calicut"
-          ]
-        },
-        {
-          "district": "Malappuram",
-          "cities": [
-            "Malappuram",
-            "Manjeri",
-            "Ponnani"
-          ]
-        },
-        {
-          "district": "Palakkad",
-          "cities": [
-            "Palakkad"
-          ]
-        },
-        {
-          "district": "Thiruvananthapuram",
-          "cities": [
-            "Thiruvananthapuram"
-          ]
-        },
-        {
-          "district": "Thrissur",
-          "cities": [
-            "Thrissur"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Lakshadweep",
-      "districts": [
-        {
-          "district": "Lakshadweep",
-          "cities": [
-            "Kavaratti"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Madhya Pradesh",
-      "districts": [
-        {
-          "district": "Balaghat",
-          "cities": [
-            "Balaghat"
-          ]
-        },
-        {
-          "district": "Betul",
-          "cities": [
-            "Betul"
-          ]
-        },
-        {
-          "district": "Bhind",
-          "cities": [
-            "Bhind"
-          ]
-        },
-        {
-          "district": "Bhopal",
-          "cities": [
-            "Bhopal"
-          ]
-        },
-        {
-          "district": "Burhanpur",
-          "cities": [
-            "Burhanpur"
-          ]
-        },
-        {
-          "district": "Chhatarpur",
-          "cities": [
-            "Chhatarpur"
-          ]
-        },
-        {
-          "district": "Chhindwara",
-          "cities": [
-            "Chhindwara"
-          ]
-        },
-        {
-          "district": "Damoh",
-          "cities": [
-            "Damoh"
-          ]
-        },
-        {
-          "district": "Datia",
-          "cities": [
-            "Datia"
-          ]
-        },
-        {
-          "district": "Dewas",
-          "cities": [
-            "Dewas"
-          ]
-        },
-        {
-          "district": "Dhar",
-          "cities": [
-            "Dhar",
-            "Pithampur"
-          ]
-        },
-        {
-          "district": "Guna",
-          "cities": [
-            "Guna"
-          ]
-        },
-        {
-          "district": "Gwalior",
-          "cities": [
-            "Gwalior"
-          ]
-        },
-        {
-          "district": "Hoshangabad",
-          "cities": [
-            "Hoshangabad",
-            "Itarsi"
-          ]
-        },
-        {
-          "district": "Indore",
-          "cities": [
-            "Indore"
-          ]
-        },
-        {
-          "district": "Jabalpur",
-          "cities": [
-            "Jabalpur"
-          ]
-        },
-        {
-          "district": "Katni",
-          "cities": [
-            "Katni"
-          ]
-        },
-        {
-          "district": "Khandwa",
-          "cities": [
-            "Khandwa"
-          ]
-        },
-        {
-          "district": "Khargone",
-          "cities": [
-            "Khargone"
-          ]
-        },
-        {
-          "district": "Mandsaur",
-          "cities": [
-            "Mandsaur"
-          ]
-        },
-        {
-          "district": "Morena",
-          "cities": [
-            "Morena"
-          ]
-        },
-        {
-          "district": "Neemuch",
-          "cities": [
-            "Neemuch"
-          ]
-        },
-        {
-          "district": "Ratlam",
-          "cities": [
-            "Ratlam"
-          ]
-        },
-        {
-          "district": "Rewa",
-          "cities": [
-            "Rewa"
-          ]
-        },
-        {
-          "district": "Sagar",
-          "cities": [
-            "Sagar"
-          ]
-        },
-        {
-          "district": "Satna",
-          "cities": [
-            "Satna"
-          ]
-        },
-        {
-          "district": "Sehore",
-          "cities": [
-            "Sehore"
-          ]
-        },
-        {
-          "district": "Seoni",
-          "cities": [
-            "Seoni"
-          ]
-        },
-        {
-          "district": "Shahdol",
-          "cities": [
-            "Dhanpuri"
-          ]
-        },
-        {
-          "district": "Shivpuri",
-          "cities": [
-            "Shivpuri"
-          ]
-        },
-        {
-          "district": "Singrauli",
-          "cities": [
-            "Singrauli"
-          ]
-        },
-        {
-          "district": "Ujjain",
-          "cities": [
-            "Nagda",
-            "Ujjain"
-          ]
-        },
-        {
-          "district": "Vidisha",
-          "cities": [
-            "Vidisha"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Maharashtra",
-      "districts": [
-        {
-          "district": "Ahmednagar",
-          "cities": [
-            "Ahmednagar"
-          ]
-        },
-        {
-          "district": "Akola",
-          "cities": [
-            "Akola",
-            "Akot"
-          ]
-        },
-        {
-          "district": "Amravati",
-          "cities": [
-            "Achalpur",
-            "Amravati"
-          ]
-        },
-        {
-          "district": "Aurangabad",
-          "cities": [
-            "Aurangabad"
-          ]
-        },
-        {
-          "district": "Beed",
-          "cities": [
-            "Beed",
-            "Parli"
-          ]
-        },
-        {
-          "district": "Bhandara",
-          "cities": [
-            "Bhandara"
-          ]
-        },
-        {
-          "district": "Buldhana",
-          "cities": [
-            "Khamgaon"
-          ]
-        },
-        {
-          "district": "Chandrapur",
-          "cities": [
-            "Chandrapur"
-          ]
-        },
-        {
-          "district": "Dhule",
-          "cities": [
-            "Dhule"
-          ]
-        },
-        {
-          "district": "Gondia",
-          "cities": [
-            "Gondia"
-          ]
-        },
-        {
-          "district": "Jalgaon",
-          "cities": [
-            "Amalner",
-            "Bhusawal",
-            "Chalisgaon",
-            "Jalgaon"
-          ]
-        },
-        {
-          "district": "Jalna",
-          "cities": [
-            "Jalna"
-          ]
-        },
-        {
-          "district": "Kolhapur",
-          "cities": [
-            "Ichalkaranji",
-            "Kolhapur"
-          ]
-        },
-        {
-          "district": "Latur",
-          "cities": [
-            "Latur",
-            "Udgir"
-          ]
-        },
-        {
-          "district": "Malegaon",
-          "cities": [
-            "Malegaon"
-          ]
-        },
-        {
-          "district": "Mumbai",
-          "cities": [
-            "Mumbai"
-          ]
-        },
-        {
-          "district": "Nagpur",
-          "cities": [
-            "Kamptee",
-            "Nagpur"
-          ]
-        },
-        {
-          "district": "Nanded",
-          "cities": [
-            "Nanded"
-          ]
-        },
-        {
-          "district": "Nandurbar",
-          "cities": [
-            "Nandurbar"
-          ]
-        },
-        {
-          "district": "Nashik",
-          "cities": [
-            "Nashik"
-          ]
-        },
-        {
-          "district": "Osmanabad",
-          "cities": [
-            "Osmanabad"
-          ]
-        },
-        {
-          "district": "Parbhani",
-          "cities": [
-            "Parbhani"
-          ]
-        },
-        {
-          "district": "Pune",
-          "cities": [
-            "Pimpri-Chinchwad",
-            "Pune"
-          ]
-        },
-        {
-          "district": "Sangli",
-          "cities": [
-            "Sangli-Miraj-Kupwad"
-          ]
-        },
-        {
-          "district": "Satara",
-          "cities": [
-            "Satara"
-          ]
-        },
-        {
-          "district": "Solapur",
-          "cities": [
-            "Barshi",
-            "Pandharpur",
-            "Solapur"
-          ]
-        },
-        {
-          "district": "Thane",
-          "cities": [
-            "Bhiwandi"
-          ]
-        },
-        {
-          "district": "Wardha",
-          "cities": [
-            "Hinganghat",
-            "Wardha"
-          ]
-        },
-        {
-          "district": "Yavatmal",
-          "cities": [
-            "Yavatmal"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Manipur",
-      "districts": [
-        {
-          "district": "Imphal West; Imphal East",
-          "cities": [
-            "Imphal"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Meghalaya",
-      "districts": [
-        {
-          "district": "East Khassi Hills",
-          "cities": [
-            "Shillong"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Mizoram",
-      "districts": [
-        {
-          "district": "Aizwal",
-          "cities": [
-            "Aizawl"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Nagaland",
-      "districts": [
-        {
-          "district": "Dimapur",
-          "cities": [
-            "Dimapur"
-          ]
-        },
-        {
-          "district": "Kohima",
-          "cities": [
-            "Kohima"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Odisha",
-      "districts": [
-        {
-          "district": "Balangir",
-          "cities": [
-            "Balangir"
-          ]
-        },
-        {
-          "district": "Balasore",
-          "cities": [
-            "Balasore"
-          ]
-        },
-        {
-          "district": "Bhadrak",
-          "cities": [
-            "Bhadrak"
-          ]
-        },
-        {
-          "district": "Cuttack",
-          "cities": [
-            "Cuttack"
-          ]
-        },
-        {
-          "district": "Ganjam",
-          "cities": [
-            "Berhampur"
-          ]
-        },
-        {
-          "district": "Jharsuguda",
-          "cities": [
-            "Jharsuguda"
-          ]
-        },
-        {
-          "district": "Khurda",
-          "cities": [
-            "Bhubaneswar"
-          ]
-        },
-        {
-          "district": "Koraput",
-          "cities": [
-            "Jeypore"
-          ]
-        },
-        {
-          "district": "Mayurbhanj",
-          "cities": [
-            "Baripada"
-          ]
-        },
-        {
-          "district": "Puri",
-          "cities": [
-            "Puri"
-          ]
-        },
-        {
-          "district": "Sambalpur",
-          "cities": [
-            "Sambalpur"
-          ]
-        },
-        {
-          "district": "Sundargarh",
-          "cities": [
-            "Rourkela"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Puducherry",
-      "districts": [
-        {
-          "district": "Karaikal",
-          "cities": [
-            "Karaikal"
-          ]
-        },
-        {
-          "district": "Puducherry",
-          "cities": [
-            "Ozhukarai",
-            "Puducherry"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Punjab",
-      "districts": [
-        {
-          "district": "Amritsar",
-          "cities": [
-            "Amritsar"
-          ]
-        },
-        {
-          "district": "Barnala",
-          "cities": [
-            "Barnala"
-          ]
-        },
-        {
-          "district": "Bathinda",
-          "cities": [
-            "Bathinda"
-          ]
-        },
-        {
-          "district": "Fazilka",
-          "cities": [
-            "Abohar"
-          ]
-        },
-        {
-          "district": "Firozpur",
-          "cities": [
-            "Firozpur"
-          ]
-        },
-        {
-          "district": "Gurdaspur",
-          "cities": [
-            "Batala"
-          ]
-        },
-        {
-          "district": "Hoshiarpur",
-          "cities": [
-            "Hoshiarpur"
-          ]
-        },
-        {
-          "district": "Jalandhar",
-          "cities": [
-            "Jalandhar"
-          ]
-        },
-        {
-          "district": "Kapurthala",
-          "cities": [
-            "Kapurthala",
-            "Phagwara"
-          ]
-        },
-        {
-          "district": "Ludhiana",
-          "cities": [
-            "Khanna",
-            "Ludhiana"
-          ]
-        },
-        {
-          "district": "Moga",
-          "cities": [
-            "Moga"
-          ]
-        },
-        {
-          "district": "Mohali",
-          "cities": [
-            "Mohali",
-            "Zirakpur"
-          ]
-        },
-        {
-          "district": "Muktsar",
-          "cities": [
-            "Muktasar"
-          ]
-        },
-        {
-          "district": "Pathankot",
-          "cities": [
-            "Pathankot"
-          ]
-        },
-        {
-          "district": "Patiala",
-          "cities": [
-            "Patiala",
-            "Rajpura"
-          ]
-        },
-        {
-          "district": "Sangrur",
-          "cities": [
-            "Malerkotla"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Rajasthan",
-      "districts": [
-        {
-          "district": "Ajmer",
-          "cities": [
-            "Ajmer",
-            "Kishangarh"
-          ]
-        },
-        {
-          "district": "Alwar",
-          "cities": [
-            "Alwar",
-            "Bhiwadi"
-          ]
-        },
-        {
-          "district": "Banswara",
-          "cities": [
-            "Banswara"
-          ]
-        },
-        {
-          "district": "Baran",
-          "cities": [
-            "Baran"
-          ]
-        },
-        {
-          "district": "Barmer",
-          "cities": [
-            "Barmer"
-          ]
-        },
-        {
-          "district": "Beawar",
-          "cities": [
-            "Beawar"
-          ]
-        },
-        {
-          "district": "Bharatpur",
-          "cities": [
-            "Bharatpur"
-          ]
-        },
-        {
-          "district": "Bhilwara",
-          "cities": [
-            "Bhilwara"
-          ]
-        },
-        {
-          "district": "Bikaner",
-          "cities": [
-            "Bikaner"
-          ]
-        },
-        {
-          "district": "Bundi",
-          "cities": [
-            "Bundi"
-          ]
-        },
-        {
-          "district": "Chittorgarh",
-          "cities": [
-            "Chittorgarh"
-          ]
-        },
-        {
-          "district": "Churu",
-          "cities": [
-            "Churu",
-            "Sardarshahar",
-            "Sujangarh"
-          ]
-        },
-        {
-          "district": "Dausa",
-          "cities": [
-            "Dausa"
-          ]
-        },
-        {
-          "district": "Dholpur",
-          "cities": [
-            "Dholpur"
-          ]
-        },
-        {
-          "district": "Hanumangarh",
-          "cities": [
-            "Hanumangarh"
-          ]
-        },
-        {
-          "district": "Jaipur",
-          "cities": [
-            "Jaipur"
-          ]
-        },
-        {
-          "district": "Jhunjhunu",
-          "cities": [
-            "Jhunjhunu"
-          ]
-        },
-        {
-          "district": "Jodhpur",
-          "cities": [
-            "Jodhpur"
-          ]
-        },
-        {
-          "district": "Karauli",
-          "cities": [
-            "Hindaun",
-            "Karauli"
-          ]
-        },
-        {
-          "district": "Kota",
-          "cities": [
-            "Kota"
-          ]
-        },
-        {
-          "district": "Nagaur",
-          "cities": [
-            "Makrana",
-            "Nagaur"
-          ]
-        },
-        {
-          "district": "Pali",
-          "cities": [
-            "Pali"
-          ]
-        },
-        {
-          "district": "Sawai Madhopur",
-          "cities": [
-            "Gangapur",
-            "Sawai Madhopur"
-          ]
-        },
-        {
-          "district": "Sikar",
-          "cities": [
-            "Fatehpur",
-            "Sikar"
-          ]
-        },
-        {
-          "district": "Sri Ganganagar",
-          "cities": [
-            "Sri Ganganagar"
-          ]
-        },
-        {
-          "district": "Tonk",
-          "cities": [
-            "Tonk"
-          ]
-        },
-        {
-          "district": "Udaipur",
-          "cities": [
-            "Udaipur"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Sikkim",
-      "districts": [
-        {
-          "district": "East Sikkim",
-          "cities": [
-            "Gangtok"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Tamil Nadu",
-      "districts": [
-        {
-          "district": "Chennai",
-          "cities": [
-            "Chennai"
-          ]
-        },
-        {
-          "district": "Coimbatore",
-          "cities": [
-            "Coimbatore",
-            "Pollachi"
-          ]
-        },
-        {
-          "district": "Cuddalore",
-          "cities": [
-            "Cuddalore",
-            "Neyveli"
-          ]
-        },
-        {
-          "district": "Dindigul",
-          "cities": [
-            "Dindigul"
-          ]
-        },
-        {
-          "district": "Erode",
-          "cities": [
-            "Erode"
-          ]
-        },
-        {
-          "district": "Kanchipuram",
-          "cities": [
-            "Kanchipuram"
-          ]
-        },
-        {
-          "district": "Kanyakumari",
-          "cities": [
-            "Nagercoil"
-          ]
-        },
-        {
-          "district": "Krishnagiri",
-          "cities": [
-            "Hosur"
-          ]
-        },
-        {
-          "district": "Madurai",
-          "cities": [
-            "Madurai"
-          ]
-        },
-        {
-          "district": "Nagapattinam",
-          "cities": [
-            "Nagapattinam"
-          ]
-        },
-        {
-          "district": "Namakkal",
-          "cities": [
-            "Komarapalayam",
-            "Tiruchengode"
-          ]
-        },
-        {
-          "district": "Nilgiri",
-          "cities": [
-            "Ooty"
-          ]
-        },
-        {
-          "district": "Pudukkottai",
-          "cities": [
-            "Pudukkottai"
-          ]
-        },
-        {
-          "district": "Ramanathapuram",
-          "cities": [
-            "Paramakudi"
-          ]
-        },
-        {
-          "district": "Salem",
-          "cities": [
-            "Salem"
-          ]
-        },
-        {
-          "district": "Sivaganga",
-          "cities": [
-            "Karaikudi"
-          ]
-        },
-        {
-          "district": "Thanjavur",
-          "cities": [
-            "Kumbakonam",
-            "Thanjavur"
-          ]
-        },
-        {
-          "district": "Theni",
-          "cities": [
-            "Theni-Allinagaram"
-          ]
-        },
-        {
-          "district": "Thoothukkudi",
-          "cities": [
-            "Tuticorin"
-          ]
-        },
-        {
-          "district": "Thoothukudi",
-          "cities": [
-            "Kovilpatti"
-          ]
-        },
-        {
-          "district": "Tiruchirappalli",
-          "cities": [
-            "Tiruchirappalli"
-          ]
-        },
-        {
-          "district": "Tirunelveli",
-          "cities": [
-            "Kadayanallur",
-            "Tirunelveli"
-          ]
-        },
-        {
-          "district": "Tiruppur",
-          "cities": [
-            "Tirupur"
-          ]
-        },
-        {
-          "district": "Tiruvannamalai",
-          "cities": [
-            "Tiruvannamalai"
-          ]
-        },
-        {
-          "district": "Vellore",
-          "cities": [
-            "Ambur",
-            "Gudiyatham",
-            "Vaniyambadi",
-            "Vellore"
-          ]
-        },
-        {
-          "district": "Viluppuram",
-          "cities": [
-            "Viluppuram"
-          ]
-        },
-        {
-          "district": "Virudhunagar",
-          "cities": [
-            "Rajapalayam"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Telangana",
-      "districts": [
-        {
-          "district": "Adilabad",
-          "cities": [
-            "Adilabad",
-            "Mancherial"
-          ]
-        },
-        {
-          "district": "Hyderabad",
-          "cities": [
-            "Hyderabad"
-          ]
-        },
-        {
-          "district": "Karimnagar",
-          "cities": [
-            "Jagtial",
-            "Karimnagar",
-            "Ramagundam"
-          ]
-        },
-        {
-          "district": "Khammam",
-          "cities": [
-            "Khammam",
-            "Kothagudem"
-          ]
-        },
-        {
-          "district": "Mahbubnagar",
-          "cities": [
-            "Mahbubnagar"
-          ]
-        },
-        {
-          "district": "Medak",
-          "cities": [
-            "Siddipet"
-          ]
-        },
-        {
-          "district": "Nalgonda",
-          "cities": [
-            "Miryalaguda",
-            "Nalgonda",
-            "Suryapet"
-          ]
-        },
-        {
-          "district": "Nizamabad",
-          "cities": [
-            "Nizamabad"
-          ]
-        },
-        {
-          "district": "Warangal",
-          "cities": [
-            "Warangal"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Tripura",
-      "districts": [
-        {
-          "district": "West Tripura",
-          "cities": [
-            "Agartala"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Uttar Pradesh",
-      "districts": [
-        {
-          "district": "Agra",
-          "cities": [
-            "Agra"
-          ]
-        },
-        {
-          "district": "Aligarh",
-          "cities": [
-            "Aligarh",
-            "Khair"
-          ]
-        },
-        {
-          "district": "Allahabad",
-          "cities": [
-            "Allahabad"
-          ]
-        },
-        {
-          "district": "Ambedkar Nagar",
-          "cities": [
-            "Akbarpur",
-            "Tanda"
-          ]
-        },
-        {
-          "district": "Amroha",
-          "cities": [
-            "Amroha"
-          ]
-        },
-        {
-          "district": "Auraiya",
-          "cities": [
-            "Auraiya"
-          ]
-        },
-        {
-          "district": "Azamgarh",
-          "cities": [
-            "Azamgarh",
-            "Mubarakpur"
-          ]
-        },
-        {
-          "district": "Baghput",
-          "cities": [
-            "Baraut"
-          ]
-        },
-        {
-          "district": "Bahraich",
-          "cities": [
-            "Bahraich"
-          ]
-        },
-        {
-          "district": "Ballia",
-          "cities": [
-            "Ballia"
-          ]
-        },
-        {
-          "district": "Banda",
-          "cities": [
-            "Banda"
-          ]
-        },
-        {
-          "district": "Barabanki",
-          "cities": [
-            "Barabanki"
-          ]
-        },
-        {
-          "district": "Bareilly",
-          "cities": [
-            "Bareilly"
-          ]
-        },
-        {
-          "district": "Basti",
-          "cities": [
-            "Basti"
-          ]
-        },
-        {
-          "district": "Bijnor",
-          "cities": [
-            "Bijnor",
-            "Nagina",
-            "Najibabad"
-          ]
-        },
-        {
-          "district": "Budaun",
-          "cities": [
-            "Budaun",
-            "Sahaswan",
-            "Ujhani"
-          ]
-        },
-        {
-          "district": "Bulandshahr",
-          "cities": [
-            "Bulandshahr",
-            "Khurja"
-          ]
-        },
-        {
-          "district": "Chandauli",
-          "cities": [
-            "Mughalsarai"
-          ]
-        },
-        {
-          "district": "Deoria",
-          "cities": [
-            "Deoria"
-          ]
-        },
-        {
-          "district": "Etah",
-          "cities": [
-            "Etah"
-          ]
-        },
-        {
-          "district": "Etawah",
-          "cities": [
-            "Etawah"
-          ]
-        },
-        {
-          "district": "Faizabad",
-          "cities": [
-            "Faizabad"
-          ]
-        },
-        {
-          "district": "Farrukhabad",
-          "cities": [
-            "Farrukhabad"
-          ]
-        },
-        {
-          "district": "Fatehpur",
-          "cities": [
-            "Fatehpur"
-          ]
-        },
-        {
-          "district": "Firozabad",
-          "cities": [
-            "Firozabad",
-            "Shikohabad"
-          ]
-        },
-        {
-          "district": "Gautam Buddha Nagar",
-          "cities": [
-            "Dadri"
-          ]
-        },
-        {
-          "district": "Gautam Budh Nagar",
-          "cities": [
-            "Greater Noida"
-          ]
-        },
-        {
-          "district": "Ghaziabad",
-          "cities": [
-            "Ghaziabad",
-            "Modinagar",
-            "Muradnagar"
-          ]
-        },
-        {
-          "district": "Ghazipur",
-          "cities": [
-            "Ghazipur"
-          ]
-        },
-        {
-          "district": "Gonda",
-          "cities": [
-            "Gonda"
-          ]
-        },
-        {
-          "district": "Gorakhpur",
-          "cities": [
-            "Gorakhpur"
-          ]
-        },
-        {
-          "district": "Hapur",
-          "cities": [
-            "Hapur"
-          ]
-        },
-        {
-          "district": "Hardoi",
-          "cities": [
-            "Hardoi"
-          ]
-        },
-        {
-          "district": "Hathras",
-          "cities": [
-            "Hathras"
-          ]
-        },
-        {
-          "district": "Jalaun",
-          "cities": [
-            "Orai"
-          ]
-        },
-        {
-          "district": "Jaunpur",
-          "cities": [
-            "Jaunpur"
-          ]
-        },
-        {
-          "district": "Jhansi",
-          "cities": [
-            "Jhansi"
-          ]
-        },
-        {
-          "district": "Kanpur",
-          "cities": [
-            "Kanpur"
-          ]
-        },
-        {
-          "district": "Kasganj",
-          "cities": [
-            "Kasganj"
-          ]
-        },
-        {
-          "district": "Lakhimpur Kheri",
-          "cities": [
-            "Lakhimpur"
-          ]
-        },
-        {
-          "district": "Lalitpur",
-          "cities": [
-            "Lalitpur"
-          ]
-        },
-        {
-          "district": "Lucknow",
-          "cities": [
-            "Lucknow"
-          ]
-        },
-        {
-          "district": "Mahoba",
-          "cities": [
-            "Mahoba"
-          ]
-        },
-        {
-          "district": "Mainpuri",
-          "cities": [
-            "Mainpuri"
-          ]
-        },
-        {
-          "district": "Mathura",
-          "cities": [
-            "Mathura"
-          ]
-        },
-        {
-          "district": "Mau",
-          "cities": [
-            "Mau"
-          ]
-        },
-        {
-          "district": "Meerut",
-          "cities": [
-            "Meerut"
-          ]
-        },
-        {
-          "district": "Mirzapur",
-          "cities": [
-            "Mirzapur"
-          ]
-        },
-        {
-          "district": "Moradabad",
-          "cities": [
-            "Moradabad"
-          ]
-        },
-        {
-          "district": "Muzaffarnagar",
-          "cities": [
-            "Khatauli",
-            "Muzaffarnagar"
-          ]
-        },
-        {
-          "district": "Noida",
-          "cities": [
-            "Noida"
-          ]
-        },
-        {
-          "district": "Pilibhit",
-          "cities": [
-            "Pilibhit"
-          ]
-        },
-        {
-          "district": "Pratapgarh",
-          "cities": [
-            "Pratapgarh"
-          ]
-        },
-        {
-          "district": "Raebareli",
-          "cities": [
-            "Raebareli"
-          ]
-        },
-        {
-          "district": "Rampur",
-          "cities": [
-            "Rampur"
-          ]
-        },
-        {
-          "district": "Saharanpur",
-          "cities": [
-            "Deoband",
-            "Saharanpur"
-          ]
-        },
-        {
-          "district": "Sambhal",
-          "cities": [
-            "Chandausi",
-            "Sambhal"
-          ]
-        },
-        {
-          "district": "Sant Ravidas Nagar",
-          "cities": [
-            "Bhadohi"
-          ]
-        },
-        {
-          "district": "Shahjahanpur",
-          "cities": [
-            "Shahjahanpur"
-          ]
-        },
-        {
-          "district": "Shamli",
-          "cities": [
-            "Shamli"
-          ]
-        },
-        {
-          "district": "Sitapur",
-          "cities": [
-            "Sitapur"
-          ]
-        },
-        {
-          "district": "Sultanpur",
-          "cities": [
-            "Sultanpur"
-          ]
-        },
-        {
-          "district": "Unnao",
-          "cities": [
-            "Unnao"
-          ]
-        },
-        {
-          "district": "Varanasi",
-          "cities": [
-            "Varanasi"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "Uttarakhand",
-      "districts": [
-        {
-          "district": "Dehradun",
-          "cities": [
-            "Dehradun",
-            "Rishikesh"
-          ]
-        },
-        {
-          "district": "Haridwar",
-          "cities": [
-            "Haridwar",
-            "Roorkee"
-          ]
-        },
-        {
-          "district": "Nainital",
-          "cities": [
-            "Haldwani"
-          ]
-        },
-        {
-          "district": "Udham Singh Nagar",
-          "cities": [
-            "Kashipur",
-            "Rudrapur"
-          ]
-        }
-      ]
-    },
-    {
-      "state": "West Bengal",
-      "districts": [
-        {
-          "district": "Alipurduar",
-          "cities": [
-            "Alipurduar"
-          ]
-        },
-        {
-          "district": "Bankura",
-          "cities": [
-            "Bankura"
-          ]
-        },
-        {
-          "district": "Bardhaman",
-          "cities": [
-            "Asansol",
-            "Bardhaman",
-            "Durgapur"
-          ]
-        },
-        {
-          "district": "Birbhum",
-          "cities": [
-            "Bolpur"
-          ]
-        },
-        {
-          "district": "Cooch Behar",
-          "cities": [
-            "Cooch Behar"
-          ]
-        },
-        {
-          "district": "Dakshin Dinajpur",
-          "cities": [
-            "Balurghat"
-          ]
-        },
-        {
-          "district": "Darjeeling",
-          "cities": [
-            "Darjeeling"
-          ]
-        },
-        {
-          "district": "Darjeeling; Jalpaiguri",
-          "cities": [
-            "Siliguri"
-          ]
-        },
-        {
-          "district": "Hooghly",
-          "cities": [
-            "Dankuni"
-          ]
-        },
-        {
-          "district": "Jalpaiguri",
-          "cities": [
-            "Jalpaiguri"
-          ]
-        },
-        {
-          "district": "Kolkata",
-          "cities": [
-            "Kolkata"
-          ]
-        },
-        {
-          "district": "Malda",
-          "cities": [
-            "Malda"
-          ]
-        },
-        {
-          "district": "Midnapore East",
-          "cities": [
-            "Kanthi"
-          ]
-        },
-        {
-          "district": "Murshidabad",
-          "cities": [
-            "Baharampur",
-            "Dhulian",
-            "Jangipur"
-          ]
-        },
-        {
-          "district": "Nadia",
-          "cities": [
-            "Chakdaha",
-            "Krishnanagar",
-            "Nabadwip",
-            "Ranaghat",
-            "Shantipur"
-          ]
-        },
-        {
-          "district": "North 24 Parganas",
-          "cities": [
-            "Bangaon",
-            "Basirhat",
-            "Habra"
-          ]
-        },
-        {
-          "district": "Paschim Medinipur",
-          "cities": [
-            "Kharagpur",
-            "Midnapore"
-          ]
-        },
-        {
-          "district": "Purba Medinipur",
-          "cities": [
-            "Haldia"
-          ]
-        },
-        {
-          "district": "Purulia",
-          "cities": [
-            "Purulia"
-          ]
-        },
-        {
-          "district": "Uttar Dinajpur",
-          "cities": [
-            "Raiganj"
-          ]
-        }
-      ]
-    }
-  ],
-  "generated_from": "location_database.csv",
-  "state_count": 35
+    ],
+    "generated_from": "location_database.csv",
+    "state_count": 35
 }

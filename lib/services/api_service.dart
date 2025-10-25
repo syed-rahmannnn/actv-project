@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
+import 'auth_service.dart';
 
 class ApiService {
   // Replace with your Render domain (include https)
@@ -19,7 +20,7 @@ class ApiService {
     }
 
     // Debug defaults; allow host/port/scheme overrides for physical devices
-    const devHost = String.fromEnvironment('DEV_HOST', defaultValue: 'localhost');
+    const devHost = String.fromEnvironment('DEV_HOST', defaultValue: '192.168.29.130');
     const apiPort = String.fromEnvironment('API_PORT', defaultValue: '3000');
     const apiScheme = String.fromEnvironment('API_SCHEME', defaultValue: 'http');
     return '$apiScheme://$devHost:$apiPort/api';
@@ -35,6 +36,23 @@ class ApiService {
       headers['Accept'] = 'application/json';
     }
     if (auth && _token != null) headers['Authorization'] = 'Bearer $_token';
+    return headers;
+  }
+
+  // Static helper to get headers with token from AuthService
+  static Future<Map<String, String>> _staticHeaders({bool json = true}) async {
+    final headers = <String, String>{};
+    if (json) {
+      headers['Content-Type'] = 'application/json';
+      headers['Accept'] = 'application/json';
+    }
+    
+    // Get token from AuthService for static methods
+    final token = await AuthService.getToken();
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    
     return headers;
   }
 
@@ -384,7 +402,7 @@ class ApiService {
     final requestPayload = {'memberId': memberId, ...payload};
     final resp = await http.post(
       url,
-      headers: {'Content-Type': 'application/json'},
+      headers: await _staticHeaders(),
       body: jsonEncode(requestPayload),
     );
     // Response logging removed for security
@@ -394,6 +412,28 @@ class ApiService {
       return {'success': true, 'data': body['data']};
     } else {
       return {'success': false, 'error': body['message'] ?? 'Failed to save declaration'};
+    }
+  }
+
+  // Static method to submit application for approval workflow
+  static Future<Map<String, dynamic>> submitApplication(Map<String, dynamic> payload) async {
+    final url = Uri.parse('$baseUrl/applications/submit');
+    developer.log(
+      'ApiService: submitApplication called',
+      name: 'ApiService',
+    );
+
+    final resp = await http.post(
+      url,
+      headers: await _staticHeaders(),
+      body: jsonEncode(payload),
+    );
+
+    final body = _jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'success': true, 'data': body};
+    } else {
+      return {'success': false, 'error': body['message'] ?? 'Failed to submit application'};
     }
   }
 
@@ -454,6 +494,118 @@ class ApiService {
     } catch (e) {
       developer.log('_jsonDecodeSafe error: $e', name: 'ApiService');
       return input;
+    }
+  }
+
+  // Get applications for block admin
+  static Future<List<Map<String, dynamic>>> getBlockAdminApplications(String blockAdminId) async {
+    final url = Uri.parse('$baseUrl/api/applications/block/$blockAdminId');
+    developer.log('ApiService: getBlockAdminApplications called for admin: $blockAdminId', name: 'ApiService');
+
+    try {
+      final resp = await http.get(
+        url,
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      final body = _jsonDecodeSafe(resp.body);
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        if (body is List) {
+          return List<Map<String, dynamic>>.from(body);
+        } else {
+          return [];
+        }
+      } else {
+        throw Exception(body['message'] ?? 'Failed to fetch applications');
+      }
+    } catch (e) {
+      developer.log('getBlockAdminApplications error: $e', name: 'ApiService');
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Review block application (approve/reject)
+  static Future<bool> reviewBlockApplication(String applicationId, String action, {String? reason}) async {
+    final url = Uri.parse('$baseUrl/api/applications/block-review/$applicationId');
+    developer.log('ApiService: reviewBlockApplication called - action: $action', name: 'ApiService');
+
+    try {
+      final payload = {
+        'action': action,
+        if (reason != null) 'reason': reason,
+      };
+
+      final resp = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      );
+
+      final body = _jsonDecodeSafe(resp.body);
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        return body['success'] == true;
+      } else {
+        throw Exception(body['message'] ?? 'Failed to review application');
+      }
+    } catch (e) {
+      developer.log('reviewBlockApplication error: $e', name: 'ApiService');
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Get applications for district admin
+  static Future<List<Map<String, dynamic>>> getDistrictAdminApplications(String districtAdminId) async {
+    final url = Uri.parse('$baseUrl/api/applications/district/$districtAdminId');
+    developer.log('ApiService: getDistrictAdminApplications called for admin: $districtAdminId', name: 'ApiService');
+
+    try {
+      final resp = await http.get(
+        url,
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      final body = _jsonDecodeSafe(resp.body);
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        if (body is List) {
+          return List<Map<String, dynamic>>.from(body);
+        } else {
+          return [];
+        }
+      } else {
+        throw Exception(body['message'] ?? 'Failed to fetch applications');
+      }
+    } catch (e) {
+      developer.log('getDistrictAdminApplications error: $e', name: 'ApiService');
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // Review district application (approve/reject)
+  static Future<bool> reviewDistrictApplication(String applicationId, String action, {String? reason}) async {
+    final url = Uri.parse('$baseUrl/api/applications/district-review/$applicationId');
+    developer.log('ApiService: reviewDistrictApplication called - action: $action', name: 'ApiService');
+
+    try {
+      final payload = {
+        'action': action,
+        if (reason != null) 'reason': reason,
+      };
+
+      final resp = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      );
+
+      final body = _jsonDecodeSafe(resp.body);
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        return body['success'] == true;
+      } else {
+        throw Exception(body['message'] ?? 'Failed to review application');
+      }
+    } catch (e) {
+      developer.log('reviewDistrictApplication error: $e', name: 'ApiService');
+      throw Exception('Network error: $e');
     }
   }
 }

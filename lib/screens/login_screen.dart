@@ -355,6 +355,8 @@ class _LoginScreenState extends State<LoginScreen> {
             final token = adminResult['token'];
             final adminRole = adminResult['role'];
             final adminId = adminResult['adminId'];
+            final adminData = adminResult['admin'] ?? {};
+            final apiBaseUrl = ApiService.baseUrl;
 
             // Save admin login data
             await AuthService.saveLoginData(
@@ -373,7 +375,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => BlockAdminDashboard(adminId: adminId),
+                    builder: (context) => BlockAdminDashboard(
+                      apiBaseUrl: apiBaseUrl,
+                      authToken: token,
+                      blockAdminId: adminId,
+                      blockName: adminData['block'] ?? 'Unknown Block',
+                      adminEmail: adminData['email'] ?? '',
+                    ),
                   ),
                 );
               } else if (adminRole == 'DistrictAdmin') {

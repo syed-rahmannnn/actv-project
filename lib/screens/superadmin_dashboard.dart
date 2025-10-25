@@ -99,12 +99,7 @@ class _SuperAdminDashboardPageState extends State<SuperAdminDashboardPage> {
           ),
         );
       case 3:
-        return const SettingsPage(
-          adminName: "Super Admin",
-          adminType: "Super",
-          adminEmail: "superadmin@example.com",
-          adminArea: "All Areas",
-        );
+        return const SettingsPage();
       default:
         return const SizedBox.shrink();
     }

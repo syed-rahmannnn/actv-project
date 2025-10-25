@@ -18,10 +18,6 @@ const AdminSchema = new mongoose.Schema({
   timestamps: true // createdAt, updatedAt
 });
 
-// Add indexes
-AdminSchema.index({ email: 1 }, { unique: true });
-AdminSchema.index({ adminId: 1 }, { unique: true });
-
 // Bind to adminsdb
 function getAdminsDbModels(connection = mongoose.connection) {
   // useDb returns a new connection-like object scoped to a different DB on the same cluster

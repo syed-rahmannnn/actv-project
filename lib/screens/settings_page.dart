@@ -1,18 +1,85 @@
 import 'package:flutter/material.dart';
+import '../services/application_service.dart';
 import '../services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// Mock classes for Provider pattern - these would typically be in separate files
+class AppConfig {
+  final String apiBaseUrl =
+      'http://localhost:3000/api'; // Replace with your actual API base URL
+}
+
+class AuthProvider {
+  String? token;
+  AdminData? currentAdmin;
+
+  AuthProvider() {
+    _loadAuthData();
+  }
+
+  Future<void> _loadAuthData() async {
+    final prefs = await SharedPreferences.getInstance();
+    token = prefs.getString('token');
+
+    // Load admin data from AuthService
+    final userData = await AuthService.getUserData();
+    if (userData != null) {
+      currentAdmin = AdminData(
+        adminId: userData['_id'] ?? '',
+        email: userData['email'] ?? '',
+        role: userData['role'] ?? '',
+        meta: AdminMeta(
+          state: userData['state'] ?? '',
+          district: userData['district'] ?? '',
+          block: userData['block'] ?? '',
+        ),
+        active: userData['active'] ?? true,
+      );
+    }
+  }
+}
+
+class AdminData {
+  final String adminId;
+  final String email;
+  final String role;
+  final AdminMeta meta;
+  final bool active;
+
+  AdminData({
+    required this.adminId,
+    required this.email,
+    required this.role,
+    required this.meta,
+    required this.active,
+  });
+}
+
+class AdminMeta {
+  final String state;
+  final String district;
+  final String block;
+
+  AdminMeta({required this.state, required this.district, required this.block});
+}
 
 class SettingsPage extends StatefulWidget {
-  final String adminName;
-  final String adminType;
-  final String adminEmail;
-  final String adminArea;
+  // New constructor parameters for direct instantiation
+  final String? apiBaseUrl;
+  final String? token;
+  final String? blockAdminId;
+  final String? blockName;
+  final String? blockEmail;
+  final bool? isActive;
 
   const SettingsPage({
     super.key,
-    required this.adminName,
-    required this.adminType,
-    required this.adminEmail,
-    required this.adminArea,
+    this.apiBaseUrl,
+    this.token,
+    this.blockAdminId,
+    this.blockName,
+    this.blockEmail,
+    this.isActive,
   });
 
   @override
@@ -20,361 +87,296 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  Widget _sectionCard({required Widget child, EdgeInsets? margin}) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      elevation: 0,
-      margin: margin ?? const EdgeInsets.symmetric(vertical: 6),
-      color: Colors.white,
-      child: Padding(padding: const EdgeInsets.all(18.0), child: child),
-    );
+  Map<String, int> _stats = {};
+  bool _loading = true;
+  late final ApplicationService _svc;
+  // ignore: unused_field
+  late final ApplicationService svc;
+  // ignore: unused_field
+  late final String adminId;
+  // ignore: unused_field
+  late final String blockName;
+  // ignore: unused_field
+  late final String email;
+  // ignore: unused_field
+  bool active = true;
+  // ignore: unused_field
+  Map<String, int>? stats;
+
+  final AppConfig _appConfig = AppConfig();
+  final AuthProvider _authProvider = AuthProvider();
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Use new parameters if available, otherwise fall back to existing logic
+    if (widget.apiBaseUrl != null && widget.token != null) {
+      _svc = ApplicationService(widget.apiBaseUrl!, token: widget.token!);
+      _load();
+    } else {
+      // Existing initialization logic
+      _initializeData();
+    }
+  }
+
+  // New simplified load method
+  Future<void> _load() async {
+    if (widget.blockAdminId != null) {
+      final data = await _svc.getBlockStats(widget.blockAdminId!);
+      if (!mounted) return;
+      setState(() {
+        _stats = data;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _initializeData() async {
+    await _authProvider._loadAuthData();
+
+    if (_authProvider.currentAdmin != null) {
+      final admin = _authProvider.currentAdmin!;
+      adminId = admin.adminId;
+      email = admin.email;
+      blockName = admin.meta.block;
+      active = admin.active;
+
+      svc = ApplicationService(
+        _appConfig.apiBaseUrl,
+        token: _authProvider.token,
+      );
+
+      await _load();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_authProvider.currentAdmin == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final title = '$blockName Block Admin';
+    final blockArea = '$blockName Block';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF1F6FF),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.black87,
-        automaticallyImplyLeading: false,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text(
-              'Settings',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
-            ),
-            SizedBox(height: 2),
-            Text(
-              'Manage your account and preferences',
-              style: TextStyle(fontSize: 13, color: Colors.black54),
-            ),
-          ],
+        title: const Text(
+          'Settings',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
         ),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: CircleAvatar(child: Text('A')), // Your initial
-          ),
-        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(14, 8, 14, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Profile Card
-            _sectionCard(
-              child: Column(
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF5FF),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      const CircleAvatar(
-                        radius: 28,
-                        backgroundColor: Color(0xFFDEEAF9),
-                        child: Icon(
-                          Icons.person,
-                          color: Colors.black54,
-                          size: 32,
+                  const CircleAvatar(radius: 28, child: Icon(Icons.person)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        const SizedBox(height: 2),
+                        Text(
+                          email,
+                          style: const TextStyle(color: Colors.black54),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          blockArea,
+                          style: const TextStyle(color: Colors.black54),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
                           children: [
-                            Row(
-                              children: [
-                                Text(
-                                  widget.adminName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 17,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[200],
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    widget.adminType,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.black54,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              widget.adminEmail,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.black54,
+                            const Text('Active Status'),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              widget.adminArea,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.black45,
+                              decoration: BoxDecoration(
+                                color: active
+                                    ? const Color(0xFFDFF7E3)
+                                    : const Color(0xFFFFE4E4),
+                                borderRadius: BorderRadius.circular(20),
                               ),
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                const Text(
-                                  "Active Status",
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.black87,
-                                  ),
+                              child: Text(
+                                active ? 'Active' : 'Inactive',
+                                style: TextStyle(
+                                  color: active
+                                      ? const Color(0xFF1F8B4C)
+                                      : const Color(0xFFB42318),
                                 ),
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFF32D583),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: const Text(
-                                    "Active",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Account card
-            _sectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Account",
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                  ),
-                  const SizedBox(height: 10),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text("Profile Information"),
-                    trailing: const Icon(
-                      Icons.chevron_right,
-                      color: Colors.black38,
-                    ),
-                    onTap: () {},
-                  ),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text("Notifications"),
-                    trailing: const Icon(
-                      Icons.chevron_right,
-                      color: Colors.black38,
-                    ),
-                    onTap: () {},
-                  ),
-                ],
-              ),
-            ),
-
-            // Admin section card
-            _sectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Admin",
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                  ),
-                  const SizedBox(height: 10),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(
-                      Icons.people_outline,
-                      color: Colors.black45,
-                    ),
-                    title: const Text("Total Members:"),
-                    trailing: Text(
-                      "13",
-                      style: TextStyle(
-                        color: Color(0xFF1877F2),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(
-                      Icons.hourglass_top,
-                      color: Colors.orange,
-                    ),
-                    title: const Text("Pending Approvals:"),
-                    trailing: Text(
-                      "5",
-                      style: TextStyle(
-                        color: Colors.orange,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(
-                      Icons.check_circle,
-                      color: Color(0xFF32D583),
-                    ),
-                    title: const Text("Approved:"),
-                    trailing: Text(
-                      "4",
-                      style: TextStyle(
-                        color: Color(0xFF32D583),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.cancel, color: Colors.redAccent),
-                    title: const Text("Rejected:"),
-                    trailing: Text(
-                      "4",
-                      style: TextStyle(
-                        color: Colors.redAccent,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
 
-            // Support card
+            const SizedBox(height: 16),
+            
+            // Add stats cards to use _statsCard method and _stats values
+            _statsCard('Total Applications', _stats['total'] ?? 0, Colors.blue),
+            _statsCard('Pending Approvals', _stats['pending'] ?? 0, Colors.orange),
+            _statsCard('Approved', _stats['approved'] ?? 0, Colors.green),
+            _statsCard('Rejected', _stats['rejected'] ?? 0, Colors.red),
+            
+            const SizedBox(height: 16),
             _sectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Support",
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                  ),
-                  const SizedBox(height: 10),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text("Help & Support"),
-                    trailing: const Icon(
-                      Icons.chevron_right,
-                      color: Colors.black38,
-                    ),
-                    onTap: () {},
-                  ),
-                  Divider(height: 5),
-                  _buildLogoutButton(),
-                ],
-              ),
+              title: 'Account',
+              items: const ['Profile Information', 'Notifications'],
             ),
+
+            const SizedBox(height: 16),
+            _adminStats(stats),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildLogoutButton() {
-    return GestureDetector(
-      onTap: () async {
-        final shouldLogout = await showDialog<bool>(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Logout'),
-              content: const Text('Are you sure you want to logout?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text(
-                    'Logout',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-
-        if (shouldLogout == true) {
-          await AuthService.logout();
-          if (mounted) {
-            Navigator.of(context).pushNamedAndRemoveUntil(
-              '/login',
-              (Route<dynamic> route) => false,
-            );
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Logged out successfully'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          }
-        }
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-        decoration: BoxDecoration(
-          color: Colors.red[50],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.red[200]!),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.logout, color: Colors.red, size: 20),
-            SizedBox(width: 8),
-            Text(
-              'Logout',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.red,
-              ),
+  Widget _sectionCard({required String title, required List<String> items}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          for (final label in items)
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              title: Text(label),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {},
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
+
+  Widget _adminStats(Map<String, int>? s) {
+    final total = s?['total'] ?? 0;
+    final pending = s?['pending'] ?? 0;
+    final approved = s?['approved'] ?? 0;
+    final rejected = s?['rejected'] ?? 0;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Admin',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          _row('Total Applications:', total, const Color(0xFF2563EB)),
+          _row('Pending Approvals:', pending, const Color(0xFFF59E0B)),
+          _row('Approved:', approved, const Color(0xFF16A34A)),
+          _row('Rejected:', rejected, const Color(0xFFDC2626)),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(String label, int value, Color color) => ListTile(
+    dense: true,
+    contentPadding: EdgeInsets.zero,
+    leading: const SizedBox(width: 4),
+    title: Text(label),
+    trailing: Text(
+      '$value',
+      style: TextStyle(fontWeight: FontWeight.w600, color: color),
+    ),
+  );
+
+  // New _statsCard method from provided code
+  Widget _statsCard(String title, int value, Color color) => Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withAlpha(13),
+          blurRadius: 10,
+          offset: const Offset(0, 6),
+        ),
+      ],
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(title, style: const TextStyle(fontSize: 16)),
+        Text(
+          '$value',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    ),
+  );
 }

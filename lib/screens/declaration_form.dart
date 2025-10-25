@@ -1,11 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'application_submitted_screen.dart';
 import 'package:activ/services/api_service.dart';
+import 'package:activ/services/application_service.dart';
+import 'package:activ/services/user_profile_provider.dart';
+import 'package:activ/services/auth_service.dart';
 
 class DeclarationForm extends StatefulWidget {
   final Map<String, dynamic> userData;
+  final String? baseUrl;
+  final String? userId;
+  final String? email;
+  final String? fullName;
+  final String? phone;
+  final String? token;
 
-  const DeclarationForm({super.key, required this.userData});
+  const DeclarationForm({
+    super.key,
+    required this.userData,
+    this.baseUrl,
+    this.userId,
+    this.email,
+    this.fullName,
+    this.phone,
+    this.token,
+  });
 
   @override
   State<DeclarationForm> createState() => _DeclarationFormState();
@@ -16,6 +35,7 @@ class _DeclarationFormState extends State<DeclarationForm> {
   final _companyNamesController = TextEditingController();
   bool _showOneFieldPerName = false;
   bool _agreeToDeclaration = false;
+  bool _submitting = false;
 
   @override
   void initState() {
@@ -306,21 +326,44 @@ class _DeclarationFormState extends State<DeclarationForm> {
                           width: double.infinity,
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: _submitApplication,
+                            onPressed: _submitting ? null : _submitApplication,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            child: const Text(
-                              'Submit Application',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            child: _submitting
+                                ? Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: const [
+                                      SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Submitting...',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : const Text(
+                                    'Submit Application',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                           ),
                         ),
                       ],
@@ -411,6 +454,9 @@ class _DeclarationFormState extends State<DeclarationForm> {
       return;
     }
 
+    // Start submitting state
+    if (mounted) setState(() => _submitting = true);
+
     // Save form data to userData
     final updatedUserData = Map<String, dynamic>.from(widget.userData);
     if (updatedUserData['registrationForm'] == null) {
@@ -429,11 +475,79 @@ class _DeclarationFormState extends State<DeclarationForm> {
     updatedUserData['registrationForm']['submissionDate'] = DateTime.now()
         .toIso8601String();
 
-    // Save declaration to backend
+    // Save declaration to backend and submit application for approval workflow
     try {
+      // Check if we have the new parameters, use them if available
+      if (widget.baseUrl != null &&
+          widget.userId != null &&
+          widget.email != null &&
+          widget.fullName != null &&
+          widget.phone != null) {
+        // Use the new simplified approach
+        final location = context.read<UserProfileProvider>();
+        final svc = ApplicationService(widget.baseUrl!, token: widget.token);
+
+        final result = await svc.submitApplication(
+          userId: widget.userId!,
+          fullName: widget.fullName!,
+          email: widget.email!,
+          phone: widget.phone!,
+          state: location.state ?? '',
+          district: location.district ?? '',
+          block: location.block ?? '',
+          formData: {
+            "sisterConcerns": sisterConcerns,
+            "companyNames": _companyNamesController.text
+                .split('\n')
+                .map((e) => e.trim())
+                .where((e) => e.isNotEmpty)
+                .toList(),
+            "showOneFieldPerName": _showOneFieldPerName,
+            "agreeToDeclaration": _agreeToDeclaration,
+            "timestamp": DateTime.now().toIso8601String(),
+          },
+        );
+
+        if (mounted) setState(() => _submitting = false);
+
+        if (result['success'] == true) {
+          if (!mounted) return;
+          Navigator.pushReplacementNamed(
+            context,
+            '/application_submitted',
+            arguments: result['application'],
+          );
+        } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? 'Submission failed')),
+          );
+        }
+        return;
+      }
+
+      // Fall back to existing logic if new parameters are not provided
       final memberId = updatedUserData['memberId'];
       if (memberId == null) {
         throw Exception('Member ID not found');
+      }
+
+      // Get stored location data from UserProfileProvider
+      final userProfileProvider = context.read<UserProfileProvider>();
+      final locationData = userProfileProvider.getLocationData();
+
+      // Get authentication token using AuthService
+      final token = await AuthService.getToken();
+      if (token == null || token.trim().isEmpty) {
+        if (mounted) setState(() => _submitting = false);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Session expired or invalid. Please log in again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
       }
 
       // Convert company names into array (split by new lines)
@@ -443,7 +557,8 @@ class _DeclarationFormState extends State<DeclarationForm> {
           .where((e) => e.isNotEmpty)
           .toList();
 
-      final payload = {
+      // First save the declaration to the existing profile endpoint
+      final declarationPayload = {
         'sisterConcerns': sisterConcerns,
         'companyNames': companyNames,
         'showOneFieldPerName': _showOneFieldPerName,
@@ -452,31 +567,85 @@ class _DeclarationFormState extends State<DeclarationForm> {
         'submissionDate': DateTime.now().toIso8601String(),
       };
 
-      final result = await ApiService.saveDeclaration(memberId, payload);
-      if (result['success'] != true) {
+      final declarationResult = await ApiService.saveDeclaration(
+        memberId,
+        declarationPayload,
+      );
+      if (declarationResult['success'] != true &&
+          declarationResult['ok'] != true) {
         throw Exception(
-          result['body']?['message'] ?? 'Failed to submit declaration',
+          declarationResult['error'] ??
+              declarationResult['message'] ??
+              'Failed to save declaration',
         );
+      }
+
+      // Now submit the application using ApplicationService with stored location data
+      final applicationService = ApplicationService(
+        ApiService.baseUrl,
+        token: token,
+      );
+      final state = (locationData['state'] ?? '').toString().trim();
+      final district = (locationData['district'] ?? '').toString().trim();
+      final block = (locationData['block'] ?? '').toString().trim();
+
+      final userData = updatedUserData['registrationForm'] ?? {};
+      final declarationFormDataMap = {
+        'sisterConcerns': sisterConcerns,
+        'companyNames': companyNames,
+        'showOneFieldPerName': _showOneFieldPerName,
+        'agreeToDeclaration': _agreeToDeclaration,
+        'personalDetails': userData,
+        'businessInfo': updatedUserData['businessInfo'],
+        'financialInfo': updatedUserData['financialInfo'],
+      };
+
+      final result = await applicationService.submitApplication(
+        userId: memberId,
+        fullName: userData['fullName'] ?? '',
+        email: updatedUserData['email'] ?? '',
+        phone: userData['phoneNumber'] ?? '',
+        state: state,
+        district: district,
+        block: block,
+        formData: declarationFormDataMap,
+      );
+
+      if (result['success'] == true) {
+        // Optional: capture application info if returned
+        if (!mounted) return;
+        // Reset submitting state before navigation
+        setState(() => _submitting = false);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                ApplicationSubmittedScreen(userData: updatedUserData),
+          ),
+        );
+        return;
+      } else {
+        if (!mounted) return;
+        final msg =
+            result['message']?.toString() ??
+            result['error']?.toString() ??
+            'Failed to submit application';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: Colors.red),
+        );
+        return;
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to submit declaration: $e'),
+          content: Text('Failed to submit application: $e'),
           backgroundColor: Colors.red,
         ),
       );
       return;
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
-
-    // Navigate to application submitted screen
-    if (!mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            ApplicationSubmittedScreen(userData: updatedUserData),
-      ),
-    );
   }
 }

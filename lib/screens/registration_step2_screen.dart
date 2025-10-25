@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'dashboard_screen.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/user_profile_provider.dart';
 import '../utils/locations.dart';
 
 class RegistrationStep2Screen extends StatefulWidget {
@@ -16,12 +18,12 @@ class RegistrationStep2Screen extends StatefulWidget {
 
 class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
   final _formKey = GlobalKey<FormState>();
-  final _blockController = TextEditingController();
   final _cityController = TextEditingController();
   
   Locations? _locations;
   String? _selectedState;
   String? _selectedDistrict;
+  String? _selectedBlock;
   bool _isLoading = false;
 
   // Removed unused hardcoded _states; using _locations.getStateNames()
@@ -202,6 +204,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                         setState(() {
                           _selectedState = newValue;
                           _selectedDistrict = null;
+                          _selectedBlock = null; // Reset block when state changes
                         });
                       },
                       validator: (value) {
@@ -251,6 +254,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                       onChanged: (String? newValue) {
                         setState(() {
                           _selectedDistrict = newValue;
+                          _selectedBlock = null; // Reset block when district changes
                         });
                       },
                       validator: (value) {
@@ -309,11 +313,10 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _blockController,
+                    DropdownButtonFormField<String>(
+                      value: _selectedBlock,
+                      hint: const Text('Select block'),
                       decoration: InputDecoration(
-                        hintText: 'Enter block name',
-                        hintStyle: TextStyle(color: Colors.grey[400]),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide(color: Colors.grey[300]!),
@@ -327,9 +330,22 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                           borderSide: const BorderSide(color: Colors.blue),
                         ),
                       ),
+                      items: (_selectedState == null || _selectedDistrict == null || _locations == null
+                              ? <String>[]
+                              : _locations!.blocksForDistrict(_selectedState!, _selectedDistrict!))
+                          .map((String block) => DropdownMenuItem<String>(
+                                value: block,
+                                child: Text(block),
+                              ))
+                          .toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedBlock = newValue;
+                        });
+                      },
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Please enter block name';
+                          return 'Please select a block';
                         }
                         return null;
                       },
@@ -443,10 +459,10 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
         "dateOfBirth": dateOfBirthDDMMYYYY,
         "gender": widget.personalData['gender'],
         "password": widget.personalData['password'],
-        "block": _blockController.text,
-        "city": _cityController.text,
-        "district": _selectedDistrict!,
-        "state": _selectedState!,
+        "block": _selectedBlock!.trim(),
+        "city": _cityController.text.trim(),
+        "district": _selectedDistrict!.trim(),
+        "state": _selectedState!.trim(),
         "pincode": widget.personalData['pincode'] ?? '000000',
       };
 
@@ -463,13 +479,21 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
         await AuthService.saveLoginData(token: token, userData: member);
         if (!mounted) return;
 
+        // Store location data in UserProfileProvider for later use
+        context.read<UserProfileProvider>().updateLocation(
+          state: _selectedState!.trim(),
+          district: _selectedDistrict!.trim(),
+          block: _selectedBlock!.trim(),
+          city: _cityController.text.trim(),
+        );
+
         // Combine all data for dashboard display
         final completeData = {
           ...widget.personalData,
-          'state': _selectedState,
-          'district': _selectedDistrict,
-          'city': _cityController.text,
-          'block': _blockController.text,
+          'state': _selectedState!.trim(),
+          'district': _selectedDistrict!.trim(),
+          'city': _cityController.text.trim(),
+          'block': _selectedBlock!.trim(),
           'member': result['body']['data']['member'],
           'token': result['token'],
         };
@@ -543,7 +567,6 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
 
   @override
   void dispose() {
-    _blockController.dispose();
     _cityController.dispose();
     super.dispose();
   }

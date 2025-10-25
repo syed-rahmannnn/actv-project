@@ -99,12 +99,7 @@ class _StateAdminDashboardPageState extends State<StateAdminDashboardPage> {
           ),
         );
       case 3:
-        return const SettingsPage(
-          adminName: "State Admin",
-          adminType: "State",
-          adminEmail: "stateadmin@example.com",
-          adminArea: "State Area",
-        );
+        return const SettingsPage();
       default:
         return const SizedBox.shrink();
     }

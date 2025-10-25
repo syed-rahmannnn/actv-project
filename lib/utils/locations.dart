@@ -5,8 +5,8 @@ import 'package:flutter/services.dart' show rootBundle;
 
 class District {
   final String district;
-  final List<String> cities;
-  District({required this.district, required this.cities});
+  final List<String> blocks;
+  District({required this.district, this.blocks = const []});
 }
 
 class StateEntry {
@@ -18,7 +18,7 @@ class StateEntry {
     var dlist = (m['districts'] as List<dynamic>)
         .map((d) => District(
               district: d['district'] as String,
-              cities: List<String>.from(d['cities'] as List),
+              blocks: List<String>.from(d['block'] as List? ?? []),
             ))
         .toList();
     return StateEntry(state: m['state'] as String, districts: dlist);
@@ -49,31 +49,31 @@ class Locations {
     return s.districts.map((d) => d.district).toList();
   }
 
-  /// City is now a free-text input. This helper remains for optional validation or suggestions.
-  @Deprecated('Use a text field for city input. For validation, see isKnownCity.')
-  List<String> citiesFor(String stateName, String districtName) {
+  /// Helper: blocks for a given state and district (or empty list)
+  List<String> blocksForDistrict(String stateName, String districtName) {
     final s = states.firstWhere(
       (e) => e.state == stateName,
       orElse: () => StateEntry(state: '', districts: []),
     );
     final d = s.districts.firstWhere(
       (x) => x.district == districtName,
-      orElse: () => District(district: '', cities: []),
+      orElse: () => District(district: '', blocks: []),
     );
-    return d.cities;
+    return d.blocks;
   }
 
-  /// Validate if a typed city exists in the dataset for the given state and district.
+  /// City is now a free-text input. These methods are no longer needed.
+  @Deprecated('Cities are now handled as free-text input. Remove this method.')
+  List<String> citiesFor(String stateName, String districtName) {
+    // Return empty list since cities are no longer in the data structure
+    return [];
+  }
+
+  /// City validation is no longer possible since cities are not in the dataset.
+  @Deprecated('Cities are now free-text input. Remove this method.')
   bool isKnownCity(String stateName, String districtName, String cityName) {
-    final s = states.firstWhere(
-      (e) => e.state == stateName,
-      orElse: () => StateEntry(state: '', districts: []),
-    );
-    final d = s.districts.firstWhere(
-      (x) => x.district == districtName,
-      orElse: () => District(district: '', cities: []),
-    );
-    return d.cities.contains(cityName);
+    // Always return true since we can't validate against a dataset
+    return true;
   }
 }
 
