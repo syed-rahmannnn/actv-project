@@ -14,16 +14,40 @@ class ApiService {
     const apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
     if (apiBaseUrl.isNotEmpty) return apiBaseUrl;
 
-    // In release, always use hosted backend
+    // In release mode, ALWAYS use production backend
     if (!kDebugMode) {
       return 'https://actv-project.onrender.com/api';
     }
 
-    // Debug defaults; allow host/port/scheme overrides for physical devices
-    const devHost = String.fromEnvironment('DEV_HOST', defaultValue: '192.168.29.130');
-    const apiPort = String.fromEnvironment('API_PORT', defaultValue: '3000');
-    const apiScheme = String.fromEnvironment('API_SCHEME', defaultValue: 'http');
-    return '$apiScheme://$devHost:$apiPort/api';
+    // For debug mode, check if we should force production
+    const forceProduction = String.fromEnvironment(
+      'FORCE_PRODUCTION',
+      defaultValue: 'false',
+    );
+    if (forceProduction.toLowerCase() == 'true') {
+      return 'https://actv-project.onrender.com/api';
+    }
+
+    // Only use local development server if explicitly enabled
+    const useLocalDev = String.fromEnvironment(
+      'USE_LOCAL_DEV',
+      defaultValue: 'false',
+    );
+    if (useLocalDev.toLowerCase() == 'true') {
+      const devHost = String.fromEnvironment(
+        'DEV_HOST',
+        defaultValue: '192.168.29.130',
+      );
+      const apiPort = String.fromEnvironment('API_PORT', defaultValue: '3000');
+      const apiScheme = String.fromEnvironment(
+        'API_SCHEME',
+        defaultValue: 'http',
+      );
+      return '$apiScheme://$devHost:$apiPort/api';
+    }
+
+    // Default to production for all other cases (including physical devices in debug mode)
+    return 'https://actv-project.onrender.com/api';
   }
 
   String? _token;
@@ -46,13 +70,13 @@ class ApiService {
       headers['Content-Type'] = 'application/json';
       headers['Accept'] = 'application/json';
     }
-    
+
     // Get token from AuthService for static methods
     final token = await AuthService.getToken();
     if (token != null) {
       headers['Authorization'] = 'Bearer $token';
     }
-    
+
     return headers;
   }
 
@@ -132,7 +156,11 @@ class ApiService {
   }
 
   // Admin login
-  Future<Map<String, dynamic>> loginAdmin(String email, String password, String role) async {
+  Future<Map<String, dynamic>> loginAdmin(
+    String email,
+    String password,
+    String role,
+  ) async {
     final url = Uri.parse('$baseUrl/admin/login');
     final payload = {'email': email.trim(), 'password': password, 'role': role};
     // Logging removed for security - no longer exposing admin login credentials
@@ -144,7 +172,11 @@ class ApiService {
           .timeout(const Duration(seconds: 12));
     } catch (e) {
       developer.log('loginAdmin request error: $e', name: 'ApiService');
-      return {'ok': false, 'body': null, 'error': 'Admin login timeout or network error'};
+      return {
+        'ok': false,
+        'body': null,
+        'error': 'Admin login timeout or network error',
+      };
     }
     // Response logging removed for security
 
@@ -152,14 +184,28 @@ class ApiService {
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       final token = body['token'];
       if (token != null) setToken(token as String);
-      return {'ok': true, 'body': body, 'token': token, 'role': body['role'], 'adminId': body['adminId']};
+      // Use MongoDB _id if available, otherwise fall back to adminId
+      final mongoId = body['id'];
+      final adminId = mongoId ?? body['adminId'];
+      return {
+        'ok': true,
+        'body': body,
+        'token': token,
+        'role': body['role'],
+        'adminId': adminId,
+        'mongoId':
+            mongoId, // Include MongoDB _id separately for backward compatibility
+      };
     } else {
       return {'ok': false, 'body': body, 'error': 'Admin login failed'};
     }
   }
 
   // Update member profile
-  Future<Map<String, dynamic>> updateMember(String memberId, Map<String, dynamic> updates) async {
+  Future<Map<String, dynamic>> updateMember(
+    String memberId,
+    Map<String, dynamic> updates,
+  ) async {
     final url = Uri.parse('$baseUrl/members/$memberId');
     // Logging removed for security - no longer exposing member update data
 
@@ -183,10 +229,7 @@ class ApiService {
     final url = Uri.parse('$baseUrl/members/profile');
     // Logging removed for security
 
-    final resp = await http.get(
-      url,
-      headers: _headers(auth: true),
-    );
+    final resp = await http.get(url, headers: _headers(auth: true));
     // Response logging removed for security
 
     final body = jsonDecodeSafe(resp.body);
@@ -201,15 +244,9 @@ class ApiService {
   Future<Map<String, dynamic>> getMemberById(String memberId) async {
     final url = Uri.parse('$baseUrl/members/$memberId');
     // Logging removed for security - no longer exposing member lookup data
-    developer.log(
-      'ApiService: getMemberById called',
-      name: 'ApiService',
-    );
+    developer.log('ApiService: getMemberById called', name: 'ApiService');
 
-    final resp = await http.get(
-      url,
-      headers: _headers(auth: true),
-    );
+    final resp = await http.get(url, headers: _headers(auth: true));
     // Response logging removed for security
 
     final body = jsonDecodeSafe(resp.body);
@@ -225,10 +262,7 @@ class ApiService {
     final url = Uri.parse('$baseUrl/members');
     // Logging removed for security
 
-    final resp = await http.get(
-      url,
-      headers: _headers(auth: true),
-    );
+    final resp = await http.get(url, headers: _headers(auth: true));
     // Response logging removed for security
 
     final body = jsonDecodeSafe(resp.body);
@@ -244,10 +278,7 @@ class ApiService {
     final url = Uri.parse('$baseUrl/members/dashboard');
     // Logging removed for security
 
-    final resp = await http.get(
-      url,
-      headers: _headers(auth: true),
-    );
+    final resp = await http.get(url, headers: _headers(auth: true));
     // Response logging removed for security
 
     final body = jsonDecodeSafe(resp.body);
@@ -259,7 +290,9 @@ class ApiService {
   }
 
   // Submit business information
-  Future<Map<String, dynamic>> submitBusinessInfo(Map<String, dynamic> payload) async {
+  Future<Map<String, dynamic>> submitBusinessInfo(
+    Map<String, dynamic> payload,
+  ) async {
     final url = Uri.parse('$baseUrl/members/business-info');
     // Logging removed for security - no longer exposing business data
 
@@ -274,12 +307,18 @@ class ApiService {
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       return {'ok': true, 'body': body};
     } else {
-      return {'ok': false, 'body': body, 'error': 'Business info submission failed'};
+      return {
+        'ok': false,
+        'body': body,
+        'error': 'Business info submission failed',
+      };
     }
   }
 
   // Submit financial information
-  Future<Map<String, dynamic>> submitFinancialInfo(Map<String, dynamic> payload) async {
+  Future<Map<String, dynamic>> submitFinancialInfo(
+    Map<String, dynamic> payload,
+  ) async {
     final url = Uri.parse('$baseUrl/members/financial-info');
     // Logging removed for security - no longer exposing financial data
 
@@ -294,12 +333,18 @@ class ApiService {
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       return {'ok': true, 'body': body};
     } else {
-      return {'ok': false, 'body': body, 'error': 'Financial info submission failed'};
+      return {
+        'ok': false,
+        'body': body,
+        'error': 'Financial info submission failed',
+      };
     }
   }
 
   // Submit declaration
-  Future<Map<String, dynamic>> submitDeclaration(Map<String, dynamic> payload) async {
+  Future<Map<String, dynamic>> submitDeclaration(
+    Map<String, dynamic> payload,
+  ) async {
     final url = Uri.parse('$baseUrl/members/declaration');
     // Logging removed for security - no longer exposing declaration data
 
@@ -314,7 +359,11 @@ class ApiService {
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       return {'ok': true, 'body': body};
     } else {
-      return {'ok': false, 'body': body, 'error': 'Declaration submission failed'};
+      return {
+        'ok': false,
+        'body': body,
+        'error': 'Declaration submission failed',
+      };
     }
   }
 
@@ -322,10 +371,7 @@ class ApiService {
   static Future<Map<String, dynamic>> getMemberByEmail(String email) async {
     final url = Uri.parse('$baseUrl/auth/member-by-email/$email');
     // Logging removed for security - no longer exposing member lookup data
-    developer.log(
-      'ApiService: getMemberByEmail called',
-      name: 'ApiService',
-    );
+    developer.log('ApiService: getMemberByEmail called', name: 'ApiService');
 
     final resp = await http.get(
       url,
@@ -340,7 +386,10 @@ class ApiService {
       final memberData = body['data']?['member'];
       return {'success': true, 'data': memberData};
     } else {
-      return {'success': false, 'error': body['message'] ?? 'Failed to get member by email'};
+      return {
+        'success': false,
+        'error': body['message'] ?? 'Failed to get member by email',
+      };
     }
   }
 
@@ -348,10 +397,7 @@ class ApiService {
   static Future<Map<String, dynamic>> getMemberProfile(String memberId) async {
     final url = Uri.parse('$baseUrl/profile/$memberId');
     // Logging removed for security - no longer exposing profile lookup data
-    developer.log(
-      'ApiService: getMemberProfile called',
-      name: 'ApiService',
-    );
+    developer.log('ApiService: getMemberProfile called', name: 'ApiService');
 
     final resp = await http.get(
       url,
@@ -363,18 +409,21 @@ class ApiService {
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       return {'success': true, 'data': body['data']};
     } else {
-      return {'success': false, 'error': body['message'] ?? 'Failed to get member profile'};
+      return {
+        'success': false,
+        'error': body['message'] ?? 'Failed to get member profile',
+      };
     }
   }
 
   // Static method to get all members (used by browse members screen)
-  static Future<Map<String, dynamic>> getMembers({int page = 1, int limit = 10}) async {
+  static Future<Map<String, dynamic>> getMembers({
+    int page = 1,
+    int limit = 10,
+  }) async {
     final url = Uri.parse('$baseUrl/members?page=$page&limit=$limit');
     // Logging removed for security - no longer exposing member lookup data
-    developer.log(
-      'ApiService: getMembers called',
-      name: 'ApiService',
-    );
+    developer.log('ApiService: getMembers called', name: 'ApiService');
 
     final resp = await http.get(
       url,
@@ -386,18 +435,21 @@ class ApiService {
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       return {'success': true, 'data': body['data']};
     } else {
-      return {'success': false, 'error': body['message'] ?? 'Failed to get members'};
+      return {
+        'success': false,
+        'error': body['message'] ?? 'Failed to get members',
+      };
     }
   }
 
   // Static method to save declaration (used by declaration form)
-  static Future<Map<String, dynamic>> saveDeclaration(String memberId, Map<String, dynamic> payload) async {
+  static Future<Map<String, dynamic>> saveDeclaration(
+    String memberId,
+    Map<String, dynamic> payload,
+  ) async {
     final url = Uri.parse('$baseUrl/profile/declaration');
     // Logging removed for security - no longer exposing declaration data
-    developer.log(
-      'ApiService: saveDeclaration called',
-      name: 'ApiService',
-    );
+    developer.log('ApiService: saveDeclaration called', name: 'ApiService');
 
     final requestPayload = {'memberId': memberId, ...payload};
     final resp = await http.post(
@@ -411,17 +463,19 @@ class ApiService {
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       return {'success': true, 'data': body['data']};
     } else {
-      return {'success': false, 'error': body['message'] ?? 'Failed to save declaration'};
+      return {
+        'success': false,
+        'error': body['message'] ?? 'Failed to save declaration',
+      };
     }
   }
 
   // Static method to submit application for approval workflow
-  static Future<Map<String, dynamic>> submitApplication(Map<String, dynamic> payload) async {
+  static Future<Map<String, dynamic>> submitApplication(
+    Map<String, dynamic> payload,
+  ) async {
     final url = Uri.parse('$baseUrl/applications/submit');
-    developer.log(
-      'ApiService: submitApplication called',
-      name: 'ApiService',
-    );
+    developer.log('ApiService: submitApplication called', name: 'ApiService');
 
     final resp = await http.post(
       url,
@@ -433,18 +487,21 @@ class ApiService {
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       return {'success': true, 'data': body};
     } else {
-      return {'success': false, 'error': body['message'] ?? 'Failed to submit application'};
+      return {
+        'success': false,
+        'error': body['message'] ?? 'Failed to submit application',
+      };
     }
   }
 
   // Static method to save business info (used by business information form)
-  static Future<Map<String, dynamic>> saveBusinessInfo(String memberId, Map<String, dynamic> payload) async {
+  static Future<Map<String, dynamic>> saveBusinessInfo(
+    String memberId,
+    Map<String, dynamic> payload,
+  ) async {
     final url = Uri.parse('$baseUrl/profile/business-info');
     // Logging removed for security - no longer exposing business data
-    developer.log(
-      'ApiService: saveBusinessInfo called',
-      name: 'ApiService',
-    );
+    developer.log('ApiService: saveBusinessInfo called', name: 'ApiService');
 
     final requestPayload = {'memberId': memberId, ...payload};
     final resp = await http.post(
@@ -458,18 +515,21 @@ class ApiService {
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       return {'success': true, 'data': body['data']};
     } else {
-      return {'success': false, 'error': body['message'] ?? 'Failed to save business info'};
+      return {
+        'success': false,
+        'error': body['message'] ?? 'Failed to save business info',
+      };
     }
   }
 
   // Static method to save financial info (used by financial compliance form)
-  static Future<Map<String, dynamic>> saveFinancialInfo(String memberId, Map<String, dynamic> payload) async {
+  static Future<Map<String, dynamic>> saveFinancialInfo(
+    String memberId,
+    Map<String, dynamic> payload,
+  ) async {
     final url = Uri.parse('$baseUrl/profile/financial-info');
     // Logging removed for security - no longer exposing financial data
-    developer.log(
-      'ApiService: saveFinancialInfo called',
-      name: 'ApiService',
-    );
+    developer.log('ApiService: saveFinancialInfo called', name: 'ApiService');
 
     final requestPayload = {'memberId': memberId, ...payload};
     final resp = await http.post(
@@ -483,7 +543,10 @@ class ApiService {
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       return {'success': true, 'data': body['data']};
     } else {
-      return {'success': false, 'error': body['message'] ?? 'Failed to save financial info'};
+      return {
+        'success': false,
+        'error': body['message'] ?? 'Failed to save financial info',
+      };
     }
   }
 
@@ -498,9 +561,14 @@ class ApiService {
   }
 
   // Get applications for block admin
-  static Future<List<Map<String, dynamic>>> getBlockAdminApplications(String blockAdminId) async {
+  static Future<List<Map<String, dynamic>>> getBlockAdminApplications(
+    String blockAdminId,
+  ) async {
     final url = Uri.parse('$baseUrl/api/applications/block/$blockAdminId');
-    developer.log('ApiService: getBlockAdminApplications called for admin: $blockAdminId', name: 'ApiService');
+    developer.log(
+      'ApiService: getBlockAdminApplications called for admin: $blockAdminId',
+      name: 'ApiService',
+    );
 
     try {
       final resp = await http.get(
@@ -525,15 +593,21 @@ class ApiService {
   }
 
   // Review block application (approve/reject)
-  static Future<bool> reviewBlockApplication(String applicationId, String action, {String? reason}) async {
-    final url = Uri.parse('$baseUrl/api/applications/block-review/$applicationId');
-    developer.log('ApiService: reviewBlockApplication called - action: $action', name: 'ApiService');
+  static Future<bool> reviewBlockApplication(
+    String applicationId,
+    String action, {
+    String? reason,
+  }) async {
+    final url = Uri.parse(
+      '$baseUrl/api/applications/block-review/$applicationId',
+    );
+    developer.log(
+      'ApiService: reviewBlockApplication called - action: $action',
+      name: 'ApiService',
+    );
 
     try {
-      final payload = {
-        'action': action,
-        if (reason != null) 'reason': reason,
-      };
+      final payload = {'action': action, if (reason != null) 'reason': reason};
 
       final resp = await http.post(
         url,
@@ -554,9 +628,16 @@ class ApiService {
   }
 
   // Get applications for district admin
-  static Future<List<Map<String, dynamic>>> getDistrictAdminApplications(String districtAdminId) async {
-    final url = Uri.parse('$baseUrl/api/applications/district/$districtAdminId');
-    developer.log('ApiService: getDistrictAdminApplications called for admin: $districtAdminId', name: 'ApiService');
+  static Future<List<Map<String, dynamic>>> getDistrictAdminApplications(
+    String districtAdminId,
+  ) async {
+    final url = Uri.parse(
+      '$baseUrl/api/applications/district/$districtAdminId',
+    );
+    developer.log(
+      'ApiService: getDistrictAdminApplications called for admin: $districtAdminId',
+      name: 'ApiService',
+    );
 
     try {
       final resp = await http.get(
@@ -575,21 +656,30 @@ class ApiService {
         throw Exception(body['message'] ?? 'Failed to fetch applications');
       }
     } catch (e) {
-      developer.log('getDistrictAdminApplications error: $e', name: 'ApiService');
+      developer.log(
+        'getDistrictAdminApplications error: $e',
+        name: 'ApiService',
+      );
       throw Exception('Network error: $e');
     }
   }
 
   // Review district application (approve/reject)
-  static Future<bool> reviewDistrictApplication(String applicationId, String action, {String? reason}) async {
-    final url = Uri.parse('$baseUrl/api/applications/district-review/$applicationId');
-    developer.log('ApiService: reviewDistrictApplication called - action: $action', name: 'ApiService');
+  static Future<bool> reviewDistrictApplication(
+    String applicationId,
+    String action, {
+    String? reason,
+  }) async {
+    final url = Uri.parse(
+      '$baseUrl/api/applications/district-review/$applicationId',
+    );
+    developer.log(
+      'ApiService: reviewDistrictApplication called - action: $action',
+      name: 'ApiService',
+    );
 
     try {
-      final payload = {
-        'action': action,
-        if (reason != null) 'reason': reason,
-      };
+      final payload = {'action': action, if (reason != null) 'reason': reason};
 
       final resp = await http.post(
         url,

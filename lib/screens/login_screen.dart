@@ -354,7 +354,10 @@ class _LoginScreenState extends State<LoginScreen> {
             // Admin login successful
             final token = adminResult['token'];
             final adminRole = adminResult['role'];
-            final adminId = adminResult['adminId'];
+            final adminId =
+                adminResult['adminId']; // This now contains MongoDB _id if available
+            final mongoId =
+                adminResult['mongoId']; // Get MongoDB _id separately if needed
             final adminData = adminResult['admin'] ?? {};
             final apiBaseUrl = ApiService.baseUrl;
 
@@ -362,7 +365,9 @@ class _LoginScreenState extends State<LoginScreen> {
             await AuthService.saveLoginData(
               token: token,
               userData: {
-                'adminId': adminId,
+                'adminId': adminId, // Using the MongoDB _id as adminId
+                'mongoId':
+                    mongoId, // Store MongoDB _id separately for backward compatibility
                 'role': adminRole,
                 'email': _emailController.text.trim(),
                 'isAdmin': true,

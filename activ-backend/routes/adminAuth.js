@@ -42,9 +42,10 @@ module.exports = (mongooseConnection) => {
 
       return res.json({
         token,
+        id: admin._id.toString(),     // <-- add this
         fullName: admin.fullName,
         role: admin.role,
-        adminId: admin.adminId,
+        adminId: admin.adminId,       // human code (BA.../DA.../SA...)
         mustResetPassword: admin.meta?.mustResetPassword || false,
         location: {
           state: admin.meta?.state,

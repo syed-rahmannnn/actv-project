@@ -26,15 +26,16 @@ const slug = (s) =>
 const pad = (n, w=3) => String(n).padStart(w, '0');
 
 // deterministic ID builders so re-runs are idempotent
+const mkStateId = (stateIdx) => `SA${pad(stateIdx,2)}`;
 const mkDistrictId = (stateIdx, distIdx) => `DA${pad(stateIdx,2)}${pad(distIdx,3)}`;
 const mkBlockId = (stateIdx, distIdx, blockIdx) => `BA${pad(stateIdx,2)}${pad(distIdx,3)}${pad(blockIdx,3)}`;
+const lc = (s) => (s || '').trim().toLowerCase();
 
 (async () => {
   const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/Cluster1';
   await mongoose.connect(mongoUri, {});
 
-  const { BlockAdmin, DistrictAdmin } = getAdminModels(mongoose.connection); // bound to adminsdb
-  // Super/State admins can be seeded separately if you like.
+  const { BlockAdmin, DistrictAdmin, StateAdmin } = getAdminModels(mongoose.connection); // bound to adminsdb
 
   const locPath = path.join(__dirname, '..', '..', 'assets', 'data', 'locations_nested.json');
   const data = JSON.parse(fs.readFileSync(locPath, 'utf8'));
@@ -45,6 +46,26 @@ const mkBlockId = (stateIdx, distIdx, blockIdx) => `BA${pad(stateIdx,2)}${pad(di
   for (let s = 0; s < (data.states || []).length; s++) {
     const state = data.states[s];
     const stateName = state.state;
+
+    // --- State Admin ---
+    const saId = mkStateId(s+1);
+    const saEmail = `state.${slug(stateName)}@${EMAIL_DOMAIN}`;
+    const saFilter = { adminId: saId };
+    const saDoc = {
+      adminId: saId,
+      email: saEmail,
+      passwordHash: hash,
+      fullName: `${stateName} State Admin`,
+      role: 'StateAdmin',
+      active: true,
+      meta: {
+        state: stateName,
+        stateLc: lc(stateName),
+        mustResetPassword: true
+      }
+    };
+    const saRes = await StateAdmin.updateOne(saFilter, { $setOnInsert: saDoc }, { upsert: true });
+    if (saRes.upsertedCount) created++; else skipped++;
 
     const districts = state.districts || [];
     for (let d = 0; d < districts.length; d++) {
@@ -65,6 +86,8 @@ const mkBlockId = (stateIdx, distIdx, blockIdx) => `BA${pad(stateIdx,2)}${pad(di
         meta: {
           state: stateName,
           district: distName,
+          stateLc: lc(stateName),
+          districtLc: lc(distName),
           mustResetPassword: true
         }
       };
@@ -92,6 +115,9 @@ const mkBlockId = (stateIdx, distIdx, blockIdx) => `BA${pad(stateIdx,2)}${pad(di
             state: stateName,
             district: distName,
             block: blockName,
+            stateLc: lc(stateName),
+            districtLc: lc(distName),
+            blockLc: lc(blockName),
             mustResetPassword: true
           }
         };

@@ -477,24 +477,60 @@ class _DeclarationFormState extends State<DeclarationForm> {
 
     // Save declaration to backend and submit application for approval workflow
     try {
+      // Get location data from UserProfileProvider
+      final location = context.read<UserProfileProvider>();
+
+      // Extract required fields with proper fallbacks
+      final userId = widget.userId ?? widget.userData['memberId'];
+      final fullName =
+          widget.fullName ??
+          widget.userData['fullName'] ??
+          updatedUserData['registrationForm']?['fullName'];
+      final email =
+          widget.email ?? widget.userData['email'] ?? updatedUserData['email'];
+      final phone =
+          widget.phone ??
+          widget.userData['phone'] ??
+          updatedUserData['registrationForm']?['phoneNumber'];
+      final state = location.state ?? widget.userData['state'];
+      final district = location.district ?? widget.userData['district'];
+      final block = location.block ?? widget.userData['block'];
+
+      // Validate all required fields are present
+      if ([
+        userId,
+        fullName,
+        email,
+        phone,
+        state,
+        district,
+        block,
+      ].any((v) => v == null || v.toString().trim().isEmpty)) {
+        if (mounted) setState(() => _submitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Missing required information. Please ensure all registration steps are completed.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       // Check if we have the new parameters, use them if available
-      if (widget.baseUrl != null &&
-          widget.userId != null &&
-          widget.email != null &&
-          widget.fullName != null &&
-          widget.phone != null) {
+      if (widget.baseUrl != null && widget.token != null) {
         // Use the new simplified approach
-        final location = context.read<UserProfileProvider>();
         final svc = ApplicationService(widget.baseUrl!, token: widget.token);
 
         final result = await svc.submitApplication(
-          userId: widget.userId!,
-          fullName: widget.fullName!,
-          email: widget.email!,
-          phone: widget.phone!,
-          state: location.state ?? '',
-          district: location.district ?? '',
-          block: location.block ?? '',
+          userId: userId!,
+          fullName: fullName!,
+          email: email!,
+          phone: phone!,
+          state: state!,
+          district: district!,
+          block: block!,
           formData: {
             "sisterConcerns": sisterConcerns,
             "companyNames": _companyNamesController.text
@@ -527,14 +563,10 @@ class _DeclarationFormState extends State<DeclarationForm> {
       }
 
       // Fall back to existing logic if new parameters are not provided
-      final memberId = updatedUserData['memberId'];
+      final memberId = userId;
       if (memberId == null) {
         throw Exception('Member ID not found');
       }
-
-      // Get stored location data from UserProfileProvider
-      final userProfileProvider = context.read<UserProfileProvider>();
-      final locationData = userProfileProvider.getLocationData();
 
       // Get authentication token using AuthService
       final token = await AuthService.getToken();
@@ -580,34 +612,30 @@ class _DeclarationFormState extends State<DeclarationForm> {
         );
       }
 
-      // Now submit the application using ApplicationService with stored location data
+      // Now submit the application using ApplicationService with validated data
       final applicationService = ApplicationService(
         ApiService.baseUrl,
         token: token,
       );
-      final state = (locationData['state'] ?? '').toString().trim();
-      final district = (locationData['district'] ?? '').toString().trim();
-      final block = (locationData['block'] ?? '').toString().trim();
 
-      final userData = updatedUserData['registrationForm'] ?? {};
       final declarationFormDataMap = {
         'sisterConcerns': sisterConcerns,
         'companyNames': companyNames,
         'showOneFieldPerName': _showOneFieldPerName,
         'agreeToDeclaration': _agreeToDeclaration,
-        'personalDetails': userData,
+        'personalDetails': updatedUserData['registrationForm'],
         'businessInfo': updatedUserData['businessInfo'],
         'financialInfo': updatedUserData['financialInfo'],
       };
 
       final result = await applicationService.submitApplication(
         userId: memberId,
-        fullName: userData['fullName'] ?? '',
-        email: updatedUserData['email'] ?? '',
-        phone: userData['phoneNumber'] ?? '',
-        state: state,
-        district: district,
-        block: block,
+        fullName: fullName!,
+        email: email!,
+        phone: phone!,
+        state: state!,
+        district: district!,
+        block: block!,
         formData: declarationFormDataMap,
       );
 

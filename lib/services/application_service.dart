@@ -6,17 +6,14 @@ class ApplicationService {
   final String? token;
   final Map<String, String>? extraHeaders;
 
-  ApplicationService(
-    this.baseUrl, {
-    this.token,
-    Map<String, String>? headers,
-  }) : extraHeaders = headers;
+  ApplicationService(this.baseUrl, {this.token, Map<String, String>? headers})
+    : extraHeaders = headers;
 
   Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        if (token != null && token!.isNotEmpty) 'Authorization': 'Bearer $token',
-        ...?extraHeaders,
-      };
+    'Content-Type': 'application/json',
+    if (token != null && token!.isNotEmpty) 'Authorization': 'Bearer $token',
+    ...?extraHeaders,
+  };
 
   // ---------- USER SUBMISSION ----------
   Future<Map<String, dynamic>> submitApplication({
@@ -53,6 +50,12 @@ class ApplicationService {
       headers: _headers,
     );
     final data = jsonDecode(res.body);
+    
+    // Handle error responses
+    if (res.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Failed to fetch block inbox');
+    }
+    
     return (data['applications'] ?? []) as List<dynamic>;
   }
 
@@ -62,6 +65,12 @@ class ApplicationService {
       headers: _headers,
     );
     final data = jsonDecode(res.body);
+    
+    // Handle error responses
+    if (res.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Failed to fetch district inbox');
+    }
+    
     return (data['applications'] ?? []) as List<dynamic>;
   }
 
@@ -71,6 +80,12 @@ class ApplicationService {
       headers: _headers,
     );
     final data = jsonDecode(res.body);
+    
+    // Handle error responses
+    if (res.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Failed to fetch state inbox');
+    }
+    
     return (data['applications'] ?? []) as List<dynamic>;
   }
 
@@ -84,9 +99,20 @@ class ApplicationService {
     final res = await http.post(
       Uri.parse('$baseUrl/applications/block-review/$appId'),
       headers: _headers,
-      body: jsonEncode({'adminId': adminId, 'action': action, 'reason': reason}),
+      body: jsonEncode({
+        'adminId': adminId,
+        'action': action,
+        'reason': reason,
+      }),
     );
-    return jsonDecode(res.body) as Map<String, dynamic>;
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    
+    // Handle error responses
+    if (res.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Failed to process block review');
+    }
+    
+    return data;
   }
 
   Future<Map<String, dynamic>> districtReview({
@@ -98,9 +124,20 @@ class ApplicationService {
     final res = await http.post(
       Uri.parse('$baseUrl/applications/district-review/$appId'),
       headers: _headers,
-      body: jsonEncode({'adminId': adminId, 'action': action, 'reason': reason}),
+      body: jsonEncode({
+        'adminId': adminId,
+        'action': action,
+        'reason': reason,
+      }),
     );
-    return jsonDecode(res.body) as Map<String, dynamic>;
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    
+    // Handle error responses
+    if (res.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Failed to process district review');
+    }
+    
+    return data;
   }
 
   Future<Map<String, dynamic>> stateReview({
@@ -112,9 +149,20 @@ class ApplicationService {
     final res = await http.post(
       Uri.parse('$baseUrl/applications/state-review/$appId'),
       headers: _headers,
-      body: jsonEncode({'adminId': adminId, 'action': action, 'reason': reason}),
+      body: jsonEncode({
+        'adminId': adminId,
+        'action': action,
+        'reason': reason,
+      }),
     );
-    return jsonDecode(res.body) as Map<String, dynamic>;
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    
+    // Handle error responses
+    if (res.statusCode != 200) {
+      throw Exception(data['message'] ?? 'Failed to process state review');
+    }
+    
+    return data;
   }
 
   // ---------- STATS ----------
@@ -125,7 +173,9 @@ class ApplicationService {
   }) async {
     try {
       final res = await http.get(
-        Uri.parse('$baseUrl/applications/by-admin/$adminId?role=$role&status=$status'),
+        Uri.parse(
+          '$baseUrl/applications/by-admin/$adminId?role=$role&status=$status',
+        ),
         headers: _headers,
       );
       if (res.statusCode == 200) {
@@ -139,8 +189,16 @@ class ApplicationService {
 
   Future<Map<String, int>> getBlockStats(String blockAdminId) async {
     final pending = await getBlockInbox(blockAdminId);
-    final approved = await _getCount(adminId: blockAdminId, role: 'block', status: 'Approved');
-    final rejected = await _getCount(adminId: blockAdminId, role: 'block', status: 'Rejected');
+    final approved = await _getCount(
+      adminId: blockAdminId,
+      role: 'block',
+      status: 'Approved',
+    );
+    final rejected = await _getCount(
+      adminId: blockAdminId,
+      role: 'block',
+      status: 'Rejected',
+    );
     return {
       'pending': pending.length,
       'approved': approved,
