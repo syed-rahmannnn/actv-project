@@ -361,7 +361,7 @@ class _LoginScreenState extends State<LoginScreen> {
             final adminData = adminResult['admin'] ?? {};
             final apiBaseUrl = ApiService.baseUrl;
 
-            // Save admin login data
+            // Save admin login data with complete metadata
             await AuthService.saveLoginData(
               token: token,
               userData: {
@@ -369,7 +369,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 'mongoId':
                     mongoId, // Store MongoDB _id separately for backward compatibility
                 'role': adminRole,
-                'email': _emailController.text.trim(),
+                'email': adminData['email'] ?? _emailController.text.trim(),
+                'adminName': adminData['adminName'] ?? adminData['name'] ?? '',
+                'block': adminData['block'] ?? '',
+                'blockName': adminData['block'] ?? '', // Alias for block
+                'district': adminData['district'] ?? '',
+                'state': adminData['state'] ?? '',
+                'active': adminData['active'] ?? true,
                 'isAdmin': true,
               },
             );

@@ -50,12 +50,12 @@ class ApplicationService {
       headers: _headers,
     );
     final data = jsonDecode(res.body);
-    
+
     // Handle error responses
     if (res.statusCode != 200) {
       throw Exception(data['message'] ?? 'Failed to fetch block inbox');
     }
-    
+
     return (data['applications'] ?? []) as List<dynamic>;
   }
 
@@ -65,12 +65,12 @@ class ApplicationService {
       headers: _headers,
     );
     final data = jsonDecode(res.body);
-    
+
     // Handle error responses
     if (res.statusCode != 200) {
       throw Exception(data['message'] ?? 'Failed to fetch district inbox');
     }
-    
+
     return (data['applications'] ?? []) as List<dynamic>;
   }
 
@@ -80,12 +80,12 @@ class ApplicationService {
       headers: _headers,
     );
     final data = jsonDecode(res.body);
-    
+
     // Handle error responses
     if (res.statusCode != 200) {
       throw Exception(data['message'] ?? 'Failed to fetch state inbox');
     }
-    
+
     return (data['applications'] ?? []) as List<dynamic>;
   }
 
@@ -106,12 +106,12 @@ class ApplicationService {
       }),
     );
     final data = jsonDecode(res.body) as Map<String, dynamic>;
-    
+
     // Handle error responses
     if (res.statusCode != 200) {
       throw Exception(data['message'] ?? 'Failed to process block review');
     }
-    
+
     return data;
   }
 
@@ -131,12 +131,12 @@ class ApplicationService {
       }),
     );
     final data = jsonDecode(res.body) as Map<String, dynamic>;
-    
+
     // Handle error responses
     if (res.statusCode != 200) {
       throw Exception(data['message'] ?? 'Failed to process district review');
     }
-    
+
     return data;
   }
 
@@ -156,12 +156,12 @@ class ApplicationService {
       }),
     );
     final data = jsonDecode(res.body) as Map<String, dynamic>;
-    
+
     // Handle error responses
     if (res.statusCode != 200) {
       throw Exception(data['message'] ?? 'Failed to process state review');
     }
-    
+
     return data;
   }
 

@@ -3,10 +3,8 @@ import '../services/application_service.dart';
 import '../services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Mock classes for Provider pattern - these would typically be in separate files
 class AppConfig {
-  final String apiBaseUrl =
-      'http://localhost:3000/api'; // Replace with your actual API base URL
+  final String apiBaseUrl = 'https://actv-project.onrender.com/api';
 }
 
 class AuthProvider {
@@ -21,19 +19,18 @@ class AuthProvider {
     final prefs = await SharedPreferences.getInstance();
     token = prefs.getString('token');
 
-    // Load admin data from AuthService
     final userData = await AuthService.getUserData();
     if (userData != null) {
       currentAdmin = AdminData(
-        adminId: userData['_id'] ?? '',
+        adminId: userData['adminId'] ?? userData['_id'] ?? '',
         email: userData['email'] ?? '',
         role: userData['role'] ?? '',
         meta: AdminMeta(
-          state: userData['state'] ?? '',
-          district: userData['district'] ?? '',
-          block: userData['block'] ?? '',
+          state: userData['state'] ?? userData['meta']?['state'] ?? '',
+          district: userData['district'] ?? userData['meta']?['district'] ?? '',
+          block: userData['block'] ?? userData['blockName'] ?? userData['meta']?['block'] ?? '',
         ),
-        active: userData['active'] ?? true,
+        active: (userData['active'] ?? true) == true,
       );
     }
   }
@@ -45,7 +42,6 @@ class AdminData {
   final String role;
   final AdminMeta meta;
   final bool active;
-
   AdminData({
     required this.adminId,
     required this.email,
@@ -59,12 +55,10 @@ class AdminMeta {
   final String state;
   final String district;
   final String block;
-
   AdminMeta({required this.state, required this.district, required this.block});
 }
 
 class SettingsPage extends StatefulWidget {
-  // New constructor parameters for direct instantiation
   final String? apiBaseUrl;
   final String? token;
   final String? blockAdminId;
@@ -89,224 +83,379 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   Map<String, int> _stats = {};
   bool _loading = true;
-  late final ApplicationService _svc;
-  // ignore: unused_field
-  late final ApplicationService svc;
-  // ignore: unused_field
-  late final String adminId;
-  // ignore: unused_field
-  late final String blockName;
-  // ignore: unused_field
-  late final String email;
-  // ignore: unused_field
-  bool active = true;
-  // ignore: unused_field
-  Map<String, int>? stats;
+  late ApplicationService _svc;
 
-  final AppConfig _appConfig = AppConfig();
-  final AuthProvider _authProvider = AuthProvider();
+  String adminId = '';
+  String blockName = '';
+  String email = '';
+  bool active = true;
+
+  final _config = AppConfig();
+  final _auth = AuthProvider();
 
   @override
   void initState() {
     super.initState();
-
-    // Use new parameters if available, otherwise fall back to existing logic
     if (widget.apiBaseUrl != null && widget.token != null) {
       _svc = ApplicationService(widget.apiBaseUrl!, token: widget.token!);
-      _load();
+      adminId = widget.blockAdminId ?? '';
+      blockName = widget.blockName ?? '';
+      email = widget.blockEmail ?? '';
+      active = widget.isActive ?? true;
+      _loadFromParams();
     } else {
-      // Existing initialization logic
-      _initializeData();
+      _initFromAuth();
     }
   }
 
-  // New simplified load method
-  Future<void> _load() async {
-    if (widget.blockAdminId != null) {
-      final data = await _svc.getBlockStats(widget.blockAdminId!);
+  Future<void> _loadFromParams() async {
+    if (adminId.isEmpty) {
+      setState(() => _loading = false);
+      return;
+    }
+    try {
+      // Reuses the same stats endpoint as dashboard (true numbers).
+      final data = await _svc.getBlockStats(
+        adminId,
+      ); // :contentReference[oaicite:8]{index=8}
       if (!mounted) return;
       setState(() {
         _stats = data;
         _loading = false;
       });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _initializeData() async {
-    await _authProvider._loadAuthData();
+  Future<void> _initFromAuth() async {
+    await _auth._loadAuthData();
+    if (_auth.currentAdmin != null) {
+      final a = _auth.currentAdmin!;
+      adminId = a.adminId;
 
-    if (_authProvider.currentAdmin != null) {
-      final admin = _authProvider.currentAdmin!;
-      adminId = admin.adminId;
-      email = admin.email;
-      blockName = admin.meta.block;
-      active = admin.active;
+      // Enhanced email handling with fallback
+      email = a.email.isNotEmpty ? a.email : '';
 
-      svc = ApplicationService(
-        _appConfig.apiBaseUrl,
-        token: _authProvider.token,
-      );
+      // Enhanced block name handling with fallback
+      blockName = a.meta.block.isNotEmpty ? a.meta.block : '';
 
-      await _load();
+      active = a.active;
+      _svc = ApplicationService(_config.apiBaseUrl, token: _auth.token);
+      await _loadFromParams();
+    } else {
+      // If no admin data is available, try to load from AuthService directly
+      try {
+        final userData = await AuthService.getUserData();
+        if (userData != null) {
+          adminId = userData['adminId']?.toString() ?? '';
+          email = userData['email']?.toString() ?? '';
+          
+          // Enhanced block name extraction with multiple fallbacks
+          blockName = userData['block']?.toString() ?? 
+                     userData['blockName']?.toString() ?? 
+                     userData['meta']?['block']?.toString() ?? 
+                     '';
+          
+          active = userData['active'] == true;
+
+          // Initialize service if we have token
+          final token = await AuthService.getToken();
+          if (token != null) {
+            _svc = ApplicationService(_config.apiBaseUrl, token: token);
+            await _loadFromParams();
+          }
+        }
+      } catch (e) {
+        print('Error loading auth data: $e');
+      }
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _refresh() async {
+    setState(() => _loading = true);
+    try {
+      if (widget.apiBaseUrl != null && widget.token != null) {
+        await _loadFromParams();
+      } else {
+        await _initFromAuth();
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_authProvider.currentAdmin == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    // Improved display logic with proper fallbacks
+    final displayBlockName = blockName.isNotEmpty
+        ? blockName
+        : (widget.blockName?.isNotEmpty == true ? widget.blockName! : "");
 
-    final title = '$blockName Block Admin';
-    final blockArea = '$blockName Block';
+    final displayTitle = displayBlockName.isNotEmpty
+        ? '$displayBlockName Block Admin'
+        : 'Block Admin';
+
+    final displayEmail = email.isNotEmpty
+        ? email
+        : (widget.blockEmail?.isNotEmpty == true ? widget.blockEmail! : "");
+
+    final displayLocation = displayBlockName.isNotEmpty
+        ? '$displayBlockName Block'
+        : 'Block not found';
+
+    // Fallback email generation when email is missing
+    final finalDisplayEmail = displayEmail.isNotEmpty
+        ? displayEmail
+        : (displayBlockName.isNotEmpty
+              ? 'block.${displayBlockName.toLowerCase().replaceAll(' ', '')}.admin@activ.com'
+              : 'admin@activ.com');
+
+    final isActive = widget.isActive ?? active;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F6FF),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black87,
+        foregroundColor: const Color(0xFF0F172A),
         title: const Text(
           'Settings',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+            color: Color(0xFF0F172A),
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _load,
+              onRefresh: _refresh,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 children: [
-                  // Header
+                  // Profile header card
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEFF5FF),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha((0.13 * 255).toInt()),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
                     ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const CircleAvatar(radius: 28, child: Icon(Icons.person)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
+                        CircleAvatar(
+                          radius: 32,
+                          backgroundColor: const Color(0xFF1E88FF),
+                          child: Text(
+                            finalDisplayEmail.isNotEmpty
+                                ? finalDisplayEmail[0].toUpperCase()
+                                : 'A',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          email,
-                          style: const TextStyle(color: Colors.black54),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          blockArea,
-                          style: const TextStyle(color: Colors.black54),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Text('Active Status'),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: active
-                                    ? const Color(0xFFDFF7E3)
-                                    : const Color(0xFFFFE4E4),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                active ? 'Active' : 'Inactive',
-                                style: TextStyle(
-                                  color: active
-                                      ? const Color(0xFF1F8B4C)
-                                      : const Color(0xFFB42318),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                displayTitle,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF0F172A),
                                 ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.email,
+                                    size: 18,
+                                    color: Colors.grey[600],
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      finalDisplayEmail,
+                                      style: const TextStyle(
+                                        color: Color(0xFF6B7280),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_on,
+                                    size: 18,
+                                    color: Colors.grey[600],
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      displayLocation,
+                                      style: const TextStyle(
+                                        color: Color(0xFF6B7280),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  const Text(
+                                    'Active Status:',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF374151),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isActive
+                                          ? const Color(0xFFDCFCE7)
+                                          : const Color(0xFFFEE2E2),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Text(
+                                      isActive ? 'Active' : 'Inactive',
+                                      style: TextStyle(
+                                        color: isActive
+                                            ? const Color(0xFF16A34A)
+                                            : const Color(0xFFDC2626),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
+
+                  const SizedBox(height: 24),
+
+                  // Admin stats block (true numbers sourced from dashboard endpoints)
+                  _adminStats(),
+
+                  const SizedBox(height: 24),
+
+                  // Account section (same as mock; you’ll wire later)
+                  _sectionCard(
+                    title: 'Account',
+                    items: const ['Profile Information', 'Notifications'],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Support section
+                  _sectionCard(
+                    title: 'Support',
+                    items: const ['Help & Support'],
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Logout
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        // Show loading indicator
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) =>
+                              const Center(child: CircularProgressIndicator()),
+                        );
+
+                        try {
+                          // Clear session and token
+                          await AuthService.logout();
+                          if (!context.mounted) return;
+                          // Navigate to login screen and clear all routes
+                          Navigator.of(context).pop(); // Close loading dialog
+                          Navigator.of(
+                            context,
+                          ).pushNamedAndRemoveUntil('/login', (route) => false);
+                        } catch (e) {
+                          // Handle logout error
+                          if (!context.mounted) return;
+                          Navigator.of(context).pop(); // Close loading dialog
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Logout failed: [39m${e.toString()}',
+                              ),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFDC2626),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Logout',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
-
-            const SizedBox(height: 16),
-            
-            // Add stats cards to use _statsCard method and _stats values
-            _statsCard('Total Applications', _stats['total'] ?? 0, Colors.blue),
-            _statsCard('Pending Approvals', _stats['pending'] ?? 0, Colors.orange),
-            _statsCard('Approved', _stats['approved'] ?? 0, Colors.green),
-            _statsCard('Rejected', _stats['rejected'] ?? 0, Colors.red),
-            
-            const SizedBox(height: 16),
-            _sectionCard(
-              title: 'Account',
-              items: const ['Profile Information', 'Notifications'],
-            ),
-
-            const SizedBox(height: 16),
-            _adminStats(stats),
-          ],
-        ),
-      ),
     );
   }
 
-  Widget _sectionCard({required String title, required List<String> items}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 12),
-          for (final label in items)
-            ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: Text(label),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {},
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _adminStats(Map<String, int>? s) {
-    final total = s?['total'] ?? 0;
-    final pending = s?['pending'] ?? 0;
-    final approved = s?['approved'] ?? 0;
-    final rejected = s?['rejected'] ?? 0;
+  Widget _adminStats() {
+    final total = _stats['total'] ?? 0;
+    final pending = _stats['pending'] ?? 0;
+    final approved = _stats['approved'] ?? 0;
+    final rejected = _stats['rejected'] ?? 0;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -315,8 +464,8 @@ class _SettingsPageState extends State<SettingsPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
+            color: Colors.black.withAlpha((0.06 * 255).toInt()),
+            blurRadius: 12,
             offset: const Offset(0, 6),
           ),
         ],
@@ -326,57 +475,122 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           const Text(
             'Admin',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A),
+            ),
           ),
-          const SizedBox(height: 8),
-          _row('Total Applications:', total, const Color(0xFF2563EB)),
-          _row('Pending Approvals:', pending, const Color(0xFFF59E0B)),
-          _row('Approved:', approved, const Color(0xFF16A34A)),
-          _row('Rejected:', rejected, const Color(0xFFDC2626)),
+          const SizedBox(height: 12),
+          _statRow(
+            'Total Members:',
+            total,
+            color: const Color(0xFF0F172A),
+            link: false,
+          ),
+          const SizedBox(height: 10),
+          _statRow(
+            'Pending Approvals:',
+            pending,
+            color: const Color(0xFFF59E0B),
+          ),
+          const SizedBox(height: 10),
+          _statRow('Approved:', approved, color: const Color(0xFF16A34A)),
+          const SizedBox(height: 10),
+          _statRow('Rejected:', rejected, color: const Color(0xFFDC2626)),
         ],
       ),
     );
   }
 
-  Widget _row(String label, int value, Color color) => ListTile(
-    dense: true,
-    contentPadding: EdgeInsets.zero,
-    leading: const SizedBox(width: 4),
-    title: Text(label),
-    trailing: Text(
-      '$value',
-      style: TextStyle(fontWeight: FontWeight.w600, color: color),
-    ),
-  );
-
-  // New _statsCard method from provided code
-  Widget _statsCard(String title, int value, Color color) => Container(
-    margin: const EdgeInsets.only(bottom: 12),
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withAlpha(13),
-          blurRadius: 10,
-          offset: const Offset(0, 6),
-        ),
-      ],
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _statRow(
+    String label,
+    int value, {
+    required Color color,
+    bool link = true,
+  }) {
+    return Row(
       children: [
-        Text(title, style: const TextStyle(fontSize: 16)),
+        Icon(
+          label.startsWith('Total')
+              ? Icons.person_outline
+              : label.startsWith('Pending')
+              ? Icons.access_time
+              : label.startsWith('Approved')
+              ? Icons.check_circle
+              : Icons.cancel,
+          color: const Color(0xFF6B7280),
+          size: 20,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF374151),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
         Text(
           '$value',
           style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
             color: color,
           ),
         ),
       ],
-    ),
-  );
+    );
+  }
+
+  Widget _sectionCard({required String title, required List<String> items}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha((0.06 * 255).toInt()),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFE5E7EB)),
+          ...items.map(
+            (t) => ListTile(
+              title: Text(
+                t,
+                style: const TextStyle(
+                  color: Color(0xFF0F172A),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              trailing: const Icon(
+                Icons.chevron_right,
+                color: Color(0xFF9CA3AF),
+              ),
+              onTap: () {},
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
