@@ -578,219 +578,144 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
     final role = (form['role'] ?? 'Member').toString();
     final gender = (form['gender'] ?? '').toString();
 
-    return GestureDetector(
-      onTap: () async {
-        // Show loading indicator
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) =>
-              const Center(child: CircularProgressIndicator()),
-        );
-
-        try {
-          // Fetch full member profile
-          final email = app["email"] ?? app["memberEmail"];
-          if (email != null) {
-            final memberRes = await ApiService.getMemberByEmail(email);
-            if (memberRes['success'] == true && memberRes['data'] != null) {
-              final memberId =
-                  memberRes['data']['id'] ??
-                  memberRes['data']['memberId'] ??
-                  memberRes['data']['_id'];
-              if (memberId != null) {
-                final profileRes = await ApiService.getMemberProfile(
-                  memberId.toString(),
-                );
-                if (profileRes['success'] == true &&
-                    profileRes['data'] != null) {
-                  // Close loading dialog
-                  if (mounted) Navigator.pop(context);
-
-                  // Show modal with full profile data
-                  if (mounted) {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (ctx) => UserDetailsDropdown(
-                        memberProfile: Map<String, dynamic>.from(
-                          profileRes['data'],
-                        ),
-                        onApprove: () => _act(id, 'approve'),
-                        onReject: () => _rejectDialog(id),
-                      ),
-                    );
-                  }
-                  return;
-                }
-              }
-            }
-          }
-
-          // Fallback: close loading and show modal with basic data
-          if (mounted) Navigator.pop(context);
-          if (mounted) {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (ctx) => UserDetailsDropdown(
-                app: Map<String, dynamic>.from(app),
-                onApprove: () => _act(id, 'approve'),
-                onReject: () => _rejectDialog(id),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha((0.06 * 255).toInt()),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const CircleAvatar(
+                radius: 22,
+                backgroundColor: Color(0xFFE5E7EB),
+                child: Icon(Icons.person, color: Color(0xFF6B7280)),
               ),
-            );
-          }
-        } catch (e) {
-          // Close loading dialog and show error
-          if (mounted) {
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error loading profile: $e')),
-            );
-          }
-        }
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha((0.06 * 255).toInt()),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const CircleAvatar(
-                  radius: 22,
-                  backgroundColor: Color(0xFFE5E7EB),
-                  child: Icon(Icons.person, color: Color(0xFF6B7280)),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fullName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      email,
+                      style: const TextStyle(
+                        color: Color(0xFF6B7280),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Role: $role, Gender: ${gender.isEmpty ? '—' : gender}',
+                      style: const TextStyle(
+                        color: Color(0xFF6B7280),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '$block Block',
+                      style: const TextStyle(
+                        color: Color(0xFF374151),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      phone,
+                      style: const TextStyle(
+                        color: Color(0xFF16A34A),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        fullName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        email,
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Role: $role, Gender: ${gender.isEmpty ? '—' : gender}',
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '$block Block',
-                        style: const TextStyle(
-                          color: Color(0xFF374151),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        phone,
-                        style: const TextStyle(
-                          color: Color(0xFF16A34A),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(
+                    0xFF1E88FF,
+                  ).withAlpha((0.15 * 255).toInt()),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Text(
+                  'pending',
+                  style: TextStyle(
+                    color: Color(0xFF1E88FF),
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(
-                      0xFF1E88FF,
-                    ).withAlpha((0.15 * 255).toInt()),
-                    borderRadius: BorderRadius.circular(16),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _act(id, 'approve'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF16A34A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
                   ),
                   child: const Text(
-                    'pending',
-                    style: TextStyle(
-                      color: Color(0xFF1E88FF),
-                      fontWeight: FontWeight.w700,
-                    ),
+                    'Approve',
+                    style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _act(id, 'approve'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF16A34A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _rejectDialog(id),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF5C5C),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Text(
-                      'Approve',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Reject',
+                    style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _rejectDialog(id),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF5C5C),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Reject',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

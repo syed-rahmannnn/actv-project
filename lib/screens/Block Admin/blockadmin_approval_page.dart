@@ -62,16 +62,15 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
   // Helpers
   List<Map<String, dynamic>> get _pending => _all.where((a) {
     final status = (a['status'] ?? '').toString().toLowerCase();
-    return status.contains('pending-block') ||
-        status.contains('pending') ||
-        status == 'submitted';
+    // Only treat exact 'pending-block' and 'submitted' as pending
+    return status == 'pending-block' || status == 'submitted';
   }).toList();
 
   List<Map<String, dynamic>> get _approved => _all.where((a) {
     final status = (a['status'] ?? '').toString();
     return status == 'Approved' ||
         status == 'Pending-District' ||
-        status.toLowerCase().contains('approved');
+        status == 'Pending-State';
   }).toList();
 
   List<Map<String, dynamic>> get _rejected => _all.where((a) {

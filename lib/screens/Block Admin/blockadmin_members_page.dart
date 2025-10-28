@@ -63,16 +63,15 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
   // ---- status partitions ----
   bool _isPending(Map a) {
     final status = (a['status'] ?? '').toString().toLowerCase();
-    return status.contains('pending-block') ||
-        status.contains('pending') ||
-        status == 'submitted';
+    // Only treat exact 'pending-block' and 'submitted' as pending
+    return status == 'pending-block' || status == 'submitted';
   }
 
   bool _isApproved(Map a) {
     final status = (a['status'] ?? '').toString();
     return status == 'Approved' ||
         status == 'Pending-District' ||
-        status.toLowerCase().contains('approved');
+        status == 'Pending-State';
   }
 
   bool _isRejected(Map a) {
