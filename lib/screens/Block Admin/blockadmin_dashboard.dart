@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 import 'blockadmin_settings.dart';
 import 'blockadmin_approval_page.dart';
 import 'blockadmin_members_page.dart';
-import '../../services/api_service.dart';
 
 /// Lightweight service embedded here so your existing constructor
 /// parameters keep working. Calls the same endpoints you already expose:
