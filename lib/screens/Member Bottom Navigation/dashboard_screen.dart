@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'profile_screen.dart';
+import '../Member Profile/profile_screen.dart';
 import 'browse_members_screen.dart';
 import 'notification_screen.dart';
-import 'personal_details_form.dart';
-import 'application_submitted_screen.dart';
+import '../Member Addtional Details/personal_details_form.dart';
+import '../Application Status/application_submitted_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -15,7 +15,7 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Debug logs removed for security - no longer printing sensitive user data
-    
+
     return Scaffold(
       backgroundColor: Colors.white,
       bottomNavigationBar: _buildBottomNavigation(context),
@@ -32,10 +32,7 @@ class DashboardScreen extends StatelessWidget {
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFFB3D4FF),
-                    Color(0xFFE6D8FF),
-                  ],
+                  colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
                 ),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(20),
@@ -55,12 +52,18 @@ class DashboardScreen extends StatelessWidget {
                       );
                     },
                     child: Container(
-                      margin: const EdgeInsets.only(top: 50, left: 20, right: 20),
+                      margin: const EdgeInsets.only(
+                        top: 50,
+                        left: 20,
+                        right: 20,
+                      ),
                       child: Row(
                         children: [
                           const CircleAvatar(
                             radius: 25,
-                            backgroundImage: AssetImage('assets/images/profile.png'),
+                            backgroundImage: AssetImage(
+                              'assets/images/profile.png',
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -96,9 +99,16 @@ class DashboardScreen extends StatelessWidget {
                       decoration: InputDecoration(
                         hintText: 'Search by location...',
                         hintStyle: const TextStyle(color: Colors.black54),
-                        prefixIcon: const Icon(Icons.search, color: Colors.black54),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Colors.black54,
+                        ),
                         filled: true,
-                        fillColor: Color.lerp(const Color(0xFFE6D8FF), Colors.white, 0.55),
+                        fillColor: Color.lerp(
+                          const Color(0xFFE6D8FF),
+                          Colors.white,
+                          0.55,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(25),
                           borderSide: BorderSide.none,
@@ -113,9 +123,9 @@ class DashboardScreen extends StatelessWidget {
                 ],
               ),
             ),
-  
+
             const SizedBox(height: 20),
-  
+
             // 🔹 Dynamic Card based on registration progress
             _buildProgressCard(context, userData),
           ],
@@ -221,10 +231,10 @@ bool _isTruthy(dynamic v) {
 bool _isBasicRegistrationCompleted(Map<String, dynamic> data) {
   // Check if user has completed registration steps 1 and 2
   // This is indicated by having basic user data like fullName, email, state, district
-  return data['fullName'] != null && 
-         data['email'] != null && 
-         data['state'] != null && 
-         data['district'] != null;
+  return data['fullName'] != null &&
+      data['email'] != null &&
+      data['state'] != null &&
+      data['district'] != null;
 }
 
 bool _isFullProfileCompleted(Map<String, dynamic> data) {
@@ -264,7 +274,10 @@ Widget _buildProgressCard(BuildContext context, Map<String, dynamic> userData) {
   }
 }
 
-Widget _buildCompletionCard(BuildContext context, Map<String, dynamic> userData) {
+Widget _buildCompletionCard(
+  BuildContext context,
+  Map<String, dynamic> userData,
+) {
   final data = userData;
   return Card(
     elevation: 2,
@@ -278,11 +291,15 @@ Widget _buildCompletionCard(BuildContext context, Map<String, dynamic> userData)
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Complete Your Profile',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Complete Your Profile',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 8),
-                const Text('65% completed',
-                    style: TextStyle(fontSize: 12, color: Colors.black54)),
+                const Text(
+                  '65% completed',
+                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                ),
                 const SizedBox(height: 8),
                 const Text(
                   'Unlock all features by completing your profile.',
@@ -294,7 +311,8 @@ Widget _buildCompletionCard(BuildContext context, Map<String, dynamic> userData)
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => PersonalDetailsForm(userData: data),
+                        builder: (context) =>
+                            PersonalDetailsForm(userData: data),
                       ),
                     );
                   },
@@ -346,17 +364,24 @@ Widget _buildStatusCard(BuildContext context, Map<String, dynamic> userData) {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Profile Status',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Profile Status',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF3CD),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text('In review',
-                      style: TextStyle(color: Color(0xFF856404), fontSize: 12)),
+                  child: const Text(
+                    'In review',
+                    style: TextStyle(color: Color(0xFF856404), fontSize: 12),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
@@ -369,7 +394,8 @@ Widget _buildStatusCard(BuildContext context, Map<String, dynamic> userData) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ApplicationSubmittedScreen(userData: data),
+                        builder: (context) =>
+                            ApplicationSubmittedScreen(userData: data),
                       ),
                     );
                   },

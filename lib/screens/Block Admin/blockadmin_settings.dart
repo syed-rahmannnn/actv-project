@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/application_service.dart';
-import '../services/auth_service.dart';
+import '../../services/application_service.dart';
+import '../../services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppConfig {
@@ -28,7 +28,11 @@ class AuthProvider {
         meta: AdminMeta(
           state: userData['state'] ?? userData['meta']?['state'] ?? '',
           district: userData['district'] ?? userData['meta']?['district'] ?? '',
-          block: userData['block'] ?? userData['blockName'] ?? userData['meta']?['block'] ?? '',
+          block:
+              userData['block'] ??
+              userData['blockName'] ??
+              userData['meta']?['block'] ??
+              '',
         ),
         active: (userData['active'] ?? true) == true,
       );
@@ -58,7 +62,7 @@ class AdminMeta {
   AdminMeta({required this.state, required this.district, required this.block});
 }
 
-class SettingsPage extends StatefulWidget {
+class BlockAdminSettingsPage extends StatefulWidget {
   final String? apiBaseUrl;
   final String? token;
   final String? blockAdminId;
@@ -66,7 +70,7 @@ class SettingsPage extends StatefulWidget {
   final String? blockEmail;
   final bool? isActive;
 
-  const SettingsPage({
+  const BlockAdminSettingsPage({
     super.key,
     this.apiBaseUrl,
     this.token,
@@ -77,10 +81,10 @@ class SettingsPage extends StatefulWidget {
   });
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  State<BlockAdminSettingsPage> createState() => _BlockAdminSettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
   Map<String, int> _stats = {};
   bool _loading = true;
   late ApplicationService _svc;
@@ -150,13 +154,14 @@ class _SettingsPageState extends State<SettingsPage> {
         if (userData != null) {
           adminId = userData['adminId']?.toString() ?? '';
           email = userData['email']?.toString() ?? '';
-          
+
           // Enhanced block name extraction with multiple fallbacks
-          blockName = userData['block']?.toString() ?? 
-                     userData['blockName']?.toString() ?? 
-                     userData['meta']?['block']?.toString() ?? 
-                     '';
-          
+          blockName =
+              userData['block']?.toString() ??
+              userData['blockName']?.toString() ??
+              userData['meta']?['block']?.toString() ??
+              '';
+
           active = userData['active'] == true;
 
           // Initialize service if we have token
@@ -167,7 +172,7 @@ class _SettingsPageState extends State<SettingsPage> {
           }
         }
       } catch (e) {
-        print('Error loading auth data: $e');
+        // Error handled silently in production
       }
       setState(() => _loading = false);
     }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dashboard_screen.dart';
+import '../Member Bottom Navigation/dashboard_screen.dart';
 import 'package:activ/services/auth_service.dart';
 
 class ApplicationSubmittedScreen extends StatelessWidget {
@@ -389,12 +389,18 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                           // Ensure profile completion flags are truthy across common locations
                           final data = Map<String, dynamic>.from(userData);
                           final form = Map<String, dynamic>.from(
-                              data['registrationForm'] ?? {});
+                            data['registrationForm'] ?? {},
+                          );
                           form['profileCompleted'] = true;
                           data['registrationForm'] = form;
                           data['profileCompleted'] = true;
                           if (data['member'] is Map<String, dynamic>) {
-                            (data['member'] as Map<String, dynamic>)['profileCompleted'] = true;
+                            (data['member']
+                                    as Map<
+                                      String,
+                                      dynamic
+                                    >)['profileCompleted'] =
+                                true;
                           }
 
                           // Persist to local storage so AuthWrapper/Dashboard picks up immediately
@@ -404,7 +410,8 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                           if (context.mounted) {
                             Navigator.of(context).pushAndRemoveUntil(
                               MaterialPageRoute(
-                                builder: (context) => DashboardScreen(userData: data),
+                                builder: (context) =>
+                                    DashboardScreen(userData: data),
                               ),
                               (route) => false,
                             );

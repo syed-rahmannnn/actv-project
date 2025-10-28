@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:activ/screens/login_screen.dart';
+import 'Login/login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -15,7 +15,8 @@ class OnboardingScreenState extends State<OnboardingScreen> {
   final List<Map<String, String>> onboardingData = [
     {
       'title': 'Membership Benefits',
-      'description': 'Join to access multi-level memberships and opportunities.',
+      'description':
+          'Join to access multi-level memberships and opportunities.',
       'image': 'assets/images/membership.png',
     },
     {
@@ -61,10 +62,7 @@ class OnboardingScreenState extends State<OnboardingScreen> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Image.asset(
-          data['image']!,
-          height: 250,
-        ),
+        Image.asset(data['image']!, height: 250),
         const SizedBox(height: 30),
         Text(
           data['title']!,

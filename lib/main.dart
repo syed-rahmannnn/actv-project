@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:activ/screens/login_screen.dart';
+import 'package:activ/screens/Login/login_screen.dart';
 import 'package:activ/screens/onboarding_screen.dart';
-import 'package:activ/screens/dashboard_screen.dart';
+import 'package:activ/screens/Member%20Bottom%20Navigation/dashboard_screen.dart';
 import 'package:activ/services/auth_service.dart';
 import 'package:activ/services/user_profile_provider.dart';
-import 'package:activ/screens/settings_page.dart';
+import 'package:activ/screens/Block%20Admin/blockadmin_settings.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +30,7 @@ class MyApp extends StatelessWidget {
         home: const AuthWrapper(),
         routes: {
           '/login': (context) => LoginScreen(),
-          '/settings': (context) => const SettingsPage(),
+          '/settings': (context) => const BlockAdminSettingsPage(),
         },
       ),
     );

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'registration_step1_screen.dart';
-import 'dashboard_screen.dart';
-import 'blockadmin_dashboard.dart';
-import 'districtadmin_dashboard.dart';
-import 'stateadmin_dashboard.dart';
-import 'superadmin_dashboard.dart';
-import '../services/api_service.dart';
-import '../services/auth_service.dart';
+import '../Member Registration/registration_step1_screen.dart';
+import '../Member Bottom Navigation/dashboard_screen.dart';
+import '../Block Admin/blockadmin_dashboard.dart';
+import '../District Admin/districtadmin_dashboard.dart';
+import '../State Admin/stateadmin_dashboard.dart';
+import '../Super Admin/superadmin_dashboard.dart';
+import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

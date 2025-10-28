@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'application_submitted_screen.dart';
+import '../Application Status/application_submitted_screen.dart';
 import 'package:activ/services/api_service.dart';
 import 'package:activ/services/application_service.dart';
 import 'package:activ/services/user_profile_provider.dart';

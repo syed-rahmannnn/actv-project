@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'settings_page.dart';
+import '../Block Admin/blockadmin_settings.dart';
 
 void main() => runApp(const StateAdminDashboardApp());
 
@@ -99,7 +99,7 @@ class _StateAdminDashboardPageState extends State<StateAdminDashboardPage> {
           ),
         );
       case 3:
-        return const SettingsPage();
+        return const BlockAdminSettingsPage();
       default:
         return const SizedBox.shrink();
     }

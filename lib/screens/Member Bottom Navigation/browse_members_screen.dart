@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
+import '../../services/api_service.dart';
 
 class BrowseMembersScreen extends StatefulWidget {
   const BrowseMembersScreen({super.key});
@@ -32,9 +32,9 @@ class BrowseMembersScreenState extends State<BrowseMembersScreen> {
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load members')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to load members')));
       }
     }
   }
@@ -54,9 +54,7 @@ class BrowseMembersScreenState extends State<BrowseMembersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Browse Members'),
-      ),
+      appBar: AppBar(title: const Text('Browse Members')),
       body: Column(
         children: [
           Padding(
@@ -85,7 +83,9 @@ class BrowseMembersScreenState extends State<BrowseMembersScreen> {
                   trailing: ElevatedButton(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Connect feature coming soon!')),
+                        const SnackBar(
+                          content: Text('Connect feature coming soon!'),
+                        ),
                       );
                     },
                     child: const Text('Connect'),

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dashboard_screen.dart';
-import '../services/api_service.dart';
-import '../services/auth_service.dart';
-import '../services/user_profile_provider.dart';
-import '../utils/locations.dart';
+import '../Member Bottom Navigation/dashboard_screen.dart';
+import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/user_profile_provider.dart';
+import '../../utils/locations.dart';
 
 class RegistrationStep2Screen extends StatefulWidget {
   final Map<String, dynamic> personalData;
@@ -19,7 +19,7 @@ class RegistrationStep2Screen extends StatefulWidget {
 class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
   final _formKey = GlobalKey<FormState>();
   final _cityController = TextEditingController();
-  
+
   Locations? _locations;
   String? _selectedState;
   String? _selectedDistrict;
@@ -195,16 +195,19 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                         ),
                       ),
                       items: (_locations?.getStateNames() ?? [])
-                          .map((String state) => DropdownMenuItem<String>(
-                                value: state,
-                                child: Text(state),
-                              ))
+                          .map(
+                            (String state) => DropdownMenuItem<String>(
+                              value: state,
+                              child: Text(state),
+                            ),
+                          )
                           .toList(),
                       onChanged: (String? newValue) {
                         setState(() {
                           _selectedState = newValue;
                           _selectedDistrict = null;
-                          _selectedBlock = null; // Reset block when state changes
+                          _selectedBlock =
+                              null; // Reset block when state changes
                         });
                       },
                       validator: (value) {
@@ -243,18 +246,24 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                           borderSide: const BorderSide(color: Colors.blue),
                         ),
                       ),
-                      items: (_selectedState == null || _locations == null
-                              ? <String>[]
-                              : _locations!.districtsForState(_selectedState!))
-                          .map((String district) => DropdownMenuItem<String>(
-                                value: district,
-                                child: Text(district),
-                              ))
-                          .toList(),
+                      items:
+                          (_selectedState == null || _locations == null
+                                  ? <String>[]
+                                  : _locations!.districtsForState(
+                                      _selectedState!,
+                                    ))
+                              .map(
+                                (String district) => DropdownMenuItem<String>(
+                                  value: district,
+                                  child: Text(district),
+                                ),
+                              )
+                              .toList(),
                       onChanged: (String? newValue) {
                         setState(() {
                           _selectedDistrict = newValue;
-                          _selectedBlock = null; // Reset block when district changes
+                          _selectedBlock =
+                              null; // Reset block when district changes
                         });
                       },
                       validator: (value) {
@@ -330,14 +339,22 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                           borderSide: const BorderSide(color: Colors.blue),
                         ),
                       ),
-                      items: (_selectedState == null || _selectedDistrict == null || _locations == null
-                              ? <String>[]
-                              : _locations!.blocksForDistrict(_selectedState!, _selectedDistrict!))
-                          .map((String block) => DropdownMenuItem<String>(
-                                value: block,
-                                child: Text(block),
-                              ))
-                          .toList(),
+                      items:
+                          (_selectedState == null ||
+                                      _selectedDistrict == null ||
+                                      _locations == null
+                                  ? <String>[]
+                                  : _locations!.blocksForDistrict(
+                                      _selectedState!,
+                                      _selectedDistrict!,
+                                    ))
+                              .map(
+                                (String block) => DropdownMenuItem<String>(
+                                  value: block,
+                                  child: Text(block),
+                                ),
+                              )
+                              .toList(),
                       onChanged: (String? newValue) {
                         setState(() {
                           _selectedBlock = newValue;

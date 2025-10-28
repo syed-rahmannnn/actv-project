@@ -1,7 +1,7 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'financial_compliance_form.dart';
-import '../services/api_service.dart';
+import '../../services/api_service.dart';
 
 class BusinessInformationForm extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -600,7 +600,7 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
     }
 
     updatedUserData['registrationForm']['doingBusiness'] = _doingBusiness;
-    
+
     // Only save business-specific data if doing business is "Yes"
     if (_doingBusiness == true) {
       updatedUserData['registrationForm']['organizationName'] =
@@ -608,7 +608,9 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
       updatedUserData['registrationForm']['constitutionType'] =
           _selectedConstitution;
       updatedUserData['registrationForm']['businessType'] =
-          _selectedBusinessTypes.isNotEmpty ? _selectedBusinessTypes.first : null;
+          _selectedBusinessTypes.isNotEmpty
+          ? _selectedBusinessTypes.first
+          : null;
       updatedUserData['registrationForm']['businessActivities'] =
           _businessActivitiesController.text;
       updatedUserData['registrationForm']['businessCommencementYear'] =
@@ -624,7 +626,7 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
       updatedUserData['registrationForm']['businessCommencementYear'] = null;
       updatedUserData['registrationForm']['numberOfEmployees'] = null;
     }
-    
+
     updatedUserData['registrationForm']['memberOfOtherChamber'] =
         _memberOfOtherChamber;
     updatedUserData['registrationForm']['otherChamber'] =
@@ -634,31 +636,50 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
 
     // Save business information to database
     try {
-      final memberId = widget.userData['member']?['id'] ?? 
-                      widget.userData['data']?['member']?['id'];
-      
+      final memberId =
+          widget.userData['member']?['id'] ??
+          widget.userData['data']?['member']?['id'];
+
       if (memberId != null) {
         final businessInfoPayload = {
           'memberId': memberId,
           'doingBusiness': _doingBusiness,
-          'organizationName': _doingBusiness == true ? _organizationNameController.text : null,
-          'constitutionType': _doingBusiness == true ? _selectedConstitution : null,
-          'businessType': _doingBusiness == true && _selectedBusinessTypes.isNotEmpty ? _selectedBusinessTypes.first : null,
-          'businessActivities': _doingBusiness == true ? _businessActivitiesController.text : null,
-          'businessCommencementYear': _doingBusiness == true ? _selectedYear : null,
-          'numberOfEmployees': _doingBusiness == true ? _employeesController.text : null,
+          'organizationName': _doingBusiness == true
+              ? _organizationNameController.text
+              : null,
+          'constitutionType': _doingBusiness == true
+              ? _selectedConstitution
+              : null,
+          'businessType':
+              _doingBusiness == true && _selectedBusinessTypes.isNotEmpty
+              ? _selectedBusinessTypes.first
+              : null,
+          'businessActivities': _doingBusiness == true
+              ? _businessActivitiesController.text
+              : null,
+          'businessCommencementYear': _doingBusiness == true
+              ? _selectedYear
+              : null,
+          'numberOfEmployees': _doingBusiness == true
+              ? _employeesController.text
+              : null,
           'memberOfOtherChamber': _memberOfOtherChamber,
           'otherChamber': _otherChamberController.text,
           'registeredWithGovtOrganization': _selectedGovtOrganizations.toList(),
         };
 
-        final result = await ApiService.saveBusinessInfo(memberId, businessInfoPayload);
-        
+        final result = await ApiService.saveBusinessInfo(
+          memberId,
+          businessInfoPayload,
+        );
+
         if (!result['success']) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Failed to save business information: ${result['error']}'),
+              content: Text(
+                'Failed to save business information: ${result['error']}',
+              ),
               backgroundColor: Colors.red,
             ),
           );

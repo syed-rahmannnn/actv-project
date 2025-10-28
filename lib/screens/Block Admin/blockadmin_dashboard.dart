@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'settings_page.dart';
-import '../services/api_service.dart';
+import 'blockadmin_settings.dart';
+import 'blockadmin_approval_page.dart';
+import 'blockadmin_members_page.dart';
+import '../../services/api_service.dart';
 
 /// Lightweight service embedded here so your existing constructor
 /// parameters keep working. Calls the same endpoints you already expose:
@@ -261,8 +263,23 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
     switch (i) {
       case 0:
         return RefreshIndicator(onRefresh: _load, child: _dashboard());
+      case 1: // Approvals tab
+        return BlockAdminApprovalPage(
+          apiBaseUrl: widget.apiBaseUrl,
+          blockAdminId: widget.blockAdminId,
+          blockName: widget.blockName,
+          token: widget.authToken ?? widget.token,
+          initialCategory: ApprovalCategory.pending,
+        );
+      case 2: // Members
+        return BlockAdminMembersPage(
+          apiBaseUrl: widget.apiBaseUrl,
+          blockAdminId: widget.blockAdminId,
+          blockName: widget.blockName,
+          token: widget.authToken ?? widget.token,
+        );
       case 3:
-        return SettingsPage(
+        return BlockAdminSettingsPage(
           apiBaseUrl: widget.apiBaseUrl,
           token: widget.authToken ?? widget.token!,
           blockAdminId: widget.blockAdminId,
@@ -271,8 +288,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
           isActive: true,
         );
       default:
-        // Placeholders to match your tab structure (you can wire later).
-        return const Center(child: Text('Coming soon'));
+        return const SizedBox();
     }
   }
 
@@ -291,35 +307,95 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
             spacing: 16,
             runSpacing: 16,
             children: [
-              _statCard(
-                title: 'Total Members',
-                value: _stats['total'] ?? 0,
-                subtitle: 'block level',
-                icon: Icons.person_outline,
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => BlockAdminApprovalPage(
+                        apiBaseUrl: widget.apiBaseUrl,
+                        blockAdminId: widget.blockAdminId,
+                        blockName: widget.blockName,
+                        token: widget.authToken ?? widget.token,
+                        initialCategory: ApprovalCategory.all,
+                      ),
+                    ),
+                  );
+                },
+                child: _statCard(
+                  title: 'Total Members',
+                  value: _stats['total'] ?? 0,
+                  subtitle: 'block level',
+                  icon: Icons.person_outline,
+                ),
               ),
-              _statCard(
-                title: 'Pending',
-                value: _stats['pending'] ?? 0,
-                subtitle: 'Awaiting approval',
-                icon: Icons.access_time,
-                chipText: 'pending',
-                chipColor: const Color(0xFF1E88FF),
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => BlockAdminApprovalPage(
+                        apiBaseUrl: widget.apiBaseUrl,
+                        blockAdminId: widget.blockAdminId,
+                        blockName: widget.blockName,
+                        token: widget.authToken ?? widget.token,
+                        initialCategory: ApprovalCategory.pending,
+                      ),
+                    ),
+                  );
+                },
+                child: _statCard(
+                  title: 'Pending',
+                  value: _stats['pending'] ?? 0,
+                  subtitle: 'Awaiting approval',
+                  icon: Icons.access_time,
+                  chipText: 'pending',
+                  chipColor: const Color(0xFF1E88FF),
+                ),
               ),
-              _statCard(
-                title: 'Approved',
-                value: _stats['approved'] ?? 0,
-                subtitle: 'Successfully approved',
-                icon: Icons.check_circle,
-                chipText: 'approved',
-                chipColor: const Color(0xFF16A34A),
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => BlockAdminApprovalPage(
+                        apiBaseUrl: widget.apiBaseUrl,
+                        blockAdminId: widget.blockAdminId,
+                        blockName: widget.blockName,
+                        token: widget.authToken ?? widget.token,
+                        initialCategory: ApprovalCategory.approved,
+                      ),
+                    ),
+                  );
+                },
+                child: _statCard(
+                  title: 'Approved',
+                  value: _stats['approved'] ?? 0,
+                  subtitle: 'Successfully approved',
+                  icon: Icons.check_circle,
+                  chipText: 'approved',
+                  chipColor: const Color(0xFF16A34A),
+                ),
               ),
-              _statCard(
-                title: 'Rejected',
-                value: _stats['rejected'] ?? 0,
-                subtitle: 'Request denied',
-                icon: Icons.cancel,
-                chipText: 'rejected',
-                chipColor: const Color(0xFFFF5C5C),
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => BlockAdminApprovalPage(
+                        apiBaseUrl: widget.apiBaseUrl,
+                        blockAdminId: widget.blockAdminId,
+                        blockName: widget.blockName,
+                        token: widget.authToken ?? widget.token,
+                        initialCategory: ApprovalCategory.rejected,
+                      ),
+                    ),
+                  );
+                },
+                child: _statCard(
+                  title: 'Rejected',
+                  value: _stats['rejected'] ?? 0,
+                  subtitle: 'Request denied',
+                  icon: Icons.cancel,
+                  chipText: 'rejected',
+                  chipColor: const Color(0xFFFF5C5C),
+                ),
               ),
             ],
           ),
@@ -532,18 +608,20 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
                   if (mounted) Navigator.pop(context);
 
                   // Show modal with full profile data
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (ctx) => UserDetailsDropdown(
-                      memberProfile: Map<String, dynamic>.from(
-                        profileRes['data'],
+                  if (mounted) {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (ctx) => UserDetailsDropdown(
+                        memberProfile: Map<String, dynamic>.from(
+                          profileRes['data'],
+                        ),
+                        onApprove: () => _act(id, 'approve'),
+                        onReject: () => _rejectDialog(id),
                       ),
-                      onApprove: () => _act(id, 'approve'),
-                      onReject: () => _rejectDialog(id),
-                    ),
-                  );
+                    );
+                  }
                   return;
                 }
               }
@@ -552,16 +630,18 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
 
           // Fallback: close loading and show modal with basic data
           if (mounted) Navigator.pop(context);
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (ctx) => UserDetailsDropdown(
-              app: Map<String, dynamic>.from(app),
-              onApprove: () => _act(id, 'approve'),
-              onReject: () => _rejectDialog(id),
-            ),
-          );
+          if (mounted) {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (ctx) => UserDetailsDropdown(
+                app: Map<String, dynamic>.from(app),
+                onApprove: () => _act(id, 'approve'),
+                onReject: () => _rejectDialog(id),
+              ),
+            );
+          }
         } catch (e) {
           // Close loading dialog and show error
           if (mounted) {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'settings_page.dart';
+import '../Block Admin/blockadmin_settings.dart';
 import 'dart:developer' as developer;
-import '../services/api_service.dart';
-import '../services/auth_service.dart';
+import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 
 void main() => runApp(const DistrictAdminDashboardApp());
 
@@ -36,7 +36,7 @@ class DistrictAdminDashboard extends StatelessWidget {
 
 class DistrictAdminDashboardPage extends StatefulWidget {
   final String adminId;
-  
+
   const DistrictAdminDashboardPage({super.key, required this.adminId});
 
   @override
@@ -58,7 +58,9 @@ class _DistrictAdminDashboardPageState
   }
 
   Future<void> _initializeAdminData() async {
-    _districtAdminId = widget.adminId.isNotEmpty ? widget.adminId : await AuthService.getAdminId();
+    _districtAdminId = widget.adminId.isNotEmpty
+        ? widget.adminId
+        : await AuthService.getAdminId();
     if (_districtAdminId != null) {
       await _fetchPendingApplications();
     }
@@ -66,17 +68,22 @@ class _DistrictAdminDashboardPageState
 
   Future<void> _fetchPendingApplications() async {
     if (_districtAdminId == null) return;
-    
+
     setState(() => _isLoading = true);
     try {
-      final applications = await ApiService.getDistrictAdminApplications(_districtAdminId!);
+      final applications = await ApiService.getDistrictAdminApplications(
+        _districtAdminId!,
+      );
       setState(() {
         _pendingApplications = applications;
         // Update the pending count in cards
         _cards[1]['count'] = applications.length;
       });
     } catch (e) {
-      developer.log('Error fetching applications: $e', name: 'DistrictAdminDashboard');
+      developer.log(
+        'Error fetching applications: $e',
+        name: 'DistrictAdminDashboard',
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading applications: $e')),
@@ -89,10 +96,18 @@ class _DistrictAdminDashboardPageState
     }
   }
 
-  Future<void> _handleApplicationAction(String applicationId, String action, {String? reason}) async {
+  Future<void> _handleApplicationAction(
+    String applicationId,
+    String action, {
+    String? reason,
+  }) async {
     try {
-      await ApiService.reviewDistrictApplication(applicationId, action, reason: reason);
-      
+      await ApiService.reviewDistrictApplication(
+        applicationId,
+        action,
+        reason: reason,
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -101,21 +116,21 @@ class _DistrictAdminDashboardPageState
           ),
         );
       }
-      
+
       // Refresh the applications list
       await _fetchPendingApplications();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
 
   void _showRejectDialog(String applicationId) {
     final TextEditingController reasonController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -144,7 +159,11 @@ class _DistrictAdminDashboardPageState
             onPressed: () {
               if (reasonController.text.trim().isNotEmpty) {
                 Navigator.pop(context);
-                _handleApplicationAction(applicationId, 'reject', reason: reasonController.text.trim());
+                _handleApplicationAction(
+                  applicationId,
+                  'reject',
+                  reason: reasonController.text.trim(),
+                );
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -197,7 +216,7 @@ class _DistrictAdminDashboardPageState
           ),
         );
       case 3:
-        return const SettingsPage();
+        return const BlockAdminSettingsPage();
       default:
         return const SizedBox.shrink();
     }
@@ -232,19 +251,19 @@ class _DistrictAdminDashboardPageState
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _pendingApplications.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No pending applications',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                        )
-                      : ListView.builder(
-                          itemCount: _pendingApplications.length,
-                          itemBuilder: (context, index) {
-                            final application = _pendingApplications[index];
-                            return _buildApplicationCard(application);
-                          },
-                        ),
+                  ? const Center(
+                      child: Text(
+                        'No pending applications',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _pendingApplications.length,
+                      itemBuilder: (context, index) {
+                        final application = _pendingApplications[index];
+                        return _buildApplicationCard(application);
+                      },
+                    ),
             ),
           ],
         ),
@@ -346,7 +365,10 @@ class _DistrictAdminDashboardPageState
                       ),
                       child: Text(
                         '${_pendingApplications.length}',
-                        style: const TextStyle(color: Colors.white, fontSize: 11),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                   ),
@@ -395,12 +417,14 @@ class _DistrictAdminDashboardPageState
   List<Widget> _buildPendingCards() {
     // Show only first 3 applications in dashboard view
     final displayApplications = _pendingApplications.take(3).toList();
-    
+
     return displayApplications
-        .map((application) => Padding(
-              padding: const EdgeInsets.only(bottom: 14.0),
-              child: _buildApplicationCard(application),
-            ))
+        .map(
+          (application) => Padding(
+            padding: const EdgeInsets.only(bottom: 14.0),
+            child: _buildApplicationCard(application),
+          ),
+        )
         .toList();
   }
 
@@ -495,7 +519,8 @@ class _DistrictAdminDashboardPageState
           Row(
             children: [
               ElevatedButton(
-                onPressed: () => _handleApplicationAction(application['_id'], 'approve'),
+                onPressed: () =>
+                    _handleApplicationAction(application['_id'], 'approve'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF16A34A),
                   shape: RoundedRectangleBorder(

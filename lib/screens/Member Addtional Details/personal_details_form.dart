@@ -5,10 +5,7 @@ import 'business_information_form.dart';
 class PersonalDetailsForm extends StatefulWidget {
   final Map<String, dynamic> userData;
 
-  const PersonalDetailsForm({
-    super.key,
-    required this.userData,
-  });
+  const PersonalDetailsForm({super.key, required this.userData});
 
   @override
   State<PersonalDetailsForm> createState() => _PersonalDetailsFormState();
@@ -18,23 +15,24 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
   Future<Map<String, dynamic>?> _loadMemberFromBackend() async {
     try {
       // Get email from userData instead of Firebase
-      final email = widget.userData['email'] ?? widget.userData['member']?['email'];
+      final email =
+          widget.userData['email'] ?? widget.userData['member']?['email'];
       if (email == null || email.toString().trim().isEmpty) {
         // Error loading member data - logging removed for security
         return widget.userData;
       }
-      
+
       // Get member details from backend
       final res = await ApiService.getMemberByEmail(email);
       if (res['success'] == true && res['data'] != null) {
         final member = Map<String, dynamic>.from(res['data'] as Map);
         final memberId = member['memberId'] ?? member['id'] ?? member['_id'];
-        
+
         if (memberId == null) {
           // Error loading member data - logging removed for security
           return widget.userData;
         }
-        
+
         return {
           'email': email,
           'memberId': memberId,
@@ -49,10 +47,11 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
             // Include demographic fields from memberdetails (source of truth)
             'aadhaarNumber': member['aadhaarNumber'] ?? '',
             'streetName': member['streetName'] ?? '',
-            'educationalQualification': member['educationalQualification'] ?? '',
+            'educationalQualification':
+                member['educationalQualification'] ?? '',
             'religion': member['religion'] ?? '',
             'socialCategory': member['socialCategory'] ?? '',
-          }
+          },
         };
       }
       return widget.userData;
@@ -61,6 +60,7 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
       return widget.userData;
     }
   }
+
   final _aadhaarController = TextEditingController();
   final _streetNameController = TextEditingController();
   final _educationController = TextEditingController();
@@ -73,7 +73,7 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
     'SC',
     'ST',
     'EWS',
-    'Other'
+    'Other',
   ];
 
   @override
@@ -88,7 +88,8 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
     if (registrationForm != null) {
       _aadhaarController.text = registrationForm['aadhaarNumber'] ?? '';
       _streetNameController.text = registrationForm['streetName'] ?? '';
-      _educationController.text = registrationForm['educationalQualification'] ?? '';
+      _educationController.text =
+          registrationForm['educationalQualification'] ?? '';
       _religionController.text = registrationForm['religion'] ?? '';
       _selectedSocialCategory = registrationForm['socialCategory'];
     }
@@ -127,7 +128,7 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
                   ),
                 ),
               ),
-              
+
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -144,13 +145,10 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
                     const SizedBox(height: 8),
                     const Text(
                       'Member Registration',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Progress Indicator
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -162,14 +160,18 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: isActive ? Colors.blue : Colors.grey[300],
+                                color: isActive
+                                    ? Colors.blue
+                                    : Colors.grey[300],
                                 shape: BoxShape.circle,
                               ),
                               child: Center(
                                 child: Text(
                                   '${index + 1}',
                                   style: TextStyle(
-                                    color: isActive ? Colors.white : Colors.grey[600],
+                                    color: isActive
+                                        ? Colors.white
+                                        : Colors.grey[600],
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -188,78 +190,114 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
                     const SizedBox(height: 12),
                     const Text(
                       'Step 1 of 4',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                     const SizedBox(height: 30),
-                    
+
                     // Personal Details Section
-    _buildSectionCard(
-      'Personal details',
-      [
-        FutureBuilder<Map<String, dynamic>?>(
-          future: _loadMemberFromBackend(),
-          builder: (context, snapshot) {
-            final data = snapshot.data;
-            final form = (data?['registrationForm'] as Map<String, dynamic>?) ?? {};
-            String s(dynamic v) => (v == null || (v is String && v.isEmpty)) ? '—' : v.toString();
-            String fmtDate(dynamic v) {
-              if (v == null) return '—';
-              final raw = v.toString();
-              final base = raw.contains('T') ? raw.split('T').first : raw;
-              // Convert YYYY-MM-DD or YYYY/MM/DD -> DD-MM-YYYY
-              if (base.contains('-')) {
-                final parts = base.split('-');
-                if (parts.length == 3 && parts[0].length == 4) {
-                  return '${parts[2].padLeft(2, '0')}-${parts[1].padLeft(2, '0')}-${parts[0]}';
-                }
-                return base; // likely already DD-MM-YYYY
-              }
-              if (base.contains('/')) {
-                final parts = base.split('/');
-                if (parts.length == 3 && parts[0].length == 4) {
-                  return '${parts[2].padLeft(2, '0')}-${parts[1].padLeft(2, '0')}-${parts[0]}';
-                }
-                if (parts.length == 3 && parts[2].length == 4) {
-                  return '${parts[0].padLeft(2, '0')}-${parts[1].padLeft(2, '0')}-${parts[2]}';
-                }
-              }
-              return base;
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildReadOnlyField('Name', s(form['fullName'])),
-                _buildReadOnlyField('Block', s(form['block'])),
-                _buildReadOnlyField('state', s(form['state'])),
-                _buildReadOnlyField('District', s(form['district'])),
-                _buildReadOnlyField('City', s(form['city'])),
-                _buildReadOnlyField('Phone Number', s(form['phoneNumber'])),
-                _buildReadOnlyField('Email ID', s(data?['email'])),
-                _buildReadOnlyField('Date of Birth', fmtDate(form['dateOfBirth'])),
-              ],
-            );
-          },
-        ),
-      ],
-    ),
+                    _buildSectionCard('Personal details', [
+                      FutureBuilder<Map<String, dynamic>?>(
+                        future: _loadMemberFromBackend(),
+                        builder: (context, snapshot) {
+                          final data = snapshot.data;
+                          final form =
+                              (data?['registrationForm']
+                                  as Map<String, dynamic>?) ??
+                              {};
+                          String s(dynamic v) =>
+                              (v == null || (v is String && v.isEmpty))
+                              ? '—'
+                              : v.toString();
+                          String fmtDate(dynamic v) {
+                            if (v == null) return '—';
+                            final raw = v.toString();
+                            final base = raw.contains('T')
+                                ? raw.split('T').first
+                                : raw;
+                            // Convert YYYY-MM-DD or YYYY/MM/DD -> DD-MM-YYYY
+                            if (base.contains('-')) {
+                              final parts = base.split('-');
+                              if (parts.length == 3 && parts[0].length == 4) {
+                                return '${parts[2].padLeft(2, '0')}-${parts[1].padLeft(2, '0')}-${parts[0]}';
+                              }
+                              return base; // likely already DD-MM-YYYY
+                            }
+                            if (base.contains('/')) {
+                              final parts = base.split('/');
+                              if (parts.length == 3 && parts[0].length == 4) {
+                                return '${parts[2].padLeft(2, '0')}-${parts[1].padLeft(2, '0')}-${parts[0]}';
+                              }
+                              if (parts.length == 3 && parts[2].length == 4) {
+                                return '${parts[0].padLeft(2, '0')}-${parts[1].padLeft(2, '0')}-${parts[2]}';
+                              }
+                            }
+                            return base;
+                          }
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildReadOnlyField('Name', s(form['fullName'])),
+                              _buildReadOnlyField('Block', s(form['block'])),
+                              _buildReadOnlyField('state', s(form['state'])),
+                              _buildReadOnlyField(
+                                'District',
+                                s(form['district']),
+                              ),
+                              _buildReadOnlyField('City', s(form['city'])),
+                              _buildReadOnlyField(
+                                'Phone Number',
+                                s(form['phoneNumber']),
+                              ),
+                              _buildReadOnlyField(
+                                'Email ID',
+                                s(data?['email']),
+                              ),
+                              _buildReadOnlyField(
+                                'Date of Birth',
+                                fmtDate(form['dateOfBirth']),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ]),
                     const SizedBox(height: 20),
-                    
+
                     // Personal & Demographic Details Section
                     _buildSectionCard(
                       'Page 1 - Personal & Demographic Details',
                       [
-                        _buildTextField('Aadhaar No. (Personal Identity No.)', _aadhaarController, 'Enter Aadhaar number'),
-                        _buildTextField('Street Name', _streetNameController, 'Enter street name'),
-                        _buildTextField('Educational Qualification', _educationController, 'Enter educational qualification'),
-                        _buildTextField('Religion', _religionController, 'Enter religion'),
-                        _buildDropdownField('Social Category', _selectedSocialCategory, _socialCategories, 'Select category'),
+                        _buildTextField(
+                          'Aadhaar No. (Personal Identity No.)',
+                          _aadhaarController,
+                          'Enter Aadhaar number',
+                        ),
+                        _buildTextField(
+                          'Street Name',
+                          _streetNameController,
+                          'Enter street name',
+                        ),
+                        _buildTextField(
+                          'Educational Qualification',
+                          _educationController,
+                          'Enter educational qualification',
+                        ),
+                        _buildTextField(
+                          'Religion',
+                          _religionController,
+                          'Enter religion',
+                        ),
+                        _buildDropdownField(
+                          'Social Category',
+                          _selectedSocialCategory,
+                          _socialCategories,
+                          'Select category',
+                        ),
                       ],
                     ),
                     const SizedBox(height: 30),
-                    
+
                     // Next Button
                     SizedBox(
                       width: double.infinity,
@@ -348,10 +386,7 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
           ),
           child: Text(
             value,
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.black87,
-            ),
+            style: const TextStyle(fontSize: 16, color: Colors.black87),
           ),
         ),
         const SizedBox(height: 16),
@@ -359,7 +394,11 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, String placeholder) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller,
+    String placeholder,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -390,7 +429,10 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: Colors.blue),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -398,7 +440,12 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
     );
   }
 
-  Widget _buildDropdownField(String label, String? selectedValue, List<String> options, String placeholder) {
+  Widget _buildDropdownField(
+    String label,
+    String? selectedValue,
+    List<String> options,
+    String placeholder,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -466,16 +513,14 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
     try {
       // Get member ID from backend data
       final backendData = await _loadMemberFromBackend();
       final memberId = backendData?['memberId'];
-      
+
       if (memberId == null) {
         throw Exception('Member ID not found');
       }
@@ -506,7 +551,8 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
 
       // Compose updates for memberdetails including personal basics
       final memberData = await _loadMemberFromBackend();
-      final form = (memberData?['registrationForm'] as Map<String, dynamic>?) ?? {};
+      final form =
+          (memberData?['registrationForm'] as Map<String, dynamic>?) ?? {};
       final updates = {
         'aadhaarNumber': _aadhaarController.text,
         'streetName': _streetNameController.text,
@@ -520,12 +566,13 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
         if (form['state'] != null) 'state': form['state'],
         if (form['district'] != null) 'district': form['district'],
         if (form['block'] != null) 'block': form['block'],
-        if (form['dateOfBirth'] != null) 'dateOfBirth': normalizeDate(form['dateOfBirth']),
+        if (form['dateOfBirth'] != null)
+          'dateOfBirth': normalizeDate(form['dateOfBirth']),
       };
 
       // Save demographics to memberdetails collection via updateMember
       final result = await ApiService().updateMember(memberId, updates);
-      
+
       // Close loading dialog
       if (!mounted) return;
       Navigator.pop(context);
@@ -536,12 +583,17 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
         if (updatedUserData['registrationForm'] == null) {
           updatedUserData['registrationForm'] = {};
         }
-        
-        updatedUserData['registrationForm']['aadhaarNumber'] = _aadhaarController.text;
-        updatedUserData['registrationForm']['streetName'] = _streetNameController.text;
-        updatedUserData['registrationForm']['educationalQualification'] = _educationController.text;
-        updatedUserData['registrationForm']['religion'] = _religionController.text;
-        updatedUserData['registrationForm']['socialCategory'] = _selectedSocialCategory;
+
+        updatedUserData['registrationForm']['aadhaarNumber'] =
+            _aadhaarController.text;
+        updatedUserData['registrationForm']['streetName'] =
+            _streetNameController.text;
+        updatedUserData['registrationForm']['educationalQualification'] =
+            _educationController.text;
+        updatedUserData['registrationForm']['religion'] =
+            _religionController.text;
+        updatedUserData['registrationForm']['socialCategory'] =
+            _selectedSocialCategory;
         updatedUserData['memberId'] = memberId;
 
         // Navigate to next step
@@ -549,14 +601,17 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => BusinessInformationForm(userData: updatedUserData),
+            builder: (context) =>
+                BusinessInformationForm(userData: updatedUserData),
           ),
         );
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to save data: ${result['body']?['message'] ?? result['status'] ?? 'Unknown error'}'),
+            content: Text(
+              'Failed to save data: ${result['body']?['message'] ?? result['status'] ?? 'Unknown error'}',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -565,7 +620,7 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
       // Close loading dialog
       if (!mounted) return;
       Navigator.pop(context);
-      
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -576,6 +631,3 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
     }
   }
 }
-
-
-

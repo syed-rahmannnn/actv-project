@@ -150,8 +150,14 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                       future: _loadMemberFromBackend(),
                       builder: (context, snapshot) {
                         final userData = snapshot.data;
-                        final registrationForm = userData?['registrationForm'] as Map<String, dynamic>?;
-                        final name = (registrationForm?['fullName'] ?? userData?['fullName'] ?? '') as String;
+                        final registrationForm =
+                            userData?['registrationForm']
+                                as Map<String, dynamic>?;
+                        final name =
+                            (registrationForm?['fullName'] ??
+                                    userData?['fullName'] ??
+                                    '')
+                                as String;
                         return Text(
                           name,
                           style: const TextStyle(
@@ -228,13 +234,14 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                           builder: (context, snapshot) {
                             if (snapshot.hasData && snapshot.data != null) {
                               final data = snapshot.data!;
-                              final member = data['member'] as Map<String, dynamic>?;
+                              final member =
+                                  data['member'] as Map<String, dynamic>?;
 
                               String s(dynamic v) =>
                                   (v == null || (v is String && v.isEmpty))
                                   ? '—'
                                   : v.toString();
-                              
+
                               return Column(
                                 children: [
                                   _buildDetailRow(
@@ -253,22 +260,13 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                                     'Date of Birth',
                                     s(_formatDate(member?['dateOfBirth'])),
                                   ),
-                                  _buildDetailRow(
-                                    'State',
-                                    s(member?['state']),
-                                  ),
+                                  _buildDetailRow('State', s(member?['state'])),
                                   _buildDetailRow(
                                     'District',
                                     s(member?['district']),
                                   ),
-                                  _buildDetailRow(
-                                    'Block',
-                                    s(member?['block']),
-                                  ),
-                                  _buildDetailRow(
-                                    'City',
-                                    s(member?['city']),
-                                  ),
+                                  _buildDetailRow('Block', s(member?['block'])),
+                                  _buildDetailRow('City', s(member?['city'])),
                                   _buildDetailRow(
                                     'Street Name',
                                     s(member?['streetName']),
@@ -805,8 +803,13 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
       // Handle numeric timestamps (ms or sec)
       if (date is num) {
-        final millis = date > 1000000000000 ? date.toInt() : (date.toInt() * 1000);
-        final d = DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true).toLocal();
+        final millis = date > 1000000000000
+            ? date.toInt()
+            : (date.toInt() * 1000);
+        final d = DateTime.fromMillisecondsSinceEpoch(
+          millis,
+          isUtc: true,
+        ).toLocal();
         return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
       }
 
