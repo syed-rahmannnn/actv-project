@@ -180,6 +180,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                     DropdownButtonFormField<String>(
                       value: _selectedState,
                       hint: const Text('Select state'),
+                      isExpanded: true,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -198,7 +199,10 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                           .map(
                             (String state) => DropdownMenuItem<String>(
                               value: state,
-                              child: Text(state),
+                              child: Text(
+                                state,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           )
                           .toList(),
@@ -232,6 +236,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                     DropdownButtonFormField<String>(
                       value: _selectedDistrict,
                       hint: const Text('Select district'),
+                      isExpanded: true,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -255,7 +260,10 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                               .map(
                                 (String district) => DropdownMenuItem<String>(
                                   value: district,
-                                  child: Text(district),
+                                  child: Text(
+                                    district,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
                               )
                               .toList(),
@@ -325,6 +333,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                     DropdownButtonFormField<String>(
                       value: _selectedBlock,
                       hint: const Text('Select block'),
+                      isExpanded: true,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -351,7 +360,10 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                               .map(
                                 (String block) => DropdownMenuItem<String>(
                                   value: block,
-                                  child: Text(block),
+                                  child: Text(
+                                    block,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
                               )
                               .toList(),

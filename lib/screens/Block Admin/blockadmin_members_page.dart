@@ -61,13 +61,24 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
   }
 
   // ---- status partitions ----
-  bool _isPending(Map a) =>
-      ((a['status'] ?? '').toString().toLowerCase().contains(
-        'pending-block',
-      )) ||
-      ((a['status'] ?? '').toString().toLowerCase().contains('pending'));
-  bool _isApproved(Map a) => (a['status'] ?? '') == 'Approved';
-  bool _isRejected(Map a) => (a['status'] ?? '') == 'Rejected';
+  bool _isPending(Map a) {
+    final status = (a['status'] ?? '').toString().toLowerCase();
+    return status.contains('pending-block') ||
+        status.contains('pending') ||
+        status == 'submitted';
+  }
+
+  bool _isApproved(Map a) {
+    final status = (a['status'] ?? '').toString();
+    return status == 'Approved' ||
+        status == 'Pending-District' ||
+        status.toLowerCase().contains('approved');
+  }
+
+  bool _isRejected(Map a) {
+    final status = (a['status'] ?? '').toString();
+    return status == 'Rejected' || status.toLowerCase().contains('rejected');
+  }
 
   List<Map<String, dynamic>> get _filtered {
     final list = [..._all];
@@ -105,7 +116,11 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
 
   Future<void> _approve(String appId) async {
     try {
-      final ok = await ApiService.reviewBlockApplication(appId, 'approve');
+      final ok = await ApiService.reviewBlockApplication(
+        appId,
+        'approve',
+        adminId: widget.blockAdminId,
+      );
       if (ok) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -151,6 +166,7 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
         final ok = await ApiService.reviewBlockApplication(
           appId,
           'reject',
+          adminId: widget.blockAdminId,
           reason: reasonCtrl.text.trim().isEmpty
               ? null
               : reasonCtrl.text.trim(),

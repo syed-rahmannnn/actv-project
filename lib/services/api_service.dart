@@ -560,71 +560,81 @@ class ApiService {
     }
   }
 
+  // ---- Helper methods for fallback routing ----
+  static Uri _u(String p) => Uri.parse('$baseUrl$p');
+
+  static Future<http.Response> _getWithFallback(String pathAfterBase) async {
+    // Try /api/applications first, then /applications
+    final r1 = await http.get(_u('/api/applications$pathAfterBase'));
+    if (r1.statusCode != 404) return r1;
+    final r2 = await http.get(_u('/applications$pathAfterBase'));
+    return r2;
+  }
+
+  static Future<http.Response> _postWithFallback(
+    String pathAfterBase,
+    Map body,
+  ) async {
+    final h = {'Content-Type': 'application/json'};
+    final r1 = await http.post(
+      _u('/api/applications$pathAfterBase'),
+      headers: h,
+      body: jsonEncode(body),
+    );
+    if (r1.statusCode != 404) return r1;
+    final r2 = await http.post(
+      _u('/applications$pathAfterBase'),
+      headers: h,
+      body: jsonEncode(body),
+    );
+    return r2;
+  }
+
+  static Exception _err(http.Response r) =>
+      Exception('HTTP ${r.statusCode}: ${r.body.isEmpty ? "No body" : r.body}');
+
   // Get applications for block admin
-  static Future<List<Map<String, dynamic>>> getBlockAdminApplications(
+  static Future<List<dynamic>> getBlockAdminApplications(
     String blockAdminId,
   ) async {
-    final url = Uri.parse('$baseUrl/api/applications/block/$blockAdminId');
-    developer.log(
-      'ApiService: getBlockAdminApplications called for admin: $blockAdminId',
-      name: 'ApiService',
-    );
-
+    // Prefer direct route under baseUrl to avoid double-/api prefix issues
+    final url = Uri.parse('$baseUrl/applications/block/$blockAdminId');
+    http.Response res;
     try {
-      final resp = await http.get(
-        url,
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      final body = _jsonDecodeSafe(resp.body);
-      if (resp.statusCode >= 200 && resp.statusCode < 300) {
-        if (body is List) {
-          return List<Map<String, dynamic>>.from(body);
-        } else {
-          return [];
-        }
-      } else {
-        throw Exception(body['message'] ?? 'Failed to fetch applications');
-      }
+      res = await http.get(url, headers: await _staticHeaders());
     } catch (e) {
-      developer.log('getBlockAdminApplications error: $e', name: 'ApiService');
-      throw Exception('Network error: $e');
+      // Fallback: try legacy paths if direct route fails at network layer
+      res = await _getWithFallback('/block/$blockAdminId');
     }
+
+    if (res.statusCode == 200) {
+      final data = _jsonDecodeSafe(res.body);
+      // Support both array and wrapped `{ applications: [...] }` shapes
+      if (data is List) return data;
+      if (data is Map) {
+        final apps = data['applications'];
+        if (apps is List) return apps;
+      }
+      return [];
+    }
+    throw _err(res);
   }
 
   // Review block application (approve/reject)
   static Future<bool> reviewBlockApplication(
-    String applicationId,
+    String appId,
     String action, {
     String? reason,
+    required String adminId,
   }) async {
-    final url = Uri.parse(
-      '$baseUrl/api/applications/block-review/$applicationId',
-    );
-    developer.log(
-      'ApiService: reviewBlockApplication called - action: $action',
-      name: 'ApiService',
-    );
-
-    try {
-      final payload = {'action': action, if (reason != null) 'reason': reason};
-
-      final resp = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(payload),
-      );
-
-      final body = _jsonDecodeSafe(resp.body);
-      if (resp.statusCode >= 200 && resp.statusCode < 300) {
-        return body['success'] == true;
-      } else {
-        throw Exception(body['message'] ?? 'Failed to review application');
-      }
-    } catch (e) {
-      developer.log('reviewBlockApplication error: $e', name: 'ApiService');
-      throw Exception('Network error: $e');
-    }
+    final body = {
+      'action': action,
+      'adminId': adminId,
+      if (reason != null) 'reason': reason,
+    };
+    final res = await _postWithFallback('/block-review/$appId', body);
+    if (res.statusCode == 200) return true;
+    throw _err(res);
   }
 
   // Get applications for district admin

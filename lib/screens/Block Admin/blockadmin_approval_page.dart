@@ -60,19 +60,24 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
   }
 
   // Helpers
-  List<Map<String, dynamic>> get _pending => _all
-      .where(
-        (a) => (a['status'] ?? '').toString().toLowerCase().contains(
-          'pending-block',
-        ),
-      )
-      .toList();
+  List<Map<String, dynamic>> get _pending => _all.where((a) {
+    final status = (a['status'] ?? '').toString().toLowerCase();
+    return status.contains('pending-block') ||
+        status.contains('pending') ||
+        status == 'submitted';
+  }).toList();
 
-  List<Map<String, dynamic>> get _approved =>
-      _all.where((a) => (a['status'] ?? '') == 'Approved').toList();
+  List<Map<String, dynamic>> get _approved => _all.where((a) {
+    final status = (a['status'] ?? '').toString();
+    return status == 'Approved' ||
+        status == 'Pending-District' ||
+        status.toLowerCase().contains('approved');
+  }).toList();
 
-  List<Map<String, dynamic>> get _rejected =>
-      _all.where((a) => (a['status'] ?? '') == 'Rejected').toList();
+  List<Map<String, dynamic>> get _rejected => _all.where((a) {
+    final status = (a['status'] ?? '').toString();
+    return status == 'Rejected' || status.toLowerCase().contains('rejected');
+  }).toList();
 
   List<Map<String, dynamic>> get _listForTab {
     switch (_tab) {
@@ -93,6 +98,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
       final ok = await ApiService.reviewBlockApplication(
         appId,
         'approve',
+        adminId: widget.blockAdminId,
       ); // POST /api/applications/block-review/:id :contentReference[oaicite:2]{index=2}
       if (ok) {
         if (mounted) {
@@ -139,6 +145,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
         final ok2 = await ApiService.reviewBlockApplication(
           appId,
           'reject',
+          adminId: widget.blockAdminId,
           reason: reasonCtrl.text.trim().isEmpty
               ? null
               : reasonCtrl.text.trim(),
@@ -385,9 +392,16 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
     final role = (form['role'] ?? 'Member').toString();
     final gender = (form['gender'] ?? '').toString();
 
-    final isPending = status.toLowerCase().contains('pending-block');
-    final isApproved = status == 'Approved';
-    final isRejected = status == 'Rejected';
+    final isPending =
+        status.toLowerCase().contains('pending-block') ||
+        status.toLowerCase().contains('pending') ||
+        status.toLowerCase() == 'submitted';
+    final isApproved =
+        status == 'Approved' ||
+        status == 'Pending-District' ||
+        status.toLowerCase().contains('approved');
+    final isRejected =
+        status == 'Rejected' || status.toLowerCase().contains('rejected');
 
     Color chipColor;
     String chipText;

@@ -294,16 +294,12 @@ module.exports = (mongooseConnection) => {
         });
       }
 
+      // Get all applications for this block admin, not just pending ones
       const apps = await Application.find({
         assignedBlockAdmin: _id,
-        status: "Pending-Block",
       }).sort({ createdAt: -1 });
 
-      res.json({ 
-        success: true, 
-        applications: apps,
-        count: apps.length 
-      });
+      res.json(apps); // Return applications directly for compatibility with Flutter
     } catch (err) {
       console.error("Fetch block applications error:", err);
       res.status(500).json({ success: false, message: "Server error" });
