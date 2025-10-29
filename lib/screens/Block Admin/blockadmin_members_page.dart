@@ -370,7 +370,7 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
     final status = app['status']?.toString();
     final statusText = getStatusDisplayText(status);
     final statusColor = getStatusColor(status);
-    final isPending = isPendingStatus(status);
+
     final approved = isApprovedStatus(status);
     final rejected = isRejectedStatus(status);
 
@@ -426,7 +426,9 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: statusColor.withAlpha((0.15 * 255).toInt()),
+                              color: statusColor.withAlpha(
+                                (0.15 * 255).toInt(),
+                              ),
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Text(
