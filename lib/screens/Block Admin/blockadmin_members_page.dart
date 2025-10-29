@@ -22,11 +22,15 @@ class BlockAdminMembersPage extends StatefulWidget {
   State<BlockAdminMembersPage> createState() => _BlockAdminMembersPageState();
 }
 
-class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
+class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> 
+    with AutomaticKeepAliveClientMixin {
   bool _loading = true;
   List<Map<String, dynamic>> _all = [];
   String _query = '';
   final TextEditingController _searchCtrl = TextEditingController();
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -254,6 +258,7 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
   // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     return Scaffold(
       backgroundColor: const Color(0xFFF1F6FF),
       body: SafeArea(

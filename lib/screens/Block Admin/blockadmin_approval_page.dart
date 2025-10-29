@@ -26,12 +26,16 @@ class BlockAdminApprovalPage extends StatefulWidget {
   State<BlockAdminApprovalPage> createState() => _BlockAdminApprovalPageState();
 }
 
-class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
+class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> 
+    with AutomaticKeepAliveClientMixin {
   bool _loading = true;
   ApprovalCategory _tab = ApprovalCategory.pending;
 
-  // Raw list for this block admin (we’ll segment by status)
+  // Raw list for this block admin (we'll segment by status)
   List<Map<String, dynamic>> _all = [];
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -245,6 +249,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
   // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     final pendingCount = _pending.length;
     final approvedCount = _approved.length;
     final rejectedCount = _rejected.length;

@@ -28,8 +28,13 @@ class BlockAdminSettingsPage extends StatefulWidget {
   State<BlockAdminSettingsPage> createState() => _BlockAdminSettingsPageState();
 }
 
-class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
+class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage>
+    with AutomaticKeepAliveClientMixin {
   late final ApplicationService _appService;
+  late final Future<(BlockStats, BlockAdminProfile)> _dataFuture;
+
+  @override
+  bool get wantKeepAlive => true;
 
   Future<(BlockStats, BlockAdminProfile)> _load() async {
     final profileProvider = context.read<UserProfileProvider>();
@@ -38,7 +43,10 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
     if (profileProvider.blockAdmin == null) {
       await profileProvider.loadBlockAdminProfileAuto();
     }
-    final profile = profileProvider.blockAdmin!;
+    final profile = profileProvider.blockAdmin;
+    if (profile == null) {
+      throw Exception('Failed to load block admin profile');
+    }
     final blockId = profile.blockId;
 
     // Stats
@@ -52,14 +60,16 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
     super.initState();
     // You already construct ApplicationService elsewhere; if not, build it here:
     _appService = context.read<ApplicationService>();
+    _dataFuture = _load(); // Create Future once
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: FutureBuilder<(BlockStats, BlockAdminProfile)>(
-        future: _load(),
+        future: _dataFuture, // Use the cached Future
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());

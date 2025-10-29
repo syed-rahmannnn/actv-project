@@ -63,12 +63,12 @@ class ApplicationService {
       blockAdminId: blockAdminId,
       status: 'Rejected',
     );
-    
+
     // Filter pending list to only include actual pending items
     final actualPending = pendingList.where((app) {
       return isPendingStatus(app['status']?.toString());
     }).toList();
-    
+
     return {
       'pending': actualPending.length,
       'approved': approved,
@@ -164,13 +164,13 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
       _svc.getBlockInbox(widget.blockAdminId),
     ]);
     if (!mounted) return;
-    
+
     final allApplications = res[1] as List<dynamic>;
     // Filter to only show actual pending items in the dashboard
     final pendingApplications = allApplications.where((app) {
       return isPendingStatus(app['status']?.toString());
     }).toList();
-    
+
     setState(() {
       _stats = res[0] as Map<String, int>;
       _pending = pendingApplications;
@@ -271,9 +271,14 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
   Widget _page(int i) {
     switch (i) {
       case 0:
-        return RefreshIndicator(onRefresh: _load, child: _dashboard());
+        return RefreshIndicator(
+          key: const ValueKey('dashboard_refresh'),
+          onRefresh: _load,
+          child: _dashboard(),
+        );
       case 1: // Approvals tab
         return BlockAdminApprovalPage(
+          key: const ValueKey('approvals_page'),
           apiBaseUrl: widget.apiBaseUrl,
           blockAdminId: widget.blockAdminId,
           blockName: widget.blockName,
@@ -282,6 +287,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
         );
       case 2: // Members
         return BlockAdminMembersPage(
+          key: const ValueKey('members_page'),
           apiBaseUrl: widget.apiBaseUrl,
           blockAdminId: widget.blockAdminId,
           blockName: widget.blockName,
@@ -289,6 +295,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
         );
       case 3:
         return BlockAdminSettingsPage(
+          key: const ValueKey('settings_page'),
           apiBaseUrl: widget.apiBaseUrl,
           token: widget.authToken ?? widget.token!,
           blockAdminId: widget.blockAdminId,
@@ -586,7 +593,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
         : <String, dynamic>{};
     final role = (form['role'] ?? 'Member').toString();
     final gender = (form['gender'] ?? '').toString();
-    
+
     // Use consistent status handling
     final status = app['status']?.toString();
     final isPending = isPendingStatus(status);
