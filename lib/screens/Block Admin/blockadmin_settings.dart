@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/status.dart';
 import '../../models/block_stats.dart';
 import '../../services/application_service.dart';
 import '../../services/user_profile_provider.dart';
@@ -113,8 +112,10 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(blockName,
-                                style: Theme.of(context).textTheme.titleMedium),
+                            Text(
+                              blockName,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
                             const SizedBox(height: 4),
                             Row(
                               children: [
@@ -137,7 +138,9 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
                                 const Text('Active Status: '),
                                 Chip(
                                   label: Text(
-                                    (profile.isActive == true) ? 'Active' : 'Inactive',
+                                    (profile.isActive == true)
+                                        ? 'Active'
+                                        : 'Inactive',
                                   ),
                                   backgroundColor: (profile.isActive == true)
                                       ? Colors.green.withOpacity(.15)
@@ -162,8 +165,10 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Admin',
-                          style: Theme.of(context).textTheme.titleMedium),
+                      Text(
+                        'Admin',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       const SizedBox(height: 12),
                       _statRow('Total Members', stats.total),
                       const SizedBox(height: 10),
@@ -200,10 +205,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
     return Row(
       children: [
         Expanded(child: Text(label)),
-        Text(
-          '$value',
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
+        Text('$value', style: const TextStyle(fontWeight: FontWeight.w600)),
       ],
     );
   }
