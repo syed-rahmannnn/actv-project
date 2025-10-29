@@ -42,6 +42,13 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload when returning to this page to ensure latest data
+    _load();
+  }
+
+  @override
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
@@ -131,12 +138,10 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage>
         'approve',
         adminId: widget.blockAdminId,
       );
-      if (ok) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Approved & forwarded to District')),
-          );
-        }
+      if (ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Approved & forwarded to District')),
+        );
         await _load();
       }
     } catch (e) {
@@ -181,12 +186,10 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage>
               ? null
               : reasonCtrl.text.trim(),
         );
-        if (ok) {
-          if (mounted) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Rejected')));
-          }
+        if (ok && mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Rejected')));
           await _load();
         }
       } catch (e) {

@@ -26,9 +26,9 @@ class BlockAdminApprovalPage extends StatefulWidget {
   State<BlockAdminApprovalPage> createState() => _BlockAdminApprovalPageState();
 }
 
-class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> 
+class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
-  bool _loading = true;
+  bool _loading = false;
   ApprovalCategory _tab = ApprovalCategory.pending;
 
   // Raw list for this block admin (we'll segment by status)
@@ -42,6 +42,13 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
     super.initState();
     _tab = widget.initialCategory;
     WidgetsBinding.instance.addObserver(this);
+    _load();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload when returning to this page to ensure latest data
     _load();
   }
 
@@ -72,10 +79,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
       _all = List<Map<String, dynamic>>.from(apps).map((app) {
         final raw = app['status']?.toString();
         final canonical = getCanonicalStatus(raw);
-        return {
-          ...app,
-          'status': canonical,
-        };
+        return {...app, 'status': canonical};
       }).toList();
     } catch (e) {
       if (mounted) {
@@ -125,15 +129,12 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
         'approve',
         adminId: widget.blockAdminId,
       ); // POST /api/applications/block-review/:id :contentReference[oaicite:2]{index=2}
-      if (ok) {
-        if (mounted) {
-          _updateLocalStatus(appId, 'approved'); // <-- INSTANT UI UPDATE
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Approved & forwarded to District')),
-          );
-          // Always reload after status action to ensure fresh data
-          await _load();
-        }
+      if (ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Approved & forwarded to District')),
+        );
+        // Always reload after status action to ensure fresh data
+        await _load();
       }
     } catch (e) {
       if (mounted) {
@@ -177,15 +178,12 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
               ? null
               : reasonCtrl.text.trim(),
         ); // same backend review call :contentReference[oaicite:3]{index=3}
-        if (ok2) {
-          if (mounted) {
-            _updateLocalStatus(appId, 'rejected'); // <-- INSTANT UI UPDATE
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Rejected')));
-            // Always reload after status action to ensure fresh data
-            await _load();
-          }
+        if (ok2 && mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Rejected')));
+          // Always reload after status action to ensure fresh data
+          await _load();
         }
       } catch (e) {
         if (mounted) {
@@ -197,20 +195,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
     }
   }
 
-  // Helper method to update local state after approve/reject
-  void _updateLocalStatus(String appId, String newStatus) {
-    // Normalize to canonical status to avoid string mismatches
-    final canonical = getCanonicalStatus(newStatus);
-    setState(() {
-      final index = _all.indexWhere((app) {
-        final id = (app['_id'] ?? app['id'])?.toString();
-        return id == appId;
-      });
-      if (index != -1) {
-        _all[index]['status'] = canonical;
-      }
-    });
-  }
+  // Removed local status update helper to avoid stale UI; always reload fresh data
 
   void _openProfileSheet(Map<String, dynamic> app) async {
     // Same behavior as dashboard user card: try full profile by email, else fallback. :contentReference[oaicite:4]{index=4}
