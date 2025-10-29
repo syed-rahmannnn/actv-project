@@ -143,8 +143,8 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
                                         : 'Inactive',
                                   ),
                                   backgroundColor: (profile.isActive == true)
-                                      ? Colors.green.withValues(alpha: 0.15)
-                                      : Colors.grey.withValues(alpha: 0.15),
+                                      ? Colors.green.withOpacity(.15)
+                                      : Colors.grey.withOpacity(.15),
                                 ),
                               ],
                             ),

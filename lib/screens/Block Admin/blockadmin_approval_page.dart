@@ -98,14 +98,14 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
         adminId: widget.blockAdminId,
       ); // POST /api/applications/block-review/:id :contentReference[oaicite:2]{index=2}
       if (ok) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Approved & forwarded to District')),
-          );
-        }
-        // Update local state instead of full reload
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Approved & forwarded to District')),
+            );
+          }
+          // Update local state instead of full reload
         _updateLocalStatus(appId, MemberStatus.approved);
-      }
+        }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -404,6 +404,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
     // Use consistent status checking
     final isPending = isPendingStatus(status);
     final isApproved = isApprovedStatus(status);
+    final isRejected = isRejectedStatus(status);
 
     // Use consistent status display
     final statusText = getStatusDisplayText(status);

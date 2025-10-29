@@ -531,20 +531,19 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
                   // Close loading dialog
                   if (mounted) Navigator.pop(context);
 
-                  if (mounted) {
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (ctx) => UserDetailsDropdown(
-                        memberProfile: Map<String, dynamic>.from(
-                          profileRes['data'],
-                        ),
-                        onApprove: () => _act(id, 'approve'),
-                        onReject: () => _rejectDialog(id),
+                  // Show modal with full profile data
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (ctx) => UserDetailsDropdown(
+                      memberProfile: Map<String, dynamic>.from(
+                        profileRes['data'],
                       ),
-                    );
-                  }
+                      onApprove: () => _act(id, 'approve'),
+                      onReject: () => _rejectDialog(id),
+                    ),
+                  );
                   return;
                 }
               }
@@ -553,18 +552,16 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
 
           // Fallback: close loading and show modal with basic data
           if (mounted) Navigator.pop(context);
-          if (mounted) {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (ctx) => UserDetailsDropdown(
-                app: Map<String, dynamic>.from(app),
-                onApprove: () => _act(id, 'approve'),
-                onReject: () => _rejectDialog(id),
-              ),
-            );
-          }
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (ctx) => UserDetailsDropdown(
+              app: Map<String, dynamic>.from(app),
+              onApprove: () => _act(id, 'approve'),
+              onReject: () => _rejectDialog(id),
+            ),
+          );
         } catch (e) {
           // Close loading dialog and show error
           if (mounted) {
