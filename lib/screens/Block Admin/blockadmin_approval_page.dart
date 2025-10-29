@@ -4,6 +4,25 @@ import '../../utils/member_status.dart';
 import 'blockadmin_dashboard.dart'
     show UserDetailsDropdown; // reuse the same dropdown
 
+// --- Status helpers specific to workflow ---
+String _statusStr(dynamic v) => (v ?? '').toString().trim();
+String _lower(dynamic v) => _statusStr(v).toLowerCase();
+
+bool _isPendingBlock(dynamic s) => _lower(s) == 'pending-block';
+bool _isApprovedBlock(dynamic s) =>
+    _lower(s) == 'approved-block' || _lower(s) == 'approved';
+bool _isRejectedBlock(dynamic s) =>
+    _lower(s) == 'rejected-block' || _lower(s) == 'rejected';
+
+String _displayStatus(dynamic s) {
+  final ls = _lower(s);
+  if (ls == 'pending-block') return 'Pending';
+  if (ls == 'approved-block' || ls == 'approved') return 'Approved';
+  if (ls == 'rejected-block' || ls == 'rejected') return 'Rejected';
+  final raw = _statusStr(s);
+  return raw.isEmpty ? 'Pending' : raw[0].toUpperCase() + raw.substring(1);
+}
+
 enum ApprovalCategory { pending, approved, rejected, all }
 
 class BlockAdminApprovalPage extends StatefulWidget {
@@ -75,11 +94,10 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
       final apps = await ApiService.getBlockAdminApplications(
         widget.blockAdminId,
       );
-      // Normalize status to canonical values to avoid string mismatches
+      // Keep raw workflow status (e.g., Pending-Block, Pending-District)
       _all = List<Map<String, dynamic>>.from(apps).map((app) {
         final raw = app['status']?.toString();
-        final canonical = getCanonicalStatus(raw);
-        return {...app, 'status': canonical};
+        return {...app, 'status': raw};
       }).toList();
     } catch (e) {
       if (mounted) {
@@ -93,20 +111,14 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
   }
 
   // Helpers
-  List<Map<String, dynamic>> get _pending => _all.where((a) {
-    final status = a['status']?.toString();
-    return isPendingStatus(status);
-  }).toList();
+  List<Map<String, dynamic>> get _pending =>
+      _all.where((a) => _isPendingBlock(a['status'])).toList();
 
-  List<Map<String, dynamic>> get _approved => _all.where((a) {
-    final status = a['status']?.toString();
-    return isApprovedStatus(status);
-  }).toList();
+  List<Map<String, dynamic>> get _approved =>
+      _all.where((a) => _isApprovedBlock(a['status'])).toList();
 
-  List<Map<String, dynamic>> get _rejected => _all.where((a) {
-    final status = a['status']?.toString();
-    return isRejectedStatus(status);
-  }).toList();
+  List<Map<String, dynamic>> get _rejected =>
+      _all.where((a) => _isRejectedBlock(a['status'])).toList();
 
   List<Map<String, dynamic>> get _listForTab {
     switch (_tab) {
@@ -422,12 +434,12 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
     final role = (form['role'] ?? 'Member').toString();
     final gender = (form['gender'] ?? '').toString();
 
-    // Use consistent status checking
-    final isPending = isPendingStatus(status);
-    final isApproved = isApprovedStatus(status);
+    // Block-aware status checking
+    final isPending = _isPendingBlock(status);
+    final isApproved = _isApprovedBlock(status);
 
-    // Use consistent status display
-    final statusText = getStatusDisplayText(status);
+    // Display text based on raw workflow status
+    final statusText = _displayStatus(status);
     final statusColor = getStatusColor(status);
 
     return GestureDetector(
