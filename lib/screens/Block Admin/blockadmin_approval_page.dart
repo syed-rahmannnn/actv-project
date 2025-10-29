@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart'; // uses your existing static helpers
+import '../../utils/member_status.dart';
 import 'blockadmin_dashboard.dart'
     show UserDetailsDropdown; // reuse the same dropdown
 
@@ -61,21 +62,18 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
 
   // Helpers
   List<Map<String, dynamic>> get _pending => _all.where((a) {
-    final status = (a['status'] ?? '').toString().toLowerCase();
-    // Only treat exact 'pending-block' and 'submitted' as pending
-    return status == 'pending-block' || status == 'submitted';
+    final status = a['status']?.toString();
+    return isPendingStatus(status);
   }).toList();
 
   List<Map<String, dynamic>> get _approved => _all.where((a) {
-    final status = (a['status'] ?? '').toString();
-    return status == 'Approved' ||
-        status == 'Pending-District' ||
-        status == 'Pending-State';
+    final status = a['status']?.toString();
+    return isApprovedStatus(status);
   }).toList();
 
   List<Map<String, dynamic>> get _rejected => _all.where((a) {
-    final status = (a['status'] ?? '').toString();
-    return status == 'Rejected' || status.toLowerCase().contains('rejected');
+    final status = a['status']?.toString();
+    return isRejectedStatus(status);
   }).toList();
 
   List<Map<String, dynamic>> get _listForTab {
@@ -100,13 +98,14 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
         adminId: widget.blockAdminId,
       ); // POST /api/applications/block-review/:id :contentReference[oaicite:2]{index=2}
       if (ok) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Approved & forwarded to District')),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Approved & forwarded to District')),
+            );
+          }
+          // Update local state instead of full reload
+        _updateLocalStatus(appId, MemberStatus.approved);
         }
-        await _load();
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -155,7 +154,8 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
               context,
             ).showSnackBar(const SnackBar(content: Text('Rejected')));
           }
-          await _load();
+          // Update local state instead of full reload
+          _updateLocalStatus(appId, MemberStatus.rejected);
         }
       } catch (e) {
         if (mounted) {
@@ -165,6 +165,16 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
         }
       }
     }
+  }
+
+  // Helper method to update local state after approve/reject
+  void _updateLocalStatus(String appId, String newStatus) {
+    setState(() {
+      final index = _all.indexWhere((app) => app['_id'] == appId);
+      if (index != -1) {
+        _all[index]['status'] = newStatus;
+      }
+    });
   }
 
   void _openProfileSheet(Map<String, dynamic> app) async {
@@ -391,29 +401,14 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
     final role = (form['role'] ?? 'Member').toString();
     final gender = (form['gender'] ?? '').toString();
 
-    final isPending =
-        status.toLowerCase().contains('pending-block') ||
-        status.toLowerCase().contains('pending') ||
-        status.toLowerCase() == 'submitted';
-    final isApproved =
-        status == 'Approved' ||
-        status == 'Pending-District' ||
-        status.toLowerCase().contains('approved');
-    final isRejected =
-        status == 'Rejected' || status.toLowerCase().contains('rejected');
+    // Use consistent status checking
+    final isPending = isPendingStatus(status);
+    final isApproved = isApprovedStatus(status);
+    final isRejected = isRejectedStatus(status);
 
-    Color chipColor;
-    String chipText;
-    if (isApproved) {
-      chipColor = const Color(0xFF16A34A);
-      chipText = 'Approved';
-    } else if (isRejected) {
-      chipColor = const Color(0xFFFF5C5C);
-      chipText = 'Rejected';
-    } else {
-      chipColor = const Color(0xFF1E88FF);
-      chipText = 'pending';
-    }
+    // Use consistent status display
+    final statusText = getStatusDisplayText(status);
+    final statusColor = getStatusColor(status);
 
     return GestureDetector(
       onTap: () => _openProfileSheet(
@@ -499,13 +494,13 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: chipColor.withAlpha((0.15 * 255).toInt()),
+                    color: statusColor.withAlpha((0.15 * 255).toInt()),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    chipText,
+                    statusText,
                     style: TextStyle(
-                      color: chipColor,
+                      color: statusColor,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

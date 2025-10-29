@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'blockadmin_settings.dart';
 import 'blockadmin_approval_page.dart';
 import 'blockadmin_members_page.dart';
+import '../../utils/member_status.dart';
 
 /// Lightweight service embedded here so your existing constructor
 /// parameters keep working. Calls the same endpoints you already expose:
@@ -53,24 +54,26 @@ class ApplicationService {
   }
 
   Future<Map<String, int>> getBlockStats(String blockAdminId) async {
-    final pending = await getBlockInbox(
-      blockAdminId,
-    ); // Pending-Block list (server route). :contentReference[oaicite:0]{index=0}
+    final pendingList = await getBlockInbox(blockAdminId);
     final approved = await _getCountByStatus(
       blockAdminId: blockAdminId,
-      status:
-          'Approved', // server aggregates by reviewedBy + status. :contentReference[oaicite:1]{index=1}
+      status: 'Approved',
     );
     final rejected = await _getCountByStatus(
       blockAdminId: blockAdminId,
-      status:
-          'Rejected', // same stats route. :contentReference[oaicite:2]{index=2}
+      status: 'Rejected',
     );
+    
+    // Filter pending list to only include actual pending items
+    final actualPending = pendingList.where((app) {
+      return isPendingStatus(app['status']?.toString());
+    }).toList();
+    
     return {
-      'pending': pending.length,
+      'pending': actualPending.length,
       'approved': approved,
       'rejected': rejected,
-      'total': pending.length + approved + rejected,
+      'total': actualPending.length + approved + rejected,
     };
   }
 
@@ -161,9 +164,16 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
       _svc.getBlockInbox(widget.blockAdminId),
     ]);
     if (!mounted) return;
+    
+    final allApplications = res[1] as List<dynamic>;
+    // Filter to only show actual pending items in the dashboard
+    final pendingApplications = allApplications.where((app) {
+      return isPendingStatus(app['status']?.toString());
+    }).toList();
+    
     setState(() {
       _stats = res[0] as Map<String, int>;
-      _pending = res[1] as List<dynamic>;
+      _pending = pendingApplications;
       _isLoading = false;
     });
   }
@@ -576,6 +586,12 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
         : <String, dynamic>{};
     final role = (form['role'] ?? 'Member').toString();
     final gender = (form['gender'] ?? '').toString();
+    
+    // Use consistent status handling
+    final status = app['status']?.toString();
+    final isPending = isPendingStatus(status);
+    final statusText = getStatusDisplayText(status);
+    final statusColor = getStatusColor(status);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -657,15 +673,13 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(
-                    0xFF1E88FF,
-                  ).withAlpha((0.15 * 255).toInt()),
+                  color: statusColor.withAlpha((0.15 * 255).toInt()),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Text(
-                  'pending',
+                child: Text(
+                  statusText.toLowerCase(),
                   style: TextStyle(
-                    color: Color(0xFF1E88FF),
+                    color: statusColor,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -677,7 +691,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
             children: [
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () => _act(id, 'approve'),
+                  onPressed: isPending ? () => _act(id, 'approve') : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF16A34A),
                     foregroundColor: Colors.white,
@@ -696,7 +710,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
               const SizedBox(width: 16),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () => _rejectDialog(id),
+                  onPressed: isPending ? () => _rejectDialog(id) : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF5C5C),
                     foregroundColor: Colors.white,

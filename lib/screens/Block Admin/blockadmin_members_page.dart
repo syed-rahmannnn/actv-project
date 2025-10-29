@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import '../../utils/member_status.dart';
 // Reuse the same dropdown you already created inside the dashboard file
 import 'blockadmin_dashboard.dart' show UserDetailsDropdown;
 
@@ -62,21 +63,18 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
 
   // ---- status partitions ----
   bool _isPending(Map a) {
-    final status = (a['status'] ?? '').toString().toLowerCase();
-    // Only treat exact 'pending-block' and 'submitted' as pending
-    return status == 'pending-block' || status == 'submitted';
+    final status = a['status']?.toString();
+    return isPendingStatus(status);
   }
 
   bool _isApproved(Map a) {
-    final status = (a['status'] ?? '').toString();
-    return status == 'Approved' ||
-        status == 'Pending-District' ||
-        status == 'Pending-State';
+    final status = a['status']?.toString();
+    return isApprovedStatus(status);
   }
 
   bool _isRejected(Map a) {
-    final status = (a['status'] ?? '').toString();
-    return status == 'Rejected' || status.toLowerCase().contains('rejected');
+    final status = a['status']?.toString();
+    return isRejectedStatus(status);
   }
 
   List<Map<String, dynamic>> get _filtered {
@@ -111,6 +109,7 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
 
   int get _total => _all.length;
   int get _approvedCount => _all.where(_isApproved).length;
+  int get _rejectedCount => _all.where(_isRejected).length;
   int get _pendingCount => _all.where(_isPending).length;
 
   Future<void> _approve(String appId) async {
@@ -314,7 +313,7 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
       child: Text(
-        '$_total members · $_approvedCount approved · $_pendingCount pending',
+        '$_total members · $_approvedCount approved · $_rejectedCount rejected · $_pendingCount pending',
         style: const TextStyle(color: Color(0xFF6B7280)),
       ),
     );
@@ -367,26 +366,13 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
     final gender = (form['gender'] ?? '').toString();
     final title = (form['jobTitle'] ?? form['role'] ?? '').toString();
 
-    // chip style (EXACT colors to match your mock)
-    // Approved: green, Pending: warm yellow, Rejected: red
-    bool approved = _isApproved(app);
-    bool rejected = _isRejected(app);
-
-    Color chipFG, chipBG;
-    String chipText;
-    if (approved) {
-      chipFG = const Color(0xFF16A34A);
-      chipBG = const Color(0xFFEAF7EE);
-      chipText = 'Approved';
-    } else if (rejected) {
-      chipFG = const Color(0xFFFF5C5C);
-      chipBG = const Color(0xFFFFECEC);
-      chipText = 'Rejected';
-    } else {
-      chipFG = const Color(0xFFF59E0B);
-      chipBG = const Color(0xFFFEF3C7);
-      chipText = 'Pending';
-    }
+    // Use consistent status handling
+    final status = app['status']?.toString();
+    final statusText = getStatusDisplayText(status);
+    final statusColor = getStatusColor(status);
+    final isPending = isPendingStatus(status);
+    final approved = isApprovedStatus(status);
+    final rejected = isRejectedStatus(status);
 
     return GestureDetector(
       onTap: () => _openDetails(app),
@@ -440,13 +426,13 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: chipBG,
+                              color: statusColor.withAlpha((0.15 * 255).toInt()),
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Text(
-                              chipText,
+                              statusText,
                               style: TextStyle(
-                                color: chipFG,
+                                color: statusColor,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 12.5,
                               ),
@@ -479,7 +465,7 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
                         ),
                       if (rejected)
                         const Text(
-                          'Rejected by: District Admin',
+                          'Rejected by: Block Admin',
                           style: TextStyle(
                             color: Color(0xFFFF5C5C),
                             fontWeight: FontWeight.w600,

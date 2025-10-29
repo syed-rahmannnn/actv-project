@@ -1,5 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../core/status.dart';
+import '../models/block_stats.dart';
+import '../models/user_application.dart';
 
 class ApplicationService {
   final String baseUrl;
@@ -205,6 +208,71 @@ class ApplicationService {
       'rejected': rejected,
       'total': pending.length + approved + rejected,
     };
+  }
+
+  // ---------- TYPED: APPLICATIONS & STATS ----------
+  Future<List<UserApplication>> getBlockApplications({required String blockId}) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/applications/block/$blockId'),
+      headers: _headers,
+    );
+    final data = jsonDecode(res.body);
+
+    if (res.statusCode != 200) {
+      throw Exception((data is Map && data['message'] != null)
+          ? data['message']
+          : 'Failed to fetch block applications');
+    }
+
+    final list = (data is Map<String, dynamic>)
+        ? (data['applications'] ?? [])
+        : (data as List<dynamic>);
+
+    return list
+        .cast<Map<String, dynamic>>()
+        .map((j) => UserApplication.fromJson(j))
+        .toList();
+  }
+
+  Future<BlockStats> getBlockStatsModel({required String blockId}) async {
+    // Try a dedicated stats endpoint if available.
+    try {
+      final res = await http.get(
+        Uri.parse('$baseUrl/block-admin/$blockId/stats'),
+        headers: _headers,
+      );
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        if (body is Map<String, dynamic>) {
+          final total = (body['total'] ?? 0) as int;
+          final pending = (body['pending'] ?? 0) as int;
+          final approved = (body['approved'] ?? 0) as int;
+          final rejected = (body['rejected'] ?? 0) as int;
+          return BlockStats(
+            total: total,
+            pending: pending,
+            approved: approved,
+            rejected: rejected,
+          );
+        }
+      }
+    } catch (_) {
+      // fall through to compute from lists
+    }
+
+    // Fallback: compute stats from applications list
+    final list = await getBlockApplications(blockId: blockId);
+    final total = list.length;
+    final approved = list.where((u) => u.status == MemberStatus.approved).length;
+    final rejected = list.where((u) => u.status == MemberStatus.rejected).length;
+    final pending = list.where((u) => u.status == MemberStatus.pending).length;
+
+    return BlockStats(
+      total: total,
+      pending: pending,
+      approved: approved,
+      rejected: rejected,
+    );
   }
 
   // ---------- USER/APPLICATIONS ----------

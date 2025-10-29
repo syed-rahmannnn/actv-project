@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import 'auth_service.dart';
+import '../utils/member_status.dart';
 
 class ApiService {
   // Replace with your Render domain (include https)
@@ -706,6 +707,60 @@ class ApiService {
     } catch (e) {
       developer.log('reviewDistrictApplication error: $e', name: 'ApiService');
       throw Exception('Network error: $e');
+    }
+  }
+
+  // Get block admin statistics
+  static Future<Map<String, int>> getBlockStats(String blockAdminId) async {
+    try {
+      // Pending from inbox (true pending only)
+      final inbox = await getBlockAdminApplications(blockAdminId);
+      final pending = inbox.where((app) => isPendingStatus(app['status']?.toString())).length;
+      // Approved/Rejected via backend counts
+      final approved = await _getCountByStatus(blockAdminId: blockAdminId, status: 'Approved');
+      final rejected = await _getCountByStatus(blockAdminId: blockAdminId, status: 'Rejected');
+      return {
+        'pending': pending,
+        'approved': approved,
+        'rejected': rejected,
+        'total': pending + approved + rejected,
+      };
+    } catch (e) {
+      developer.log('getBlockStats error: $e', name: 'ApiService');
+      return {
+        'pending': 0,
+        'approved': 0,
+        'rejected': 0,
+        'total': 0,
+      };
+    }
+  }
+
+  // Helper: count applications by status for a block admin
+  static Future<int> _getCountByStatus({
+    required String blockAdminId,
+    required String status, // 'Approved' | 'Rejected'
+  }) async {
+    try {
+      final direct = Uri.parse(
+        '$baseUrl/applications/by-admin/$blockAdminId?role=block&status=$status',
+      );
+      http.Response res;
+      try {
+        res = await http.get(direct, headers: await _staticHeaders());
+      } catch (_) {
+        res = await _getWithFallback('/by-admin/$blockAdminId?role=block&status=$status');
+      }
+      if (res.statusCode == 200) {
+        final body = _jsonDecodeSafe(res.body);
+        if (body is Map && body['count'] is int) {
+          return body['count'] as int;
+        }
+      }
+      return 0;
+    } catch (e) {
+      developer.log('_getCountByStatus error: $e', name: 'ApiService');
+      return 0;
     }
   }
 }
