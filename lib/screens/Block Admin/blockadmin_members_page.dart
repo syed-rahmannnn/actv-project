@@ -53,7 +53,15 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage>
       final apps = await ApiService.getBlockAdminApplications(
         widget.blockAdminId,
       );
-      _all = List<Map<String, dynamic>>.from(apps);
+      // Normalize status to canonical values to avoid string mismatches
+      _all = List<Map<String, dynamic>>.from(apps).map((app) {
+        final raw = app['status']?.toString();
+        final canonical = getCanonicalStatus(raw);
+        return {
+          ...app,
+          'status': canonical,
+        };
+      }).toList();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

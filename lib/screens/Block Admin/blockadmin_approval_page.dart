@@ -27,7 +27,7 @@ class BlockAdminApprovalPage extends StatefulWidget {
 }
 
 class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> 
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   bool _loading = true;
   ApprovalCategory _tab = ApprovalCategory.pending;
 
@@ -41,10 +41,26 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
   void initState() {
     super.initState();
     _tab = widget.initialCategory;
+    WidgetsBinding.instance.addObserver(this);
     _load();
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Ensure fresh data when coming back to the app
+      _load();
+    }
+  }
+
   Future<void> _load() async {
+    if (_loading) return; // prevent overlapping loads
     setState(() => _loading = true);
     try {
       // This endpoint already exists in your code and returns applications for block admin.
@@ -52,7 +68,15 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
       final apps = await ApiService.getBlockAdminApplications(
         widget.blockAdminId,
       );
-      _all = List<Map<String, dynamic>>.from(apps);
+      // Normalize status to canonical values to avoid string mismatches
+      _all = List<Map<String, dynamic>>.from(apps).map((app) {
+        final raw = app['status']?.toString();
+        final canonical = getCanonicalStatus(raw);
+        return {
+          ...app,
+          'status': canonical,
+        };
+      }).toList();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -107,8 +131,8 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
             const SnackBar(content: Text('Approved & forwarded to District')),
           );
         }
-        // Update local state instead of full reload
-        _updateLocalStatus(appId, MemberStatus.approved);
+        // Always reload after status action to ensure fresh data
+        await _load();
       }
     } catch (e) {
       if (mounted) {
@@ -158,8 +182,8 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
               context,
             ).showSnackBar(const SnackBar(content: Text('Rejected')));
           }
-          // Update local state instead of full reload
-          _updateLocalStatus(appId, MemberStatus.rejected);
+          // Always reload after status action to ensure fresh data
+          await _load();
         }
       } catch (e) {
         if (mounted) {
@@ -173,10 +197,15 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
 
   // Helper method to update local state after approve/reject
   void _updateLocalStatus(String appId, String newStatus) {
+    // Normalize to canonical status to avoid string mismatches
+    final canonical = getCanonicalStatus(newStatus);
     setState(() {
-      final index = _all.indexWhere((app) => app['_id'] == appId);
+      final index = _all.indexWhere((app) {
+        final id = (app['_id'] ?? app['id'])?.toString();
+        return id == appId;
+      });
       if (index != -1) {
-        _all[index]['status'] = newStatus;
+        _all[index]['status'] = canonical;
       }
     });
   }
