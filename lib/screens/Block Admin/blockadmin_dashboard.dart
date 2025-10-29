@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'blockadmin_settings.dart';
-import 'package:activ/services/api_service.dart';
+import 'blockadmin_approval_page.dart';
+import 'blockadmin_members_page.dart';
+import '../../utils/member_status.dart';
 
 /// Lightweight service embedded here so your existing constructor
 /// parameters keep working. Calls the same endpoints you already expose:
@@ -52,24 +54,26 @@ class ApplicationService {
   }
 
   Future<Map<String, int>> getBlockStats(String blockAdminId) async {
-    final pending = await getBlockInbox(
-      blockAdminId,
-    ); // Pending-Block list (server route). :contentReference[oaicite:0]{index=0}
+    final pendingList = await getBlockInbox(blockAdminId);
     final approved = await _getCountByStatus(
       blockAdminId: blockAdminId,
-      status:
-          'Approved', // server aggregates by reviewedBy + status. :contentReference[oaicite:1]{index=1}
+      status: 'Approved',
     );
     final rejected = await _getCountByStatus(
       blockAdminId: blockAdminId,
-      status:
-          'Rejected', // same stats route. :contentReference[oaicite:2]{index=2}
+      status: 'Rejected',
     );
+    
+    // Filter pending list to only include actual pending items
+    final actualPending = pendingList.where((app) {
+      return isPendingStatus(app['status']?.toString());
+    }).toList();
+    
     return {
-      'pending': pending.length,
+      'pending': actualPending.length,
       'approved': approved,
       'rejected': rejected,
-      'total': pending.length + approved + rejected,
+      'total': actualPending.length + approved + rejected,
     };
   }
 
@@ -160,9 +164,16 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
       _svc.getBlockInbox(widget.blockAdminId),
     ]);
     if (!mounted) return;
+    
+    final allApplications = res[1] as List<dynamic>;
+    // Filter to only show actual pending items in the dashboard
+    final pendingApplications = allApplications.where((app) {
+      return isPendingStatus(app['status']?.toString());
+    }).toList();
+    
     setState(() {
       _stats = res[0] as Map<String, int>;
-      _pending = res[1] as List<dynamic>;
+      _pending = pendingApplications;
       _isLoading = false;
     });
   }
@@ -261,6 +272,21 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
     switch (i) {
       case 0:
         return RefreshIndicator(onRefresh: _load, child: _dashboard());
+      case 1: // Approvals tab
+        return BlockAdminApprovalPage(
+          apiBaseUrl: widget.apiBaseUrl,
+          blockAdminId: widget.blockAdminId,
+          blockName: widget.blockName,
+          token: widget.authToken ?? widget.token,
+          initialCategory: ApprovalCategory.pending,
+        );
+      case 2: // Members
+        return BlockAdminMembersPage(
+          apiBaseUrl: widget.apiBaseUrl,
+          blockAdminId: widget.blockAdminId,
+          blockName: widget.blockName,
+          token: widget.authToken ?? widget.token,
+        );
       case 3:
         return BlockAdminSettingsPage(
           apiBaseUrl: widget.apiBaseUrl,
@@ -271,8 +297,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
           isActive: true,
         );
       default:
-        // Placeholders to match your tab structure (you can wire later).
-        return const Center(child: Text('Coming soon'));
+        return const SizedBox();
     }
   }
 
@@ -291,35 +316,95 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
             spacing: 16,
             runSpacing: 16,
             children: [
-              _statCard(
-                title: 'Total Members',
-                value: _stats['total'] ?? 0,
-                subtitle: 'block level',
-                icon: Icons.person_outline,
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => BlockAdminApprovalPage(
+                        apiBaseUrl: widget.apiBaseUrl,
+                        blockAdminId: widget.blockAdminId,
+                        blockName: widget.blockName,
+                        token: widget.authToken ?? widget.token,
+                        initialCategory: ApprovalCategory.all,
+                      ),
+                    ),
+                  );
+                },
+                child: _statCard(
+                  title: 'Total Members',
+                  value: _stats['total'] ?? 0,
+                  subtitle: 'block level',
+                  icon: Icons.person_outline,
+                ),
               ),
-              _statCard(
-                title: 'Pending',
-                value: _stats['pending'] ?? 0,
-                subtitle: 'Awaiting approval',
-                icon: Icons.access_time,
-                chipText: 'pending',
-                chipColor: const Color(0xFF1E88FF),
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => BlockAdminApprovalPage(
+                        apiBaseUrl: widget.apiBaseUrl,
+                        blockAdminId: widget.blockAdminId,
+                        blockName: widget.blockName,
+                        token: widget.authToken ?? widget.token,
+                        initialCategory: ApprovalCategory.pending,
+                      ),
+                    ),
+                  );
+                },
+                child: _statCard(
+                  title: 'Pending',
+                  value: _stats['pending'] ?? 0,
+                  subtitle: 'Awaiting approval',
+                  icon: Icons.access_time,
+                  chipText: 'pending',
+                  chipColor: const Color(0xFF1E88FF),
+                ),
               ),
-              _statCard(
-                title: 'Approved',
-                value: _stats['approved'] ?? 0,
-                subtitle: 'Successfully approved',
-                icon: Icons.check_circle,
-                chipText: 'approved',
-                chipColor: const Color(0xFF16A34A),
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => BlockAdminApprovalPage(
+                        apiBaseUrl: widget.apiBaseUrl,
+                        blockAdminId: widget.blockAdminId,
+                        blockName: widget.blockName,
+                        token: widget.authToken ?? widget.token,
+                        initialCategory: ApprovalCategory.approved,
+                      ),
+                    ),
+                  );
+                },
+                child: _statCard(
+                  title: 'Approved',
+                  value: _stats['approved'] ?? 0,
+                  subtitle: 'Successfully approved',
+                  icon: Icons.check_circle,
+                  chipText: 'approved',
+                  chipColor: const Color(0xFF16A34A),
+                ),
               ),
-              _statCard(
-                title: 'Rejected',
-                value: _stats['rejected'] ?? 0,
-                subtitle: 'Request denied',
-                icon: Icons.cancel,
-                chipText: 'rejected',
-                chipColor: const Color(0xFFFF5C5C),
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => BlockAdminApprovalPage(
+                        apiBaseUrl: widget.apiBaseUrl,
+                        blockAdminId: widget.blockAdminId,
+                        blockName: widget.blockName,
+                        token: widget.authToken ?? widget.token,
+                        initialCategory: ApprovalCategory.rejected,
+                      ),
+                    ),
+                  );
+                },
+                child: _statCard(
+                  title: 'Rejected',
+                  value: _stats['rejected'] ?? 0,
+                  subtitle: 'Request denied',
+                  icon: Icons.cancel,
+                  chipText: 'rejected',
+                  chipColor: const Color(0xFFFF5C5C),
+                ),
               ),
             ],
           ),
@@ -501,216 +586,149 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
         : <String, dynamic>{};
     final role = (form['role'] ?? 'Member').toString();
     final gender = (form['gender'] ?? '').toString();
+    
+    // Use consistent status handling
+    final status = app['status']?.toString();
+    final isPending = isPendingStatus(status);
+    final statusText = getStatusDisplayText(status);
+    final statusColor = getStatusColor(status);
 
-    return GestureDetector(
-      onTap: () async {
-        // Show loading indicator
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) =>
-              const Center(child: CircularProgressIndicator()),
-        );
-
-        try {
-          // Fetch full member profile
-          final email = app["email"] ?? app["memberEmail"];
-          if (email != null) {
-            final memberRes = await ApiService.getMemberByEmail(email);
-            if (memberRes['success'] == true && memberRes['data'] != null) {
-              final memberId =
-                  memberRes['data']['id'] ??
-                  memberRes['data']['memberId'] ??
-                  memberRes['data']['_id'];
-              if (memberId != null) {
-                final profileRes = await ApiService.getMemberProfile(
-                  memberId.toString(),
-                );
-                if (profileRes['success'] == true &&
-                    profileRes['data'] != null) {
-                  // Close loading dialog
-                  if (mounted) Navigator.pop(context);
-
-                  // Show modal with full profile data
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (ctx) => UserDetailsDropdown(
-                      memberProfile: Map<String, dynamic>.from(
-                        profileRes['data'],
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha((0.06 * 255).toInt()),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const CircleAvatar(
+                radius: 22,
+                backgroundColor: Color(0xFFE5E7EB),
+                child: Icon(Icons.person, color: Color(0xFF6B7280)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fullName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
                       ),
-                      onApprove: () => _act(id, 'approve'),
-                      onReject: () => _rejectDialog(id),
                     ),
-                  );
-                  return;
-                }
-              }
-            }
-          }
-
-          // Fallback: close loading and show modal with basic data
-          if (mounted) Navigator.pop(context);
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (ctx) => UserDetailsDropdown(
-              app: Map<String, dynamic>.from(app),
-              onApprove: () => _act(id, 'approve'),
-              onReject: () => _rejectDialog(id),
-            ),
-          );
-        } catch (e) {
-          // Close loading dialog and show error
-          if (mounted) {
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error loading profile: $e')),
-            );
-          }
-        }
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha((0.06 * 255).toInt()),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const CircleAvatar(
-                  radius: 22,
-                  backgroundColor: Color(0xFFE5E7EB),
-                  child: Icon(Icons.person, color: Color(0xFF6B7280)),
+                    const SizedBox(height: 4),
+                    Text(
+                      email,
+                      style: const TextStyle(
+                        color: Color(0xFF6B7280),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Role: $role, Gender: ${gender.isEmpty ? '—' : gender}',
+                      style: const TextStyle(
+                        color: Color(0xFF6B7280),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '$block Block',
+                      style: const TextStyle(
+                        color: Color(0xFF374151),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      phone,
+                      style: const TextStyle(
+                        color: Color(0xFF16A34A),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        fullName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        email,
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Role: $role, Gender: ${gender.isEmpty ? '—' : gender}',
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '$block Block',
-                        style: const TextStyle(
-                          color: Color(0xFF374151),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        phone,
-                        style: const TextStyle(
-                          color: Color(0xFF16A34A),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withAlpha((0.15 * 255).toInt()),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  statusText.toLowerCase(),
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(
-                      0xFF1E88FF,
-                    ).withAlpha((0.15 * 255).toInt()),
-                    borderRadius: BorderRadius.circular(16),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: isPending ? () => _act(id, 'approve') : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF16A34A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
                   ),
                   child: const Text(
-                    'pending',
-                    style: TextStyle(
-                      color: Color(0xFF1E88FF),
-                      fontWeight: FontWeight.w700,
-                    ),
+                    'Approve',
+                    style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _act(id, 'approve'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF16A34A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: isPending ? () => _rejectDialog(id) : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF5C5C),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Text(
-                      'Approve',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Reject',
+                    style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _rejectDialog(id),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF5C5C),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Reject',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
