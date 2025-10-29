@@ -815,4 +815,70 @@ class ApiService {
     }
     return {'status': normalized};
   }
+
+  // ---------- Simplified application endpoints ----------
+  // List applications filtered by canonical status
+  static Future<List<dynamic>> fetchByStatus(String status) async {
+    final url = Uri.parse('$baseUrl/applications').replace(
+      queryParameters: {'status': status},
+    );
+    final res = await http.get(
+      url,
+      headers: const {'Content-Type': 'application/json'},
+    );
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final body = _jsonDecodeSafe(res.body);
+      if (body is List) return body;
+      if (body is Map) {
+        final data = body['data'];
+        if (data is List) return data;
+      }
+      return [];
+    }
+    throw Exception('GET /applications failed ${res.statusCode}: ${res.body}');
+  }
+
+  // Get aggregated application stats
+  static Future<Map<String, dynamic>> fetchStats() async {
+    final url = Uri.parse('$baseUrl/applications/stats');
+    final res = await http.get(
+      url,
+      headers: const {'Content-Type': 'application/json'},
+    );
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final body = _jsonDecodeSafe(res.body);
+      return body is Map<String, dynamic> ? body : {'data': body};
+    }
+    throw Exception('GET /applications/stats failed ${res.statusCode}: ${res.body}');
+  }
+
+  // Approve application
+  static Future<Map<String, dynamic>> approve(String id) async {
+    final url = Uri.parse('$baseUrl/applications/$id/approve');
+    final res = await http.post(
+      url,
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({}),
+    );
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final body = _jsonDecodeSafe(res.body);
+      return body is Map<String, dynamic> ? body : {'data': body};
+    }
+    throw Exception('POST /applications/$id/approve failed ${res.statusCode}: ${res.body}');
+  }
+
+  // Reject application
+  static Future<Map<String, dynamic>> reject(String id) async {
+    final url = Uri.parse('$baseUrl/applications/$id/reject');
+    final res = await http.post(
+      url,
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({}),
+    );
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      final body = _jsonDecodeSafe(res.body);
+      return body is Map<String, dynamic> ? body : {'data': body};
+    }
+    throw Exception('POST /applications/$id/reject failed ${res.statusCode}: ${res.body}');
+  }
 }

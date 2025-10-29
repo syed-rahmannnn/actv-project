@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api_service.dart';
-import '../core/status.dart';
 import '../models/block_stats.dart';
 import '../models/user_application.dart';
+import '../models/member_status.dart' as model_status;
+import '../utils/member_status.dart' as utils_status;
 
 class ApplicationService {
   final String baseUrl;
@@ -274,12 +275,12 @@ class ApplicationService {
     final list = await getBlockApplications(blockId: blockId);
     final total = list.length;
     final approved = list
-        .where((u) => u.status == MemberStatus.approved)
+        .where((u) => u.status.value == utils_status.MemberStatus.approved)
         .length;
     final rejected = list
-        .where((u) => u.status == MemberStatus.rejected)
+        .where((u) => u.status.value == utils_status.MemberStatus.rejected)
         .length;
-    final pending = list.where((u) => u.status == MemberStatus.pending).length;
+    final pending = list.where((u) => u.status.value == utils_status.MemberStatus.pending).length;
 
     return BlockStats(
       total: total,
@@ -307,6 +308,11 @@ class ApplicationService {
   }
 
   // ---------- STATUS NORMALIZATION METHODS ----------
+  // Delegate to utils to ensure canonical status values across the app
+  String normalizeStatus(String? status) {
+    return utils_status.getCanonicalStatus(status);
+  }
+
   Future<Map<String, dynamic>> setStatus({
     required String applicationId,
     required String status,

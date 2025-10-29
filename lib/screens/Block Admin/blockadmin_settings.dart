@@ -94,8 +94,8 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage>
               ? profile.email!.trim()
               : '—';
           final area = [
-            if ((profile.district ?? '').isNotEmpty) profile.district,
-            if ((profile.block ?? '').isNotEmpty) profile.block,
+            if (((profile.district ?? '').isNotEmpty)) profile.district,
+            if (((profile.block ?? '').isNotEmpty)) profile.block,
           ].whereType<String>().join(', ');
           final areaText = area.isNotEmpty ? area : '—';
 

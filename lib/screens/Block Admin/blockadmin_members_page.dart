@@ -60,11 +60,10 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage>
       final apps = await ApiService.getBlockAdminApplications(
         widget.blockAdminId,
       );
-      // Normalize status to canonical values to avoid string mismatches
+      // Keep raw workflow status (e.g., Pending-Block, Pending-District)
       _all = List<Map<String, dynamic>>.from(apps).map((app) {
         final raw = app['status']?.toString();
-        final canonical = getCanonicalStatus(raw);
-        return {...app, 'status': canonical};
+        return {...app, 'status': raw};
       }).toList();
     } catch (e) {
       if (mounted) {

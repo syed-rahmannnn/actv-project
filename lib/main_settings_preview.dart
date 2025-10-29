@@ -1,51 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'services/application_service.dart';
+import 'services/api_service.dart';
+import 'services/application_store.dart';
 import 'services/user_profile_provider.dart';
-import 'models/block_stats.dart';
-import 'screens/Block Admin/blockadmin_settings.dart';
-
-class PreviewApplicationService extends ApplicationService {
-  PreviewApplicationService() : super('');
-
-  @override
-  Future<BlockStats> getBlockStatsModel({required String blockId}) async {
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    return const BlockStats(total: 128, pending: 12, approved: 100, rejected: 16);
-  }
-}
+import 'screens/Block Admin/blockadmin_dashboard_simple.dart';
 
 void main() {
-  runApp(const _PreviewApp());
+  final api = ApiService();
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ApplicationStore(api)..bootstrap()),
+        ChangeNotifierProvider(create: (_) => _setupUserProfileProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
-class _PreviewApp extends StatelessWidget {
-  const _PreviewApp();
+UserProfileProvider _setupUserProfileProvider() {
+  final profile = BlockAdminProfile(
+    blockId: 'preview-block-id',
+    blockName: 'Preview Block',
+    email: 'blockadmin@example.com',
+    district: 'Preview District',
+    block: 'Preview Block',
+    isActive: true,
+  );
+  
+  return UserProfileProvider()..setBlockAdminForPreview(profile);
+}
 
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+  
   @override
   Widget build(BuildContext context) {
-    final profile = BlockAdminProfile(
-      blockId: 'preview-block-id',
-      blockName: 'Preview Block',
-      email: 'blockadmin@example.com',
-      district: 'Preview District',
-      block: 'Preview Block',
-      isActive: true,
-    );
-
-    final profileProvider = UserProfileProvider()..setBlockAdminForPreview(profile);
-
-    return MultiProvider(
-      providers: [
-        Provider<ApplicationService>(create: (_) => PreviewApplicationService()),
-        ChangeNotifierProvider<UserProfileProvider>(create: (_) => profileProvider),
-      ],
-      child: MaterialApp(
-        title: 'Block Admin Settings Preview',
-        theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
-        home: const BlockAdminSettingsPage(),
-      ),
+    return MaterialApp(
+      title: 'Block Admin',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
+      home: const BlockAdminDashboard(),
     );
   }
 }
