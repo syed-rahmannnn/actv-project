@@ -119,7 +119,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
 
   Future<void> _approve(String appId) async {
     try {
-      // You’re already reviewing at block on dashboard via block-review (forwarding to District on success). :contentReference[oaicite:1]{index=1}
+      // You're already reviewing at block on dashboard via block-review (forwarding to District on success). :contentReference[oaicite:1]{index=1}
       final ok = await ApiService.reviewBlockApplication(
         appId,
         'approve',
@@ -127,12 +127,13 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
       ); // POST /api/applications/block-review/:id :contentReference[oaicite:2]{index=2}
       if (ok) {
         if (mounted) {
+          _updateLocalStatus(appId, 'approved'); // <-- INSTANT UI UPDATE
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Approved & forwarded to District')),
           );
+          // Always reload after status action to ensure fresh data
+          await _load();
         }
-        // Always reload after status action to ensure fresh data
-        await _load();
       }
     } catch (e) {
       if (mounted) {
@@ -178,12 +179,13 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage>
         ); // same backend review call :contentReference[oaicite:3]{index=3}
         if (ok2) {
           if (mounted) {
+            _updateLocalStatus(appId, 'rejected'); // <-- INSTANT UI UPDATE
             ScaffoldMessenger.of(
               context,
             ).showSnackBar(const SnackBar(content: Text('Rejected')));
+            // Always reload after status action to ensure fresh data
+            await _load();
           }
-          // Always reload after status action to ensure fresh data
-          await _load();
         }
       } catch (e) {
         if (mounted) {
