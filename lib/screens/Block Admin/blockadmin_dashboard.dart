@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'blockadmin_settings.dart';
 import 'blockadmin_approval_page.dart';
 import 'blockadmin_members_page.dart';
-import '../../utils/member_status.dart';
+import '../../core/status.dart';
 
 /// Lightweight service embedded here so your existing constructor
 /// parameters keep working. Calls the same endpoints you already expose:
@@ -324,8 +324,8 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
             runSpacing: 16,
             children: [
               GestureDetector(
-                onTap: () {
-                  Navigator.of(context).push(
+                onTap: () async {
+                  await Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => BlockAdminApprovalPage(
                         apiBaseUrl: widget.apiBaseUrl,
@@ -336,6 +336,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
                       ),
                     ),
                   );
+                  await _load();
                 },
                 child: _statCard(
                   title: 'Total Members',
@@ -345,8 +346,8 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
                 ),
               ),
               GestureDetector(
-                onTap: () {
-                  Navigator.of(context).push(
+                onTap: () async {
+                  await Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => BlockAdminApprovalPage(
                         apiBaseUrl: widget.apiBaseUrl,
@@ -357,6 +358,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
                       ),
                     ),
                   );
+                  await _load();
                 },
                 child: _statCard(
                   title: 'Pending',
@@ -368,8 +370,8 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
                 ),
               ),
               GestureDetector(
-                onTap: () {
-                  Navigator.of(context).push(
+                onTap: () async {
+                  await Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => BlockAdminApprovalPage(
                         apiBaseUrl: widget.apiBaseUrl,
@@ -380,6 +382,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
                       ),
                     ),
                   );
+                  await _load();
                 },
                 child: _statCard(
                   title: 'Approved',
@@ -391,8 +394,8 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
                 ),
               ),
               GestureDetector(
-                onTap: () {
-                  Navigator.of(context).push(
+                onTap: () async {
+                  await Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => BlockAdminApprovalPage(
                         apiBaseUrl: widget.apiBaseUrl,
@@ -403,6 +406,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
                       ),
                     ),
                   );
+                  await _load();
                 },
                 child: _statCard(
                   title: 'Rejected',

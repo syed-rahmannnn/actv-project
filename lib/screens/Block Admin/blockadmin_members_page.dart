@@ -22,7 +22,7 @@ class BlockAdminMembersPage extends StatefulWidget {
   State<BlockAdminMembersPage> createState() => _BlockAdminMembersPageState();
 }
 
-class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> 
+class _BlockAdminMembersPageState extends State<BlockAdminMembersPage>
     with AutomaticKeepAliveClientMixin {
   bool _loading = true;
   List<Map<String, dynamic>> _all = [];
@@ -64,10 +64,7 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage>
       _all = List<Map<String, dynamic>>.from(apps).map((app) {
         final raw = app['status']?.toString();
         final canonical = getCanonicalStatus(raw);
-        return {
-          ...app,
-          'status': canonical,
-        };
+        return {...app, 'status': canonical};
       }).toList();
     } catch (e) {
       if (mounted) {

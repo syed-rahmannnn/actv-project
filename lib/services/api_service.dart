@@ -763,4 +763,56 @@ class ApiService {
       return 0;
     }
   }
+  // --------- Applications: list by block ----------
+  Future<List<dynamic>> getBlockApplicationsRaw(String blockId) async {
+    final direct = Uri.parse('$baseUrl/applications/block/$blockId');
+    http.Response res;
+    try {
+      res = await http.get(direct, headers: await _staticHeaders());
+    } catch (_) {
+      res = await _getWithFallback('/block/$blockId');
+    }
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to fetch applications: ${res.statusCode}');
+    }
+
+    final body = _jsonDecodeSafe(res.body);
+    if (body is List) return body;
+    if (body is Map && body['applications'] is List) {
+      return List<dynamic>.from(body['applications']);
+    }
+    return [];
+  }
+
+  // --------- Update application status ----------
+  Future<Map<String, dynamic>> updateApplicationStatus({
+    required String applicationId,
+    required String status, // 'approved' | 'rejected' | 'pending'
+  }) async {
+    final normalized = status.trim().toLowerCase();
+    final url = Uri.parse('$baseUrl/applications/$applicationId/status');
+    final res = await http.put(
+      url,
+      headers: const {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+      },
+      body: jsonEncode({'status': normalized}),
+    );
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      developer.log(
+        'updateApplicationStatus failed: ${res.statusCode} ${res.body}',
+        name: 'ApiService',
+      );
+      throw Exception('Failed to update status');
+    }
+
+    final decoded = _jsonDecodeSafe(res.body);
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+    return {'status': normalized};
+  }
 }

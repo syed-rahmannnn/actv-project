@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'api_service.dart';
 import '../core/status.dart';
 import '../models/block_stats.dart';
 import '../models/user_application.dart';
@@ -8,9 +9,14 @@ class ApplicationService {
   final String baseUrl;
   final String? token;
   final Map<String, String>? extraHeaders;
+  final ApiService? api;
 
-  ApplicationService(this.baseUrl, {this.token, Map<String, String>? headers})
-    : extraHeaders = headers;
+  ApplicationService(
+    this.baseUrl, {
+    this.token,
+    Map<String, String>? headers,
+    this.api,
+  }) : extraHeaders = headers;
 
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
@@ -211,7 +217,9 @@ class ApplicationService {
   }
 
   // ---------- TYPED: APPLICATIONS & STATS ----------
-  Future<List<UserApplication>> getBlockApplications({required String blockId}) async {
+  Future<List<UserApplication>> getBlockApplications({
+    required String blockId,
+  }) async {
     final res = await http.get(
       Uri.parse('$baseUrl/applications/block/$blockId'),
       headers: _headers,
@@ -219,9 +227,11 @@ class ApplicationService {
     final data = jsonDecode(res.body);
 
     if (res.statusCode != 200) {
-      throw Exception((data is Map && data['message'] != null)
-          ? data['message']
-          : 'Failed to fetch block applications');
+      throw Exception(
+        (data is Map && data['message'] != null)
+            ? data['message']
+            : 'Failed to fetch block applications',
+      );
     }
 
     final list = (data is Map<String, dynamic>)
@@ -263,8 +273,12 @@ class ApplicationService {
     // Fallback: compute stats from applications list
     final list = await getBlockApplications(blockId: blockId);
     final total = list.length;
-    final approved = list.where((u) => u.status == MemberStatus.approved).length;
-    final rejected = list.where((u) => u.status == MemberStatus.rejected).length;
+    final approved = list
+        .where((u) => u.status == MemberStatus.approved)
+        .length;
+    final rejected = list
+        .where((u) => u.status == MemberStatus.rejected)
+        .length;
     final pending = list.where((u) => u.status == MemberStatus.pending).length;
 
     return BlockStats(
@@ -290,5 +304,84 @@ class ApplicationService {
       headers: _headers,
     );
     return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  // ---------- STATUS NORMALIZATION METHODS ----------
+  Future<Map<String, dynamic>> setStatus({
+    required String applicationId,
+    required String status,
+  }) async {
+    final normalizedStatus = normalizeStatus(status);
+
+    // Prefer ApiService if injected, for consistency and single-source endpoints
+    if (api != null) {
+      final res = await api!.updateApplicationStatus(
+        applicationId: applicationId,
+        status: normalizedStatus,
+      );
+      // Ensure normalized on the way back too
+      res['status'] = normalizeStatus(res['status']?.toString());
+      return Map<String, dynamic>.from(res);
+    }
+
+    final res = await http.put(
+      Uri.parse('$baseUrl/applications/$applicationId/status'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
+        if (token != null && token!.isNotEmpty)
+          'Authorization': 'Bearer $token',
+        ..._headers,
+      },
+      body: jsonEncode({'status': normalizedStatus}),
+    );
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('Failed to update status: ${res.statusCode} ${res.body}');
+    }
+
+    final updated = jsonDecode(res.body) as Map<String, dynamic>;
+    // Ensure normalized on the way back too
+    updated['status'] = normalizeStatus(updated['status']?.toString());
+    return updated;
+  }
+
+  Future<List<Map<String, dynamic>>> getBlockApplicationsRaw(
+    String blockId,
+  ) async {
+    // Prefer ApiService if injected
+    if (api != null) {
+      final raw = await api!.getBlockApplicationsRaw(blockId);
+      return raw.map<Map<String, dynamic>>((e) {
+        final m = Map<String, dynamic>.from(e as Map);
+        m['status'] = normalizeStatus(m['status']?.toString());
+        return m;
+      }).toList();
+    }
+
+    final res = await http.get(
+      Uri.parse(
+        '$baseUrl/applications/block/$blockId'
+        '?t=${DateTime.now().millisecondsSinceEpoch}',
+      ), // bust caches
+      headers: {
+        'Cache-Control': 'no-cache',
+        if (token != null && token!.isNotEmpty)
+          'Authorization': 'Bearer $token',
+        ..._headers,
+      },
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to fetch applications: ${res.statusCode}');
+    }
+
+    final raw = jsonDecode(res.body) as List<dynamic>;
+    // Ensure each item has normalized status
+    return raw.map<Map<String, dynamic>>((e) {
+      final m = Map<String, dynamic>.from(e as Map);
+      m['status'] = normalizeStatus(m['status']?.toString());
+      return m;
+    }).toList();
   }
 }
