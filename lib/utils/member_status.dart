@@ -9,16 +9,16 @@ class MemberStatus {
   
   // Block-specific status values that should be treated as pending
   static const List<String> pendingStatuses = [
-    'pending-block',
-    'submitted',
     'pending',
+    'pending-block',
+    'pending-district',
+    'pending-state',
+    'submitted',
   ];
   
   // Status values that should be treated as approved
   static const List<String> approvedStatuses = [
     'Approved',
-    'Pending-District',
-    'Pending-State',
     'approved',
   ];
   
@@ -58,6 +58,11 @@ String getCanonicalStatus(String? status) {
     if (normalized == normalizeStatus(pendingStatus)) {
       return MemberStatus.pending;
     }
+  }
+
+  // Fallback: treat any status starting with 'pending' as pending
+  if (normalized.startsWith('pending')) {
+    return MemberStatus.pending;
   }
   
   // Default to pending for any unknown status
