@@ -115,25 +115,37 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
 
   Future<void> _loadFromParams() async {
     if (adminId.isEmpty) {
+      print('DistrictAdminSettings: adminId is empty, cannot load stats');
       setState(() => _loading = false);
       return;
     }
+    
+    setState(() => _loading = true);
+    
     try {
+      print('DistrictAdminSettings: Loading stats for adminId: $adminId');
       // Reuses the same stats endpoint as dashboard (true numbers).
       final data = await _svc.getDistrictStats(
         adminId,
-      ); // :contentReference[oaicite:8]{index=8}
+      );
+      
+      print('DistrictAdminSettings: Received stats data: $data');
+      
       if (!mounted) return;
       setState(() {
         _stats = data;
         _loading = false;
       });
-    } catch (_) {
+      
+      print('DistrictAdminSettings: Stats updated successfully: $_stats');
+    } catch (e) {
+      print('DistrictAdminSettings: Error loading stats: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _initFromAuth() async {
+    print('DistrictAdminSettings: Initializing from auth');
     await _auth._loadAuthData();
     if (_auth.currentAdmin != null) {
       final a = _auth.currentAdmin!;
@@ -147,10 +159,13 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
 
       active = a.active;
       _svc = ApplicationService(_config.apiBaseUrl, token: _auth.token);
+      
+      print('DistrictAdminSettings: Auth data loaded - adminId: $adminId, districtName: $districtName');
       await _loadFromParams();
     } else {
       // If no admin data is available, try to load from AuthService directly
       try {
+        print('DistrictAdminSettings: No auth admin data, trying AuthService');
         final userData = await AuthService.getUserData();
         if (userData != null) {
           adminId = userData['adminId']?.toString() ?? '';
@@ -169,22 +184,31 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
           final token = await AuthService.getToken();
           if (token != null) {
             _svc = ApplicationService(_config.apiBaseUrl, token: token);
+            print('DistrictAdminSettings: AuthService data loaded - adminId: $adminId, districtName: $districtName');
             await _loadFromParams();
           }
         }
       } catch (e) {
-        // Error handled silently in production
+        print('DistrictAdminSettings: Error loading from AuthService: $e');
       }
       setState(() => _loading = false);
     }
   }
 
   Future<void> _refresh() async {
+    print('DistrictAdminSettings: Refreshing data');
     setState(() => _loading = true);
     try {
       if (widget.apiBaseUrl != null && widget.token != null) {
+        // Use widget parameters
+        _svc = ApplicationService(widget.apiBaseUrl!, token: widget.token!);
+        adminId = widget.districtAdminId ?? '';
+        districtName = widget.districtName ?? '';
+        email = widget.districtEmail ?? '';
+        active = widget.isActive ?? true;
         await _loadFromParams();
       } else {
+        // Use auth data
         await _initFromAuth();
       }
     } finally {
@@ -460,6 +484,41 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
   }
 
   Widget _adminStats() {
+    if (_loading) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha((0.06 * 255).toInt()),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'District Overview',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            SizedBox(height: 20),
+            Center(
+              child: CircularProgressIndicator(),
+            ),
+            SizedBox(height: 20),
+          ],
+        ),
+      );
+    }
+
     final total = _stats['total'] ?? 0;
     final pending = _stats['pending'] ?? 0;
     final approved = _stats['approved'] ?? 0;

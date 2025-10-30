@@ -36,6 +36,8 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
   List<dynamic> _pendingApplications = [];
   bool _isLoading = true;
   String? _districtAdminId;
+  String _districtName = '';
+  String _adminEmail = '';
   late ApplicationService _applicationService;
   final Map<String, int> _stats = {
     'total': 0,
@@ -66,6 +68,8 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
           setState(() {
             _districtAdminId = (user['adminId'] ?? user['_id'] ?? '')
                 .toString();
+            _districtName = user['districtName'] ?? 'Salem District';
+            _adminEmail = user['email'] ?? '';
           });
           await _fetchPendingApplications();
         }
@@ -249,7 +253,12 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
           districtName: 'Salem District', // You can make this dynamic
         );
       case 3:
-        return const DistrictAdminSettingsPage();
+        return DistrictAdminSettingsPage(
+          apiBaseUrl: ApiService.baseUrl,
+          districtAdminId: _districtAdminId ?? '',
+          districtName: _districtName.isNotEmpty ? _districtName : 'Salem District',
+          districtEmail: _adminEmail,
+        );
       default:
         return _dashboard();
     }

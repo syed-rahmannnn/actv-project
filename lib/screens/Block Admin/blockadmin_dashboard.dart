@@ -28,15 +28,24 @@ class ApplicationService {
       headers: headers,
     );
     final data = jsonDecode(res.body);
-    if (data is Map<String, dynamic>) {
-      final applications = data['applications'];
-      if (applications is List) {
-        return applications
-            .map((app) => app is Map ? Map<String, dynamic>.from(app) : app)
-            .toList();
+    
+    // Handle error responses
+    if (res.statusCode != 200) {
+      if (data is Map<String, dynamic>) {
+        throw Exception(data['message'] ?? 'Failed to fetch block inbox');
+      } else {
+        throw Exception('Failed to fetch block inbox');
       }
     }
-    return [];
+
+    // The backend returns applications directly as an array, not wrapped in an object
+    if (data is List<dynamic>) {
+      return data
+          .map((app) => app is Map ? Map<String, dynamic>.from(app) : app)
+          .toList();
+    } else {
+      return [];
+    }
   }
 
   Future<int> _getCountByStatus({
@@ -158,10 +167,12 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
   Future<void> _load() async {
     setState(() => _isLoading = true);
     try {
+      print('Dashboard: Loading data for blockAdminId: ${widget.blockAdminId}');
       // Use the same API call as the approvals page for consistency
       final allApplications = await ApiService.getBlockAdminApplications(
         widget.blockAdminId,
       );
+      print('Dashboard: All applications count: ${allApplications.length}');
       
       // Filter pending applications (same logic as approvals page)
       final pendingApps = allApplications.where((app) {

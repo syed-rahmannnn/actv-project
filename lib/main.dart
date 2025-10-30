@@ -6,6 +6,7 @@ import 'package:activ/screens/Member%20Bottom%20Navigation/dashboard_screen.dart
 import 'package:activ/services/auth_service.dart';
 import 'package:activ/services/user_profile_provider.dart';
 import 'package:activ/screens/Block%20Admin/blockadmin_settings.dart';
+import 'package:activ/screens/Application%20Status/application_submitted_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +32,10 @@ class MyApp extends StatelessWidget {
         routes: {
           '/login': (context) => const LoginScreen(),
           '/settings': (context) => const BlockAdminSettingsPage(),
+          '/application_submitted': (context) {
+            final userData = ModalRoute.of(context)?.settings.arguments;
+            return ApplicationSubmittedScreen(userData: userData as Map<String, dynamic>);
+          },
         },
       ),
     );

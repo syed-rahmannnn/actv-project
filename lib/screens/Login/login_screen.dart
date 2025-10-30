@@ -358,7 +358,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 adminResult['adminId']; // This now contains MongoDB _id if available
             final mongoId =
                 adminResult['mongoId']; // Get MongoDB _id separately if needed
-            final adminData = adminResult['admin'] ?? {};
+            final adminData = adminResult; // Use the entire response as admin data
             final apiBaseUrl = ApiService.baseUrl;
 
             // Save admin login data with complete metadata
@@ -370,11 +370,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     mongoId, // Store MongoDB _id separately for backward compatibility
                 'role': adminRole,
                 'email': adminData['email'] ?? _emailController.text.trim(),
-                'adminName': adminData['adminName'] ?? adminData['name'] ?? '',
-                'block': adminData['block'] ?? '',
-                'blockName': adminData['block'] ?? '', // Alias for block
-                'district': adminData['district'] ?? '',
-                'state': adminData['state'] ?? '',
+                'adminName': adminData['fullName'] ?? adminData['adminName'] ?? adminData['name'] ?? '',
+                'block': adminData['location']?['block'] ?? adminData['block'] ?? '',
+                'blockName': adminData['location']?['block'] ?? adminData['block'] ?? '', // Alias for block
+                'district': adminData['location']?['district'] ?? adminData['district'] ?? '',
+                'state': adminData['location']?['state'] ?? adminData['state'] ?? '',
                 'active': adminData['active'] ?? true,
                 'isAdmin': true,
               },
