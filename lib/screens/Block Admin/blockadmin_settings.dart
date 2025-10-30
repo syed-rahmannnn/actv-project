@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/application_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppConfig {
@@ -126,288 +127,105 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.apiBaseUrl != null && widget.token != null) {
-      _svc = ApplicationService(widget.apiBaseUrl!, token: widget.token!);
-      adminId = widget.blockAdminId ?? '';
-      adminEmail = widget.blockEmail ?? '';
-      active = widget.isActive ?? true;
-      _loadFromParams();
-    } else {
-      _initFromAuth();
-    }
+    // Always call this, regardless of where adminId comes from
+    _initAdminData();
   }
 
-  Future<void> _loadFromParams() async {
-    if (adminId.isEmpty) {
-      setState(() => _loading = false);
-      return;
-    }
+  // Helper to guarantee fetching from backend
+  Future<void> _initAdminData() async {
+    setState(() => _loading = true);
     try {
-      final data = await _svc.getBlockStats(adminId);
+      // hydrate auth to get latest token and admin
+      await _auth._loadAuthData();
+
+      final token = widget.token ?? _auth.token ?? await AuthService.getToken();
+      if (token == null || token.isEmpty) throw Exception('Missing auth token');
+      _svc = ApplicationService(_config.apiBaseUrl, token: token);
+
+      // Pull BOTH ids from user data
+      final user = await AuthService.getUserData();
+      final blockAdminDocId =
+          widget
+              .blockAdminId // if pushed in
+              ??
+          user?['_id']
+              ?.toString() // Mongo _id for API calls
+              ??
+          '';
+      final publicAdminCode =
+          user?['adminId']
+              ?.toString() // e.g., BA29022001 (display only)
+              ??
+          '';
+
+      if (blockAdminDocId.isEmpty) throw Exception('Missing block admin _id');
+
+      // Quick verification log
+      debugPrint(
+        'SETTINGS -> calling with _id=' +
+            blockAdminDocId +
+            ', publicCode=' +
+            publicAdminCode,
+      );
+
+      // Use the new ApiService.fetchBlockAdmin method
+      // Try with _id first, then fallback to adminId if needed
+      Map<String, dynamic>? profile = await ApiService.fetchBlockAdmin(
+        blockAdminDocId,
+      );
+      if (profile == null && publicAdminCode.isNotEmpty) {
+        profile = await ApiService.fetchBlockAdmin(publicAdminCode);
+      }
+      final stats = await _svc.getBlockStats(blockAdminDocId);
+
+      // Debug: Print the profile data to understand its structure
+      debugPrint('SETTINGS -> Profile data: $profile');
+      debugPrint('SETTINGS -> Profile meta: ${profile?['meta']}');
+
+      // 4) map to UI safely - using same logic as approval page
       if (!mounted) return;
       setState(() {
-        _stats = data;
-        _loading = false;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
+        // Extract admin details similar to approval page logic
+        if (profile != null) {
+          adminName = profile['fullName']?.toString() ?? 'Block Admin';
+          adminEmail = profile['email']?.toString() ?? '';
+          adminRole = profile['role']?.toString() ?? 'block';
+          active = profile['active'] == true;
 
-  Future<void> _initFromAuth() async {
-    await _auth._loadAuthData();
-    if (_auth.currentAdmin != null) {
-      final admin = _auth.currentAdmin!;
-      adminId = admin.adminId;
-      adminEmail = admin.email;
-      adminRole = admin.role;
-      active = admin.active;
+          // Extract block name using same logic as approval page
+          locationName =
+              profile['meta']?['blockName']?.toString() ??
+              profile['meta']?['block']?.toString() ??
+              widget.blockName ??
+              '';
 
-      // Set admin name and location based on role
-      // Note: This will be updated by fetchAndSetAdminDetails() with proper formatting
-      switch (adminRole.toLowerCase()) {
-        case 'block':
-          adminName = admin.meta.blockName.isNotEmpty
-              ? '${admin.fullName}, ${admin.meta.blockName} Block Admin'
-              : admin.fullName.isNotEmpty
-              ? admin.fullName
-              : 'Block Admin';
-          locationName = admin.meta.blockName.isNotEmpty
-              ? '${admin.meta.blockName} Block'
-              : 'Block not found';
-          overviewTitle = 'Block Overview';
-          break;
-        case 'district':
-          adminName = admin.meta.districtName.isNotEmpty
-              ? '${admin.fullName}, ${admin.meta.districtName} District Admin'
-              : admin.fullName.isNotEmpty
-              ? admin.fullName
-              : 'District Admin';
-          locationName = admin.meta.districtName.isNotEmpty
-              ? '${admin.meta.districtName} District'
-              : 'District not found';
-          overviewTitle = 'District Overview';
-          break;
-        case 'state':
-          adminName = admin.meta.stateName.isNotEmpty
-              ? '${admin.fullName}, ${admin.meta.stateName} State Admin'
-              : admin.fullName.isNotEmpty
-              ? admin.fullName
-              : 'State Admin';
-          locationName = admin.meta.stateName.isNotEmpty
-              ? '${admin.meta.stateName} State'
-              : 'State not found';
-          overviewTitle = 'State Overview';
-          break;
-        default:
-          adminName = admin.fullName.isNotEmpty ? admin.fullName : 'Admin';
-          locationName = 'Location not found';
-          overviewTitle = 'Admin Overview';
-      }
-
-      _svc = ApplicationService(_config.apiBaseUrl, token: _auth.token);
-
-      // Fetch fresh admin details from backend
-      await fetchAndSetAdminDetails();
-
-      await _loadStats();
-    } else {
-      // Fallback to AuthService directly
-      try {
-        final userData = await AuthService.getUserData();
-        if (userData != null) {
-          adminId = userData['adminId']?.toString() ?? '';
-          adminEmail = userData['email']?.toString() ?? '';
-          adminRole = userData['role']?.toString() ?? '';
-          active = userData['active'] == true;
-
-          // Set names based on role with fallbacks
-          // Note: This will be updated by fetchAndSetAdminDetails() with proper formatting
-          final fullName = userData['fullName']?.toString() ?? '';
-          switch (adminRole.toLowerCase()) {
-            case 'block':
-              final blockName =
-                  userData['blockName']?.toString() ??
-                  userData['meta']?['blockName']?.toString() ??
-                  '';
-              adminName = blockName.isNotEmpty && fullName.isNotEmpty
-                  ? '$fullName, $blockName Block Admin'
-                  : blockName.isNotEmpty
-                  ? '$blockName Block Admin'
-                  : fullName.isNotEmpty
-                  ? fullName
-                  : 'Block Admin';
-              locationName = blockName.isNotEmpty
-                  ? '$blockName Block'
-                  : 'Block not found';
-              overviewTitle = 'Block Overview';
-              break;
-            case 'district':
-              final districtName =
-                  userData['districtName']?.toString() ??
-                  userData['meta']?['districtName']?.toString() ??
-                  '';
-              adminName = districtName.isNotEmpty && fullName.isNotEmpty
-                  ? '$fullName, $districtName District Admin'
-                  : districtName.isNotEmpty
-                  ? '$districtName District Admin'
-                  : fullName.isNotEmpty
-                  ? fullName
-                  : 'District Admin';
-              locationName = districtName.isNotEmpty
-                  ? '$districtName District'
-                  : 'District not found';
-              overviewTitle = 'District Overview';
-              break;
-            case 'state':
-              final stateName =
-                  userData['stateName']?.toString() ??
-                  userData['meta']?['stateName']?.toString() ??
-                  '';
-              adminName = stateName.isNotEmpty && fullName.isNotEmpty
-                  ? '$fullName, $stateName State Admin'
-                  : stateName.isNotEmpty
-                  ? '$stateName State Admin'
-                  : fullName.isNotEmpty
-                  ? fullName
-                  : 'State Admin';
-              locationName = stateName.isNotEmpty
-                  ? '$stateName State'
-                  : 'State not found';
-              overviewTitle = 'State Overview';
-              break;
-            default:
-              adminName = fullName.isNotEmpty ? fullName : 'Admin';
-              locationName = 'Location not found';
-              overviewTitle = 'Admin Overview';
-          }
-
-          final token = await AuthService.getToken();
-          if (token != null) {
-            _svc = ApplicationService(_config.apiBaseUrl, token: token);
-
-            // Fetch fresh admin details from backend
-            await fetchAndSetAdminDetails();
-
-            await _loadStats();
-          }
-        }
-      } catch (e) {
-        // Error handled silently
-      }
-      setState(() => _loading = false);
-    }
-  }
-
-  Future<void> fetchAndSetAdminDetails() async {
-    if (adminId.isEmpty) return;
-
-    try {
-      Map<String, dynamic> data;
-
-      // Fetch admin details based on role
-      switch (adminRole.toLowerCase()) {
-        case 'blockadmin':
-        case 'block':
-          data = await _svc.getBlockAdminDetails(adminId);
-          break;
-        case 'districtadmin':
-        case 'district':
-          data = await _svc.getDistrictAdminDetails(adminId);
-          break;
-        case 'stateadmin':
-        case 'state':
-          data = await _svc.getStateAdminDetails(adminId);
-          break;
-        default:
-          // Fallback: try block admin first
-          try {
-            data = await _svc.getBlockAdminDetails(adminId);
-          } catch (_) {
-            // If block admin fails, try district admin
-            try {
-              data = await _svc.getDistrictAdminDetails(adminId);
-            } catch (_) {
-              // If district admin fails, try state admin
-              data = await _svc.getStateAdminDetails(adminId);
-            }
-          }
-      }
-
-      setState(() {
-        final fullName = data['fullName']?.toString() ?? 'Admin';
-        adminEmail = data['email'] ?? '';
-        active = data['active'] ?? true;
-
-        // Set location name and admin name based on available meta data
-        // Using the same logic as the approval page for consistent formatting
-        final meta = data['meta'] ?? {};
-        if (meta['blockName'] != null &&
-            meta['blockName'].toString().isNotEmpty) {
-          final blockName = meta['blockName'].toString();
-          locationName = '$blockName Block';
-          adminName = '$fullName, $blockName Block Admin';
-          overviewTitle = 'Block Overview';
-        } else if (meta['districtName'] != null &&
-            meta['districtName'].toString().isNotEmpty) {
-          final districtName = meta['districtName'].toString();
-          locationName = '$districtName District';
-          adminName = '$fullName, $districtName District Admin';
-          overviewTitle = 'District Overview';
-        } else if (meta['stateName'] != null &&
-            meta['stateName'].toString().isNotEmpty) {
-          final stateName = meta['stateName'].toString();
-          locationName = '$stateName State';
-          adminName = '$fullName, $stateName State Admin';
-          overviewTitle = 'State Overview';
+          // Debug: Print extracted values
+          debugPrint('SETTINGS -> Extracted adminName: $adminName');
+          debugPrint('SETTINGS -> Extracted adminEmail: $adminEmail');
+          debugPrint('SETTINGS -> Extracted locationName: $locationName');
         } else {
-          locationName = 'Location not found';
-          adminName = fullName;
-          overviewTitle = 'Admin Overview';
+          // Fallback values if profile is null or not a Map
+          adminName = 'Block Admin';
+          adminEmail = '';
+          locationName = widget.blockName ?? '';
+          debugPrint('SETTINGS -> Using fallback values');
         }
-      });
-    } catch (e) {
-      // Handle error silently or show a message
-    }
-  }
 
-  Future<void> _loadStats() async {
-    try {
-      Map<String, int> stats = {};
+        // Keep the public code if you show it anywhere
+        adminId = publicAdminCode;
 
-      // Load stats based on admin role
-      switch (adminRole.toLowerCase()) {
-        case 'block':
-          stats = await _svc.getBlockStats(adminId);
-          break;
-        case 'district':
-          stats = await _svc.getDistrictStats(adminId);
-          break;
-        default:
-          stats = {'total': 0, 'pending': 0, 'approved': 0, 'rejected': 0};
-      }
-
-      if (!mounted) return;
-      setState(() {
+        overviewTitle = 'Block Overview';
         _stats = stats;
         _loading = false;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('BlockAdminSettings bootstrap failed: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _refresh() async {
-    setState(() => _loading = true);
-    try {
-      if (widget.apiBaseUrl != null && widget.token != null) {
-        await _loadFromParams();
-      } else {
-        await _initFromAuth();
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    await _initAdminData();
   }
 
   @override
@@ -498,7 +316,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  adminName.isNotEmpty ? adminName : 'Admin',
+                  adminName.isNotEmpty ? adminName : 'Block Admin',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -528,7 +346,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        locationName,
+                        locationName.isNotEmpty ? locationName : 'Block Admin',
                         style: const TextStyle(
                           color: Color(0xFF6B7280),
                           fontSize: 14,
