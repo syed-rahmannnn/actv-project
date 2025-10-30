@@ -298,8 +298,6 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
             ),
           ),
           const Spacer(),
-          _iconButton(Icons.filter_alt_outlined),
-          const SizedBox(width: 10),
           const CircleAvatar(
             radius: 18,
             backgroundColor: Color(0xFF1E88FF),
@@ -470,17 +468,17 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
                       _infoRow(Icons.call_outlined, phone),
                       const SizedBox(height: 6),
                       if (approved)
-                        const Text(
-                          'Approved by: Block Admin',
-                          style: TextStyle(
+                        Text(
+                          _getApprovalText(app),
+                          style: const TextStyle(
                             color: Color(0xFF16A34A),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       if (rejected)
-                        const Text(
-                          'Rejected by: District Admin',
-                          style: TextStyle(
+                        Text(
+                          _getRejectionText(app),
+                          style: const TextStyle(
                             color: Color(0xFFFF5C5C),
                             fontWeight: FontWeight.w600,
                           ),
@@ -528,4 +526,70 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
     ),
     child: Icon(icon, color: const Color(0xFF0F172A)),
   );
+
+  String _getApprovalText(Map<String, dynamic> app) {
+    // Get reviewedBy information from the backend
+    final reviewedBy = app['reviewedBy'];
+    if (reviewedBy != null && reviewedBy is Map<String, dynamic>) {
+      // Check for block admin approval
+      final blockAdmin = reviewedBy['blockAdmin'];
+      if (blockAdmin != null && blockAdmin is Map<String, dynamic>) {
+        final adminName = blockAdmin['fullName']?.toString() ?? 'Block Admin';
+        final blockName = blockAdmin['meta']?['blockName']?.toString() ?? 'Block';
+        return 'Approved by: $adminName, $blockName Admin';
+      }
+      
+      // Check for district admin approval
+      final districtAdmin = reviewedBy['districtAdmin'];
+      if (districtAdmin != null && districtAdmin is Map<String, dynamic>) {
+        final adminName = districtAdmin['fullName']?.toString() ?? 'District Admin';
+        final districtName = districtAdmin['meta']?['districtName']?.toString() ?? 'District';
+        return 'Approved by: $adminName, $districtName Admin';
+      }
+      
+      // Check for state admin approval
+      final stateAdmin = reviewedBy['stateAdmin'];
+      if (stateAdmin != null && stateAdmin is Map<String, dynamic>) {
+        final adminName = stateAdmin['fullName']?.toString() ?? 'State Admin';
+        final stateName = stateAdmin['meta']?['stateName']?.toString() ?? 'State';
+        return 'Approved by: $adminName, $stateName Admin';
+      }
+    }
+    
+    // Fallback to generic text if approval info is not available
+    return 'Approved by: Block Admin';
+  }
+
+  String _getRejectionText(Map<String, dynamic> app) {
+    // Get reviewedBy information from the backend
+    final reviewedBy = app['reviewedBy'];
+    if (reviewedBy != null && reviewedBy is Map<String, dynamic>) {
+      // Check for block admin rejection
+      final blockAdmin = reviewedBy['blockAdmin'];
+      if (blockAdmin != null && blockAdmin is Map<String, dynamic>) {
+        final adminName = blockAdmin['fullName']?.toString() ?? 'Block Admin';
+        final blockName = blockAdmin['meta']?['blockName']?.toString() ?? 'Block';
+        return 'Rejected by: $adminName, $blockName Admin';
+      }
+      
+      // Check for district admin rejection
+      final districtAdmin = reviewedBy['districtAdmin'];
+      if (districtAdmin != null && districtAdmin is Map<String, dynamic>) {
+        final adminName = districtAdmin['fullName']?.toString() ?? 'District Admin';
+        final districtName = districtAdmin['meta']?['districtName']?.toString() ?? 'District';
+        return 'Rejected by: $adminName, $districtName Admin';
+      }
+      
+      // Check for state admin rejection
+      final stateAdmin = reviewedBy['stateAdmin'];
+      if (stateAdmin != null && stateAdmin is Map<String, dynamic>) {
+        final adminName = stateAdmin['fullName']?.toString() ?? 'State Admin';
+        final stateName = stateAdmin['meta']?['stateName']?.toString() ?? 'State';
+        return 'Rejected by: $adminName, $stateName Admin';
+      }
+    }
+    
+    // Fallback to generic text if rejection info is not available
+    return 'Rejected by: District Admin';
+  }
 }

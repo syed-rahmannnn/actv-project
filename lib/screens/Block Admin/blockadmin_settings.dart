@@ -25,14 +25,14 @@ class AuthProvider {
         adminId: userData['adminId'] ?? userData['_id'] ?? '',
         email: userData['email'] ?? '',
         role: userData['role'] ?? '',
+        fullName: userData['fullName'] ?? '',
         meta: AdminMeta(
           state: userData['state'] ?? userData['meta']?['state'] ?? '',
           district: userData['district'] ?? userData['meta']?['district'] ?? '',
-          block:
-              userData['block'] ??
-              userData['blockName'] ??
-              userData['meta']?['block'] ??
-              '',
+          block: userData['block'] ?? userData['blockName'] ?? userData['meta']?['block'] ?? '',
+          stateName: userData['meta']?['stateName'] ?? userData['stateName'] ?? '',
+          districtName: userData['meta']?['districtName'] ?? userData['districtName'] ?? '',
+          blockName: userData['meta']?['blockName'] ?? userData['blockName'] ?? '',
         ),
         active: (userData['active'] ?? true) == true,
       );
@@ -44,12 +44,15 @@ class AdminData {
   final String adminId;
   final String email;
   final String role;
+  final String fullName;
   final AdminMeta meta;
   final bool active;
+  
   AdminData({
     required this.adminId,
     required this.email,
     required this.role,
+    required this.fullName,
     required this.meta,
     required this.active,
   });
@@ -59,7 +62,18 @@ class AdminMeta {
   final String state;
   final String district;
   final String block;
-  AdminMeta({required this.state, required this.district, required this.block});
+  final String stateName;
+  final String districtName;
+  final String blockName;
+  
+  AdminMeta({
+    required this.state,
+    required this.district,
+    required this.block,
+    required this.stateName,
+    required this.districtName,
+    required this.blockName,
+  });
 }
 
 class BlockAdminSettingsPage extends StatefulWidget {
@@ -90,8 +104,11 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
   late ApplicationService _svc;
 
   String adminId = '';
-  String blockName = '';
-  String email = '';
+  String adminName = '';
+  String adminEmail = '';
+  String adminRole = '';
+  String locationName = '';
+  String overviewTitle = '';
   bool active = true;
 
   final _config = AppConfig();
@@ -103,8 +120,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
     if (widget.apiBaseUrl != null && widget.token != null) {
       _svc = ApplicationService(widget.apiBaseUrl!, token: widget.token!);
       adminId = widget.blockAdminId ?? '';
-      blockName = widget.blockName ?? '';
-      email = widget.blockEmail ?? '';
+      adminEmail = widget.blockEmail ?? '';
       active = widget.isActive ?? true;
       _loadFromParams();
     } else {
@@ -118,10 +134,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
       return;
     }
     try {
-      // Reuses the same stats endpoint as dashboard (true numbers).
-      final data = await _svc.getBlockStats(
-        adminId,
-      ); // :contentReference[oaicite:8]{index=8}
+      final data = await _svc.getBlockStats(adminId);
       if (!mounted) return;
       setState(() {
         _stats = data;
@@ -135,46 +148,127 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
   Future<void> _initFromAuth() async {
     await _auth._loadAuthData();
     if (_auth.currentAdmin != null) {
-      final a = _auth.currentAdmin!;
-      adminId = a.adminId;
+      final admin = _auth.currentAdmin!;
+      adminId = admin.adminId;
+      adminEmail = admin.email;
+      adminRole = admin.role;
+      active = admin.active;
 
-      // Enhanced email handling with fallback
-      email = a.email.isNotEmpty ? a.email : '';
+      // Set admin name and location based on role
+      switch (adminRole.toLowerCase()) {
+        case 'block':
+          adminName = admin.meta.blockName.isNotEmpty 
+              ? '${admin.meta.blockName} Block Admin'
+              : 'Block Admin';
+          locationName = admin.meta.blockName.isNotEmpty 
+              ? '${admin.meta.blockName} Block'
+              : 'Block not found';
+          overviewTitle = 'Block Overview';
+          break;
+        case 'district':
+          adminName = admin.meta.districtName.isNotEmpty 
+              ? '${admin.meta.districtName} District Admin'
+              : 'District Admin';
+          locationName = admin.meta.districtName.isNotEmpty 
+              ? '${admin.meta.districtName} District'
+              : 'District not found';
+          overviewTitle = 'District Overview';
+          break;
+        case 'state':
+          adminName = admin.meta.stateName.isNotEmpty 
+              ? '${admin.meta.stateName} State Admin'
+              : 'State Admin';
+          locationName = admin.meta.stateName.isNotEmpty 
+              ? '${admin.meta.stateName} State'
+              : 'State not found';
+          overviewTitle = 'State Overview';
+          break;
+        default:
+          adminName = admin.fullName.isNotEmpty ? admin.fullName : 'Admin';
+          locationName = 'Location not found';
+          overviewTitle = 'Admin Overview';
+      }
 
-      // Enhanced block name handling with fallback
-      blockName = a.meta.block.isNotEmpty ? a.meta.block : '';
-
-      active = a.active;
       _svc = ApplicationService(_config.apiBaseUrl, token: _auth.token);
-      await _loadFromParams();
+      await _loadStats();
     } else {
-      // If no admin data is available, try to load from AuthService directly
+      // Fallback to AuthService directly
       try {
         final userData = await AuthService.getUserData();
         if (userData != null) {
           adminId = userData['adminId']?.toString() ?? '';
-          email = userData['email']?.toString() ?? '';
-
-          // Enhanced block name extraction with multiple fallbacks
-          blockName =
-              userData['block']?.toString() ??
-              userData['blockName']?.toString() ??
-              userData['meta']?['block']?.toString() ??
-              '';
-
+          adminEmail = userData['email']?.toString() ?? '';
+          adminRole = userData['role']?.toString() ?? '';
           active = userData['active'] == true;
 
-          // Initialize service if we have token
+          // Set names based on role with fallbacks
+          switch (adminRole.toLowerCase()) {
+            case 'block':
+              final blockName = userData['blockName']?.toString() ?? 
+                               userData['meta']?['blockName']?.toString() ?? '';
+              adminName = blockName.isNotEmpty ? '$blockName Block Admin' : 'Block Admin';
+              locationName = blockName.isNotEmpty ? '$blockName Block' : 'Block not found';
+              overviewTitle = 'Block Overview';
+              break;
+            case 'district':
+              final districtName = userData['districtName']?.toString() ?? 
+                                  userData['meta']?['districtName']?.toString() ?? '';
+              adminName = districtName.isNotEmpty ? '$districtName District Admin' : 'District Admin';
+              locationName = districtName.isNotEmpty ? '$districtName District' : 'District not found';
+              overviewTitle = 'District Overview';
+              break;
+            case 'state':
+              final stateName = userData['stateName']?.toString() ?? 
+                               userData['meta']?['stateName']?.toString() ?? '';
+              adminName = stateName.isNotEmpty ? '$stateName State Admin' : 'State Admin';
+              locationName = stateName.isNotEmpty ? '$stateName State' : 'State not found';
+              overviewTitle = 'State Overview';
+              break;
+            default:
+              adminName = userData['fullName']?.toString() ?? 'Admin';
+              locationName = 'Location not found';
+              overviewTitle = 'Admin Overview';
+          }
+
           final token = await AuthService.getToken();
           if (token != null) {
             _svc = ApplicationService(_config.apiBaseUrl, token: token);
-            await _loadFromParams();
+            await _loadStats();
           }
         }
       } catch (e) {
-        // Error handled silently in production
+        // Error handled silently
       }
       setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      Map<String, int> stats = {};
+      
+      // Load stats based on admin role
+      switch (adminRole.toLowerCase()) {
+        case 'block':
+          stats = await _svc.getBlockStats(adminId);
+          break;
+        case 'district':
+          stats = await _svc.getDistrictStats(adminId);
+          break;
+        case 'state':
+          stats = await _svc.getStateStats(adminId);
+          break;
+        default:
+          stats = {'total': 0, 'pending': 0, 'approved': 0, 'rejected': 0};
+      }
+      
+      if (!mounted) return;
+      setState(() {
+        _stats = stats;
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -193,32 +287,6 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Improved display logic with proper fallbacks
-    final displayBlockName = blockName.isNotEmpty
-        ? blockName
-        : (widget.blockName?.isNotEmpty == true ? widget.blockName! : "");
-
-    final displayTitle = displayBlockName.isNotEmpty
-        ? '$displayBlockName Block Admin'
-        : 'Block Admin';
-
-    final displayEmail = email.isNotEmpty
-        ? email
-        : (widget.blockEmail?.isNotEmpty == true ? widget.blockEmail! : "");
-
-    final displayLocation = displayBlockName.isNotEmpty
-        ? '$displayBlockName Block'
-        : 'Block not found';
-
-    // Fallback email generation when email is missing
-    final finalDisplayEmail = displayEmail.isNotEmpty
-        ? displayEmail
-        : (displayBlockName.isNotEmpty
-              ? 'block.${displayBlockName.toLowerCase().replaceAll(' ', '')}.admin@activ.com'
-              : 'admin@activ.com');
-
-    final isActive = widget.isActive ?? active;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF1F6FF),
       appBar: AppBar(
@@ -245,210 +313,24 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
               child: ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
-                  // Profile header card
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withAlpha((0.13 * 255).toInt()),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          radius: 32,
-                          backgroundColor: const Color(0xFF1E88FF),
-                          child: Text(
-                            finalDisplayEmail.isNotEmpty
-                                ? finalDisplayEmail[0].toUpperCase()
-                                : 'A',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                displayTitle,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF0F172A),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.email,
-                                    size: 18,
-                                    color: Colors.grey[600],
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      finalDisplayEmail,
-                                      style: const TextStyle(
-                                        color: Color(0xFF6B7280),
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.location_on,
-                                    size: 18,
-                                    color: Colors.grey[600],
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      displayLocation,
-                                      style: const TextStyle(
-                                        color: Color(0xFF6B7280),
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  const Text(
-                                    'Active Status:',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: Color(0xFF374151),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isActive
-                                          ? const Color(0xFFDCFCE7)
-                                          : const Color(0xFFFEE2E2),
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: Text(
-                                      isActive ? 'Active' : 'Inactive',
-                                      style: TextStyle(
-                                        color: isActive
-                                            ? const Color(0xFF16A34A)
-                                            : const Color(0xFFDC2626),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Profile Card
+                  _buildProfileCard(),
+                  
+                  const SizedBox(height: 24),
+
+                  // Admin Overview Stats
+                  _buildOverviewStats(),
 
                   const SizedBox(height: 24),
 
-                  // Admin stats block (true numbers sourced from dashboard endpoints)
-                  _adminStats(),
-
-                  const SizedBox(height: 24),
-
-                  // Account section (same as mock; you’ll wire later)
-                  _sectionCard(
-                    title: 'Account',
-                    items: const ['Profile Information', 'Notifications'],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Support section
-                  _sectionCard(
-                    title: 'Support',
-                    items: const ['Help & Support'],
-                  ),
+                  // Support Section (Account panel removed as requested)
+                  _buildSupportSection(),
 
                   const SizedBox(height: 32),
 
-                  // Logout
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        // Show loading indicator
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (context) =>
-                              const Center(child: CircularProgressIndicator()),
-                        );
-
-                        try {
-                          // Clear session and token
-                          await AuthService.logout();
-                          if (!context.mounted) return;
-                          // Navigate to login screen and clear all routes
-                          Navigator.of(context).pop(); // Close loading dialog
-                          Navigator.of(
-                            context,
-                          ).pushNamedAndRemoveUntil('/login', (route) => false);
-                        } catch (e) {
-                          // Handle logout error
-                          if (!context.mounted) return;
-                          Navigator.of(context).pop(); // Close loading dialog
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Logout failed: [39m${e.toString()}',
-                              ),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFDC2626),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        'Logout',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
+                  // Logout Button
+                  _buildLogoutButton(),
+                  
                   const SizedBox(height: 20),
                 ],
               ),
@@ -456,7 +338,133 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
     );
   }
 
-  Widget _adminStats() {
+  Widget _buildProfileCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha((0.13 * 255).toInt()),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 32,
+            backgroundColor: const Color(0xFF1E88FF),
+            child: Text(
+              adminName.isNotEmpty ? adminName[0].toUpperCase() : 'A',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  adminName.isNotEmpty ? adminName : 'Admin',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.email,
+                      size: 18,
+                      color: Colors.grey[600],
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        adminEmail.isNotEmpty ? adminEmail : 'admin@activ.com',
+                        style: const TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.location_on,
+                      size: 18,
+                      color: Colors.grey[600],
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        locationName,
+                        style: const TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Text(
+                      'Active Status:',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF374151),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: active
+                            ? const Color(0xFFDCFCE7)
+                            : const Color(0xFFFEE2E2),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        active ? 'Active' : 'Inactive',
+                        style: TextStyle(
+                          color: active
+                              ? const Color(0xFF16A34A)
+                              : const Color(0xFFDC2626),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewStats() {
     final total = _stats['total'] ?? 0;
     final pending = _stats['pending'] ?? 0;
     final approved = _stats['approved'] ?? 0;
@@ -478,52 +486,52 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Admin',
-            style: TextStyle(
+          Text(
+            overviewTitle,
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: Color(0xFF0F172A),
             ),
           ),
           const SizedBox(height: 12),
-          _statRow(
+          _buildStatRow(
             'Total Members:',
             total,
-            color: const Color(0xFF0F172A),
-            link: false,
+            Icons.person_outline,
+            const Color(0xFF0F172A),
           ),
           const SizedBox(height: 10),
-          _statRow(
+          _buildStatRow(
             'Pending Approvals:',
             pending,
-            color: const Color(0xFFF59E0B),
+            Icons.access_time,
+            const Color(0xFFF59E0B),
           ),
           const SizedBox(height: 10),
-          _statRow('Approved:', approved, color: const Color(0xFF16A34A)),
+          _buildStatRow(
+            'Approved:',
+            approved,
+            Icons.check_circle,
+            const Color(0xFF16A34A),
+          ),
           const SizedBox(height: 10),
-          _statRow('Rejected:', rejected, color: const Color(0xFFDC2626)),
+          _buildStatRow(
+            'Rejected:',
+            rejected,
+            Icons.cancel,
+            const Color(0xFFDC2626),
+          ),
         ],
       ),
     );
   }
 
-  Widget _statRow(
-    String label,
-    int value, {
-    required Color color,
-    bool link = true,
-  }) {
+  Widget _buildStatRow(String label, int value, IconData icon, Color color) {
     return Row(
       children: [
         Icon(
-          label.startsWith('Total')
-              ? Icons.person_outline
-              : label.startsWith('Pending')
-              ? Icons.access_time
-              : label.startsWith('Approved')
-              ? Icons.check_circle
-              : Icons.cancel,
+          icon,
           color: const Color(0xFF6B7280),
           size: 20,
         ),
@@ -550,7 +558,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
     );
   }
 
-  Widget _sectionCard({required String title, required List<String> items}) {
+  Widget _buildSupportSection() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -566,11 +574,11 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
-              title,
-              style: const TextStyle(
+              'Support',
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF0F172A),
@@ -578,23 +586,74 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
             ),
           ),
           const Divider(height: 1, color: Color(0xFFE5E7EB)),
-          ...items.map(
-            (t) => ListTile(
-              title: Text(
-                t,
-                style: const TextStyle(
-                  color: Color(0xFF0F172A),
-                  fontWeight: FontWeight.w500,
-                ),
+          ListTile(
+            title: const Text(
+              'Help & Support',
+              style: TextStyle(
+                color: Color(0xFF0F172A),
+                fontWeight: FontWeight.w500,
               ),
-              trailing: const Icon(
-                Icons.chevron_right,
-                color: Color(0xFF9CA3AF),
-              ),
-              onTap: () {},
             ),
+            trailing: const Icon(
+              Icons.chevron_right,
+              color: Color(0xFF9CA3AF),
+            ),
+            onTap: () {
+              // Handle help & support navigation
+            },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () async {
+          // Show loading indicator
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const Center(child: CircularProgressIndicator()),
+          );
+
+          try {
+            // Clear session and token
+            await AuthService.logout();
+            if (!context.mounted) return;
+            // Navigate to login screen and clear all routes
+            Navigator.of(context).pop(); // Close loading dialog
+            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+          } catch (e) {
+            // Handle logout error
+            if (!context.mounted) return;
+            Navigator.of(context).pop(); // Close loading dialog
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Logout failed: ${e.toString()}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFDC2626),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+        child: const Text(
+          'Logout',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
     );
   }

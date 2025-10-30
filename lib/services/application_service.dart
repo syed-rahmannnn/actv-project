@@ -207,6 +207,46 @@ class ApplicationService {
     };
   }
 
+  Future<Map<String, int>> getDistrictStats(String districtAdminId) async {
+    final pending = await getDistrictInbox(districtAdminId);
+    final approved = await _getCount(
+      adminId: districtAdminId,
+      role: 'district',
+      status: 'Approved',
+    );
+    final rejected = await _getCount(
+      adminId: districtAdminId,
+      role: 'district',
+      status: 'Rejected',
+    );
+    return {
+      'pending': pending.length,
+      'approved': approved,
+      'rejected': rejected,
+      'total': pending.length + approved + rejected,
+    };
+  }
+
+  Future<Map<String, int>> getStateStats(String stateAdminId) async {
+    final pending = await getStateInbox(stateAdminId);
+    final approved = await _getCount(
+      adminId: stateAdminId,
+      role: 'state',
+      status: 'Approved',
+    );
+    final rejected = await _getCount(
+      adminId: stateAdminId,
+      role: 'state',
+      status: 'Rejected',
+    );
+    return {
+      'pending': pending.length,
+      'approved': approved,
+      'rejected': rejected,
+      'total': pending.length + approved + rejected,
+    };
+  }
+
   // ---------- USER/APPLICATIONS ----------
   Future<Map<String, dynamic>> userApplications(String userId) async {
     final res = await http.get(

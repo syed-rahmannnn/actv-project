@@ -77,6 +77,21 @@ const memberDetailsSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // Approval information
+  approvedBy: {
+    type: String,
+    trim: true,
+    default: null
+  },
+  approvedBlock: {
+    type: String,
+    trim: true,
+    default: null
+  },
+  approvedAt: {
+    type: Date,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -16,8 +16,8 @@ String generateHexObjectId() {
 
 // Location values must match active admins in DB (meta.state/district/block)
 const String state = "Tamil Nadu";
-const String district = "Salem";
-const String block = "Attur";
+const String district = "Ariyalur";
+const String block = "Andimadam";
 
 Future<void> main() async {
   print("🚀 Starting automated user registration for block admin testing...\n");

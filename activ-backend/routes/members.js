@@ -207,4 +207,50 @@ router.get('/search/:query', async (req, res) => {
   }
 });
 
+// Update member approval information
+router.put('/approval/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const { approvedBy, approvedBlock } = req.body;
+
+    if (!approvedBy || !approvedBlock) {
+      return res.status(400).json({
+        success: false,
+        message: 'approvedBy and approvedBlock are required'
+      });
+    }
+
+    const member = await MemberDetails.findOneAndUpdate(
+      { email: email.toLowerCase().trim() },
+      {
+        approvedBy,
+        approvedBlock,
+        approvedAt: new Date()
+      },
+      { new: true }
+    );
+
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: 'Member not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Member approval information updated successfully',
+      data: member
+    });
+
+  } catch (error) {
+    console.error('Update member approval error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

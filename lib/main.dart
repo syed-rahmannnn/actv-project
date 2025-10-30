@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
         ),
         home: const AuthWrapper(),
         routes: {
-          '/login': (context) => LoginScreen(),
+          '/login': (context) => const LoginScreen(),
           '/settings': (context) => const BlockAdminSettingsPage(),
         },
       ),

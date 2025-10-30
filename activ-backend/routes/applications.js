@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Application = require("../models/applicationModel");
+const MemberDetails = require("../models/MemberDetails");
 const getAdminModels = require("../models/adminModels");
 
 module.exports = (mongooseConnection) => {
@@ -299,7 +300,107 @@ module.exports = (mongooseConnection) => {
         assignedBlockAdmin: _id,
       }).sort({ createdAt: -1 });
 
-      res.json(apps); // Return applications directly for compatibility with Flutter
+      // Enhance applications with member approval information and reviewedBy details
+      const enhancedApps = await Promise.all(apps.map(async (app) => {
+        const appObj = app.toObject();
+        
+        // For approved applications, get member approval details
+        if (app.status === 'Approved') {
+          try {
+            const memberDetails = await MemberDetails.findOne({ 
+              email: app.email.toLowerCase().trim() 
+            });
+            
+            if (memberDetails) {
+              appObj.approvedBy = memberDetails.approvedBy;
+              appObj.approvedBlock = memberDetails.approvedBlock;
+              appObj.approvedAt = memberDetails.approvedAt;
+            }
+          } catch (memberError) {
+            console.error("Error fetching member details for app:", app._id, memberError);
+            // Continue without member details if there's an error
+          }
+        }
+        
+        // Fetch reviewedBy admin data
+        if (appObj.reviewedBy) {
+          console.log('Processing reviewedBy for app:', appObj._id, 'reviewedBy:', JSON.stringify(appObj.reviewedBy, null, 2));
+          
+          if (appObj.reviewedBy.blockAdmin) {
+            try {
+              const blockAdmin = await BlockAdmin.findById(appObj.reviewedBy.blockAdmin, 'fullName email adminId meta').lean();
+              console.log('Found block admin:', blockAdmin);
+              if (blockAdmin) {
+                appObj.reviewedBy.blockAdmin = {
+                  fullName: blockAdmin.fullName,
+                  email: blockAdmin.email,
+                  adminId: blockAdmin.adminId,
+                  meta: {
+                    blockName: blockAdmin.meta?.block || blockAdmin.meta?.blockLc || 'Unknown Block',
+                    districtName: blockAdmin.meta?.district || blockAdmin.meta?.districtLc || 'Unknown District',
+                    stateName: blockAdmin.meta?.state || blockAdmin.meta?.stateLc || 'Unknown State'
+                  }
+                };
+                console.log('Enhanced blockAdmin:', JSON.stringify(appObj.reviewedBy.blockAdmin, null, 2));
+              } else {
+                console.log('Block admin not found for ID:', appObj.reviewedBy.blockAdmin);
+                appObj.reviewedBy.blockAdmin = null;
+              }
+            } catch (err) {
+              console.error('Error fetching reviewed by block admin:', err);
+              appObj.reviewedBy.blockAdmin = null;
+            }
+          }
+          
+          if (appObj.reviewedBy.districtAdmin) {
+            try {
+              const districtAdmin = await DistrictAdmin.findById(appObj.reviewedBy.districtAdmin, 'fullName email adminId meta').lean();
+              if (districtAdmin) {
+                appObj.reviewedBy.districtAdmin = {
+                  fullName: districtAdmin.fullName,
+                  email: districtAdmin.email,
+                  adminId: districtAdmin.adminId,
+                  meta: {
+                    districtName: districtAdmin.meta?.district || districtAdmin.meta?.districtLc || 'Unknown District',
+                    stateName: districtAdmin.meta?.state || districtAdmin.meta?.stateLc || 'Unknown State'
+                  }
+                };
+              } else {
+                appObj.reviewedBy.districtAdmin = null;
+              }
+            } catch (err) {
+              console.error('Error fetching reviewed by district admin:', err);
+              appObj.reviewedBy.districtAdmin = null;
+            }
+          }
+          
+          if (appObj.reviewedBy.stateAdmin) {
+            try {
+              const stateAdmin = await StateAdmin.findById(appObj.reviewedBy.stateAdmin, 'fullName email adminId meta').lean();
+              if (stateAdmin) {
+                appObj.reviewedBy.stateAdmin = {
+                  fullName: stateAdmin.fullName,
+                  email: stateAdmin.email,
+                  adminId: stateAdmin.adminId,
+                  meta: {
+                    stateName: stateAdmin.meta?.state || stateAdmin.meta?.stateLc || 'Unknown State'
+                  }
+                };
+              } else {
+                appObj.reviewedBy.stateAdmin = null;
+              }
+            } catch (err) {
+              console.error('Error fetching reviewed by state admin:', err);
+              appObj.reviewedBy.stateAdmin = null;
+            }
+          }
+        }
+        
+        console.log('Final enhanced app for ID:', appObj._id, 'reviewedBy:', JSON.stringify(appObj.reviewedBy, null, 2));
+        return appObj;
+      }));
+
+      res.json(enhancedApps); // Return enhanced applications with member approval info
     } catch (err) {
       console.error("Fetch block applications error:", err);
       res.status(500).json({ success: false, message: "Server error" });
@@ -393,6 +494,25 @@ module.exports = (mongooseConnection) => {
         app.status = "Approved";
         app.stateApprovedAt = new Date();
         app.reviewedBy.stateAdmin = resolved;
+
+        // Update member approval information
+        try {
+          // Get the block admin who initially approved this application
+          const blockAdmin = await BlockAdmin.findById(app.reviewedBy.blockAdmin);
+          if (blockAdmin) {
+            await MemberDetails.findOneAndUpdate(
+              { email: app.email.toLowerCase().trim() },
+              {
+                approvedBy: blockAdmin.fullName,
+                approvedBlock: app.block,
+                approvedAt: new Date()
+              }
+            );
+          }
+        } catch (memberUpdateError) {
+          console.error("Error updating member approval info:", memberUpdateError);
+          // Don't fail the application approval if member update fails
+        }
       } else if (action === "reject") {
         app.status = "Rejected";
         app.rejectionReason = reason || "No reason provided";
@@ -413,15 +533,52 @@ module.exports = (mongooseConnection) => {
   router.get("/user/:userId", async (req, res) => {
     try {
       const apps = await Application.find({ userId: req.params.userId })
-        .populate('assignedBlockAdmin', 'fullName email')
-        .populate('assignedDistrictAdmin', 'fullName email')
-        .populate('assignedStateAdmin', 'fullName email')
         .sort({ createdAt: -1 });
+
+      // Manually fetch admin data for each application
+      const appsWithAdminData = await Promise.all(apps.map(async (app) => {
+        const appObj = app.toObject();
+        
+        // Fetch block admin data
+        if (appObj.assignedBlockAdmin) {
+          try {
+            const blockAdmin = await BlockAdmin.findById(appObj.assignedBlockAdmin, 'fullName email').lean();
+            appObj.assignedBlockAdmin = blockAdmin;
+          } catch (err) {
+            console.error('Error fetching block admin:', err);
+            appObj.assignedBlockAdmin = null;
+          }
+        }
+        
+        // Fetch district admin data
+        if (appObj.assignedDistrictAdmin) {
+          try {
+            const districtAdmin = await DistrictAdmin.findById(appObj.assignedDistrictAdmin, 'fullName email').lean();
+            appObj.assignedDistrictAdmin = districtAdmin;
+          } catch (err) {
+            console.error('Error fetching district admin:', err);
+            appObj.assignedDistrictAdmin = null;
+          }
+        }
+        
+        // Fetch state admin data
+        if (appObj.assignedStateAdmin) {
+          try {
+            const stateAdmin = await StateAdmin.findById(appObj.assignedStateAdmin, 'fullName email').lean();
+            appObj.assignedStateAdmin = stateAdmin;
+          } catch (err) {
+            console.error('Error fetching state admin:', err);
+            appObj.assignedStateAdmin = null;
+          }
+        }
+        
+        return appObj;
+      }));
 
       res.json({ 
         success: true, 
-        applications: apps,
-        count: apps.length 
+        applications: appsWithAdminData,
+        count: appsWithAdminData.length 
       });
     } catch (err) {
       console.error("Fetch user applications error:", err);
@@ -477,13 +634,7 @@ module.exports = (mongooseConnection) => {
   // ---------- GET APPLICATION DETAILS ----------
   router.get("/:appId", async (req, res) => {
     try {
-      const app = await Application.findById(req.params.appId)
-        .populate('assignedBlockAdmin', 'fullName email adminId')
-        .populate('assignedDistrictAdmin', 'fullName email adminId')
-        .populate('assignedStateAdmin', 'fullName email adminId')
-        .populate('reviewedBy.blockAdmin', 'fullName email adminId')
-        .populate('reviewedBy.districtAdmin', 'fullName email adminId')
-        .populate('reviewedBy.stateAdmin', 'fullName email adminId');
+      const app = await Application.findById(req.params.appId);
 
       if (!app) {
         return res.status(404).json({ 
@@ -492,9 +643,105 @@ module.exports = (mongooseConnection) => {
         });
       }
 
+      const appObj = app.toObject();
+      
+      // Manually fetch admin data
+      if (appObj.assignedBlockAdmin) {
+        try {
+          const blockAdmin = await BlockAdmin.findById(appObj.assignedBlockAdmin, 'fullName email adminId').lean();
+          appObj.assignedBlockAdmin = blockAdmin;
+        } catch (err) {
+          console.error('Error fetching block admin:', err);
+          appObj.assignedBlockAdmin = null;
+        }
+      }
+      
+      if (appObj.assignedDistrictAdmin) {
+        try {
+          const districtAdmin = await DistrictAdmin.findById(appObj.assignedDistrictAdmin, 'fullName email adminId').lean();
+          appObj.assignedDistrictAdmin = districtAdmin;
+        } catch (err) {
+          console.error('Error fetching district admin:', err);
+          appObj.assignedDistrictAdmin = null;
+        }
+      }
+      
+      if (appObj.assignedStateAdmin) {
+        try {
+          const stateAdmin = await StateAdmin.findById(appObj.assignedStateAdmin, 'fullName email adminId').lean();
+          appObj.assignedStateAdmin = stateAdmin;
+        } catch (err) {
+          console.error('Error fetching state admin:', err);
+          appObj.assignedStateAdmin = null;
+        }
+      }
+      
+      // Fetch reviewedBy admin data
+      if (appObj.reviewedBy) {
+        if (appObj.reviewedBy.blockAdmin) {
+          try {
+            const blockAdmin = await BlockAdmin.findById(appObj.reviewedBy.blockAdmin, 'fullName email adminId meta').lean();
+            if (blockAdmin) {
+              appObj.reviewedBy.blockAdmin = {
+                fullName: blockAdmin.fullName,
+                email: blockAdmin.email,
+                adminId: blockAdmin.adminId,
+                blockName: blockAdmin.meta?.block || blockAdmin.meta?.blockLc || 'Unknown Block',
+                districtName: blockAdmin.meta?.district || blockAdmin.meta?.districtLc || 'Unknown District',
+                stateName: blockAdmin.meta?.state || blockAdmin.meta?.stateLc || 'Unknown State'
+              };
+            } else {
+              appObj.reviewedBy.blockAdmin = null;
+            }
+          } catch (err) {
+            console.error('Error fetching reviewed by block admin:', err);
+            appObj.reviewedBy.blockAdmin = null;
+          }
+        }
+        
+        if (appObj.reviewedBy.districtAdmin) {
+          try {
+            const districtAdmin = await DistrictAdmin.findById(appObj.reviewedBy.districtAdmin, 'fullName email adminId meta').lean();
+            if (districtAdmin) {
+              appObj.reviewedBy.districtAdmin = {
+                fullName: districtAdmin.fullName,
+                email: districtAdmin.email,
+                adminId: districtAdmin.adminId,
+                districtName: districtAdmin.meta?.district || districtAdmin.meta?.districtLc || 'Unknown District',
+                stateName: districtAdmin.meta?.state || districtAdmin.meta?.stateLc || 'Unknown State'
+              };
+            } else {
+              appObj.reviewedBy.districtAdmin = null;
+            }
+          } catch (err) {
+            console.error('Error fetching reviewed by district admin:', err);
+            appObj.reviewedBy.districtAdmin = null;
+          }
+        }
+        
+        if (appObj.reviewedBy.stateAdmin) {
+          try {
+            const stateAdmin = await StateAdmin.findById(appObj.reviewedBy.stateAdmin, 'fullName email adminId meta').lean();
+            if (stateAdmin) {
+              appObj.reviewedBy.stateAdmin = {
+                fullName: stateAdmin.fullName,
+                email: stateAdmin.email,
+                adminId: stateAdmin.adminId,
+                stateName: stateAdmin.meta?.state || stateAdmin.meta?.stateLc || 'Unknown State'
+              };
+            } else {
+              appObj.reviewedBy.stateAdmin = null;
+            }
+          } catch (err) {
+            console.error('Error fetching reviewed by state admin:', err);
+            appObj.reviewedBy.stateAdmin = null;
+          }
+        }
+      }
+
       res.json({ 
         success: true, 
-        application: app 
+        application: appObj 
       });
     } catch (err) {
       console.error("Fetch application details error:", err);

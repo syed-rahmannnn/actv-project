@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'blockadmin_settings.dart';
 import 'blockadmin_approval_page.dart';
 import 'blockadmin_members_page.dart';
+import '../../services/api_service.dart';
 
 /// Lightweight service embedded here so your existing constructor
 /// parameters keep working. Calls the same endpoints you already expose:
@@ -156,31 +157,62 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
 
   Future<void> _load() async {
     setState(() => _isLoading = true);
-    final res = await Future.wait([
-      _svc.getBlockStats(widget.blockAdminId),
-      _svc.getBlockInbox(widget.blockAdminId),
-    ]);
-    if (!mounted) return;
-    setState(() {
-      _stats = res[0] as Map<String, int>;
-      _pending = res[1] as List<dynamic>;
-      _isLoading = false;
-    });
+    try {
+      // Use the same API call as the approvals page for consistency
+      final allApplications = await ApiService.getBlockAdminApplications(
+        widget.blockAdminId,
+      );
+      
+      // Filter pending applications (same logic as approvals page)
+      final pendingApps = allApplications.where((app) {
+        final status = (app['status'] ?? '').toString().toLowerCase();
+        return status == 'pending-block' || status == 'submitted' || status == 'pending';
+      }).toList();
+      
+      // Get stats using the existing getBlockStats method which works correctly
+      final stats = await _svc.getBlockStats(widget.blockAdminId);
+      
+      if (!mounted) return;
+      setState(() {
+        _stats = {
+          'pending': pendingApps.length, // Use the actual pending count from API
+          'approved': stats['approved'] ?? 0,
+          'rejected': stats['rejected'] ?? 0,
+          'total': pendingApps.length + (stats['approved'] ?? 0) + (stats['rejected'] ?? 0),
+        };
+        _pending = pendingApps;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading data: $e')),
+      );
+    }
   }
 
   Future<void> _act(String appId, String action, {String? reason}) async {
     setState(() => _isLoading = true);
-    final r = await _svc.blockReview(
-      appId: appId,
-      adminId: widget.blockAdminId,
-      action: action,
-      reason: reason,
-    ); // approved/rejected path is validated server-side. :contentReference[oaicite:4]{index=4}
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(r['message']?.toString() ?? 'Done')));
-    await _load();
+    try {
+      final result = await _svc.blockReview(
+        appId: appId,
+        adminId: widget.blockAdminId,
+        action: action,
+        reason: reason,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message']?.toString() ?? 'Done')),
+      );
+      await _load();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   Future<void> _rejectDialog(String appId) async {
@@ -455,12 +487,11 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
               ],
             ),
           ),
-          _iconButton(Icons.filter_alt_outlined),
-          const SizedBox(width: 8),
           Stack(
             children: [
               _iconButton(Icons.notifications_none_outlined),
-              Positioned(right: 8, top: 6, child: _notifDot('4')),
+              if ((_stats['pending'] ?? 0) > 0)
+                Positioned(right: 8, top: 6, child: _notifDot((_stats['pending'] ?? 0).toString())),
             ],
           ),
           const SizedBox(width: 8),
