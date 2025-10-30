@@ -708,27 +708,6 @@ class ApiService {
       throw Exception('Network error: $e');
     }
   }
-
-  // Fetch block admin details by adminId
-  static Future<Map<String, dynamic>?> fetchBlockAdmin(String adminId) async {
-    final url = Uri.parse('$baseUrl/api/admin/block/$adminId');
-    
-    try {
-      final headers = await _staticHeaders();
-      final response = await http.get(url, headers: headers);
-      
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        return body;
-      } else {
-        developer.log("Error fetching block admin data: ${response.statusCode}", name: 'ApiService');
-        return null;
-      }
-    } catch (e) {
-      developer.log("Exception while fetching block admin data: $e", name: 'ApiService');
-      return null;
-    }
-  }
 }
 
 class DistrictApi {
