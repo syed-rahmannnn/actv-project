@@ -510,22 +510,7 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
     ),
   );
 
-  Widget _iconButton(IconData icon) => Container(
-    width: 38,
-    height: 38,
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withAlpha((0.06 * 255).toInt()),
-          blurRadius: 10,
-          offset: const Offset(0, 6),
-        ),
-      ],
-    ),
-    child: Icon(icon, color: const Color(0xFF0F172A)),
-  );
+
 
   String _getApprovalText(Map<String, dynamic> app) {
     // Get reviewedBy information from the backend
@@ -535,24 +520,23 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
       final blockAdmin = reviewedBy['blockAdmin'];
       if (blockAdmin != null && blockAdmin is Map<String, dynamic>) {
         final adminName = blockAdmin['fullName']?.toString() ?? 'Block Admin';
-        final blockName = blockAdmin['meta']?['blockName']?.toString() ?? 'Block';
-        return 'Approved by: $adminName, $blockName Admin';
+        return 'Approved by: $adminName';
       }
       
       // Check for district admin approval
       final districtAdmin = reviewedBy['districtAdmin'];
       if (districtAdmin != null && districtAdmin is Map<String, dynamic>) {
         final adminName = districtAdmin['fullName']?.toString() ?? 'District Admin';
-        final districtName = districtAdmin['meta']?['districtName']?.toString() ?? 'District';
-        return 'Approved by: $adminName, $districtName Admin';
+
+        return 'Approved by: $adminName';
       }
       
       // Check for state admin approval
       final stateAdmin = reviewedBy['stateAdmin'];
       if (stateAdmin != null && stateAdmin is Map<String, dynamic>) {
         final adminName = stateAdmin['fullName']?.toString() ?? 'State Admin';
-        final stateName = stateAdmin['meta']?['stateName']?.toString() ?? 'State';
-        return 'Approved by: $adminName, $stateName Admin';
+  
+        return 'Approved by: $adminName';
       }
     }
     
@@ -568,24 +552,24 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
       final blockAdmin = reviewedBy['blockAdmin'];
       if (blockAdmin != null && blockAdmin is Map<String, dynamic>) {
         final adminName = blockAdmin['fullName']?.toString() ?? 'Block Admin';
-        final blockName = blockAdmin['meta']?['blockName']?.toString() ?? 'Block';
-        return 'Rejected by: $adminName, $blockName Admin';
+
+        return 'Rejected by: $adminName';
       }
       
       // Check for district admin rejection
       final districtAdmin = reviewedBy['districtAdmin'];
       if (districtAdmin != null && districtAdmin is Map<String, dynamic>) {
         final adminName = districtAdmin['fullName']?.toString() ?? 'District Admin';
-        final districtName = districtAdmin['meta']?['districtName']?.toString() ?? 'District';
-        return 'Rejected by: $adminName, $districtName Admin';
+        
+        return 'Rejected by: $adminName';
       }
       
       // Check for state admin rejection
       final stateAdmin = reviewedBy['stateAdmin'];
       if (stateAdmin != null && stateAdmin is Map<String, dynamic>) {
         final adminName = stateAdmin['fullName']?.toString() ?? 'State Admin';
-        final stateName = stateAdmin['meta']?['stateName']?.toString() ?? 'State';
-        return 'Rejected by: $adminName, $stateName Admin';
+
+        return 'Rejected by: $adminName';
       }
     }
     

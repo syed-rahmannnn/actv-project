@@ -709,3 +709,55 @@ class ApiService {
     }
   }
 }
+
+class DistrictApi {
+  final String base;
+
+  DistrictApi(this.base);
+
+  // List pending apps for district
+  Future<List<Map<String, dynamic>>> getPendingForDistrict(String districtAdminId) async {
+    final url = Uri.parse('$base/applications/district/$districtAdminId');
+    final resp = await http.get(url, headers: {'Content-Type': 'application/json'});
+    if (resp.statusCode == 200) {
+      final data = jsonDecode(resp.body);
+      final apps = (data['applications'] as List?) ?? [];
+      return apps.cast<Map<String, dynamic>>();
+    }
+    throw Exception('Failed to load district applications: ${resp.body}');
+  }
+
+  // Counts by admin for approved/rejected (useful to show approved & rejected)
+  Future<int> getCountByAdmin({
+    required String adminId,
+    required String role, // "district"
+    required String status, // "Approved" or "Rejected"
+  }) async {
+    final url = Uri.parse('$base/applications/by-admin/$adminId?role=$role&status=$status');
+    final resp = await http.get(url, headers: {'Content-Type': 'application/json'});
+    if (resp.statusCode == 200) {
+      final data = jsonDecode(resp.body);
+      return (data['count'] as num).toInt();
+    }
+    throw Exception('Failed to load count: ${resp.body}');
+  }
+
+  // Approve / Reject from district
+  Future<void> districtReview({
+    required String appId,
+    required String action, // "approve" or "reject"
+    required String adminId, // district admin identifier (ObjectId or DA code)
+    String? reason,
+  }) async {
+    final url = Uri.parse('$base/applications/district-review/$appId');
+    final body = jsonEncode({
+      'action': action,
+      'adminId': adminId,
+      if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+    });
+    final resp = await http.post(url, headers: {'Content-Type': 'application/json'}, body: body);
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw Exception('District review failed: ${resp.body}');
+    }
+  }
+}

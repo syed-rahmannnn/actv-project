@@ -227,24 +227,41 @@ class ApplicationService {
     };
   }
 
-  Future<Map<String, int>> getStateStats(String stateAdminId) async {
-    final pending = await getStateInbox(stateAdminId);
-    final approved = await _getCount(
-      adminId: stateAdminId,
-      role: 'state',
-      status: 'Approved',
+  // ---------- ADMIN DETAILS ----------
+  Future<Map<String, dynamic>> getBlockAdminDetails(String adminId) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/admin/block/$adminId'),
+      headers: _headers,
     );
-    final rejected = await _getCount(
-      adminId: stateAdminId,
-      role: 'state',
-      status: 'Rejected',
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to fetch block admin details: ${res.statusCode}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getDistrictAdminDetails(String adminId) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/admin/district/$adminId'),
+      headers: _headers,
     );
-    return {
-      'pending': pending.length,
-      'approved': approved,
-      'rejected': rejected,
-      'total': pending.length + approved + rejected,
-    };
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to fetch district admin details: ${res.statusCode}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getStateAdminDetails(String adminId) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/admin/state/$adminId'),
+      headers: _headers,
+    );
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to fetch state admin details: ${res.statusCode}');
+    }
   }
 
   // ---------- USER/APPLICATIONS ----------

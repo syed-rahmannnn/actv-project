@@ -190,6 +190,10 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
       }
 
       _svc = ApplicationService(_config.apiBaseUrl, token: _auth.token);
+      
+      // Fetch fresh admin details from backend
+      await fetchAndSetAdminDetails();
+      
       await _loadStats();
     } else {
       // Fallback to AuthService directly
@@ -233,6 +237,10 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
           final token = await AuthService.getToken();
           if (token != null) {
             _svc = ApplicationService(_config.apiBaseUrl, token: token);
+            
+            // Fetch fresh admin details from backend
+            await fetchAndSetAdminDetails();
+            
             await _loadStats();
           }
         }
@@ -240,6 +248,71 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
         // Error handled silently
       }
       setState(() => _loading = false);
+    }
+  }
+
+  Future<void> fetchAndSetAdminDetails() async {
+    if (adminId.isEmpty) return;
+    
+    try {
+      Map<String, dynamic> data;
+      
+      // Fetch admin details based on role
+      switch (adminRole.toLowerCase()) {
+        case 'blockadmin':
+        case 'block':
+          data = await _svc.getBlockAdminDetails(adminId);
+          break;
+        case 'districtadmin':
+        case 'district':
+          data = await _svc.getDistrictAdminDetails(adminId);
+          break;
+        case 'stateadmin':
+        case 'state':
+          data = await _svc.getStateAdminDetails(adminId);
+          break;
+        default:
+          // Fallback: try block admin first
+          try {
+            data = await _svc.getBlockAdminDetails(adminId);
+          } catch (_) {
+            // If block admin fails, try district admin
+            try {
+              data = await _svc.getDistrictAdminDetails(adminId);
+            } catch (_) {
+              // If district admin fails, try state admin
+              data = await _svc.getStateAdminDetails(adminId);
+            }
+          }
+      }
+      
+      setState(() {
+        adminName = data['fullName'] ?? 'Admin';
+        adminEmail = data['email'] ?? '';
+        active = data['active'] ?? true;
+        
+        // Set location name based on available meta data
+        final meta = data['meta'] ?? {};
+        if (meta['blockName'] != null && meta['blockName'].toString().isNotEmpty) {
+          locationName = '${meta['blockName']} Block';
+          adminName = adminName.isEmpty ? '${meta['blockName']} Block Admin' : adminName;
+          overviewTitle = 'Block Overview';
+        } else if (meta['districtName'] != null && meta['districtName'].toString().isNotEmpty) {
+          locationName = '${meta['districtName']} District';
+          adminName = adminName.isEmpty ? '${meta['districtName']} District Admin' : adminName;
+          overviewTitle = 'District Overview';
+        } else if (meta['stateName'] != null && meta['stateName'].toString().isNotEmpty) {
+          locationName = '${meta['stateName']} State';
+          adminName = adminName.isEmpty ? '${meta['stateName']} State Admin' : adminName;
+          overviewTitle = 'State Overview';
+        } else {
+          locationName = 'Location not found';
+          overviewTitle = 'Admin Overview';
+        }
+      });
+    } catch (e) {
+      // Handle error silently or show a message
+      print('Error fetching admin details: $e');
     }
   }
 
@@ -254,9 +327,6 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
           break;
         case 'district':
           stats = await _svc.getDistrictStats(adminId);
-          break;
-        case 'state':
-          stats = await _svc.getStateStats(adminId);
           break;
         default:
           stats = {'total': 0, 'pending': 0, 'approved': 0, 'rejected': 0};
