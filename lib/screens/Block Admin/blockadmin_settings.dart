@@ -29,10 +29,19 @@ class AuthProvider {
         meta: AdminMeta(
           state: userData['state'] ?? userData['meta']?['state'] ?? '',
           district: userData['district'] ?? userData['meta']?['district'] ?? '',
-          block: userData['block'] ?? userData['blockName'] ?? userData['meta']?['block'] ?? '',
-          stateName: userData['meta']?['stateName'] ?? userData['stateName'] ?? '',
-          districtName: userData['meta']?['districtName'] ?? userData['districtName'] ?? '',
-          blockName: userData['meta']?['blockName'] ?? userData['blockName'] ?? '',
+          block:
+              userData['block'] ??
+              userData['blockName'] ??
+              userData['meta']?['block'] ??
+              '',
+          stateName:
+              userData['meta']?['stateName'] ?? userData['stateName'] ?? '',
+          districtName:
+              userData['meta']?['districtName'] ??
+              userData['districtName'] ??
+              '',
+          blockName:
+              userData['meta']?['blockName'] ?? userData['blockName'] ?? '',
         ),
         active: (userData['active'] ?? true) == true,
       );
@@ -47,7 +56,7 @@ class AdminData {
   final String fullName;
   final AdminMeta meta;
   final bool active;
-  
+
   AdminData({
     required this.adminId,
     required this.email,
@@ -65,7 +74,7 @@ class AdminMeta {
   final String stateName;
   final String districtName;
   final String blockName;
-  
+
   AdminMeta({
     required this.state,
     required this.district,
@@ -155,30 +164,37 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
       active = admin.active;
 
       // Set admin name and location based on role
+      // Note: This will be updated by fetchAndSetAdminDetails() with proper formatting
       switch (adminRole.toLowerCase()) {
         case 'block':
-          adminName = admin.meta.blockName.isNotEmpty 
-              ? '${admin.meta.blockName} Block Admin'
+          adminName = admin.meta.blockName.isNotEmpty
+              ? '${admin.fullName}, ${admin.meta.blockName} Block Admin'
+              : admin.fullName.isNotEmpty
+              ? admin.fullName
               : 'Block Admin';
-          locationName = admin.meta.blockName.isNotEmpty 
+          locationName = admin.meta.blockName.isNotEmpty
               ? '${admin.meta.blockName} Block'
               : 'Block not found';
           overviewTitle = 'Block Overview';
           break;
         case 'district':
-          adminName = admin.meta.districtName.isNotEmpty 
-              ? '${admin.meta.districtName} District Admin'
+          adminName = admin.meta.districtName.isNotEmpty
+              ? '${admin.fullName}, ${admin.meta.districtName} District Admin'
+              : admin.fullName.isNotEmpty
+              ? admin.fullName
               : 'District Admin';
-          locationName = admin.meta.districtName.isNotEmpty 
+          locationName = admin.meta.districtName.isNotEmpty
               ? '${admin.meta.districtName} District'
               : 'District not found';
           overviewTitle = 'District Overview';
           break;
         case 'state':
-          adminName = admin.meta.stateName.isNotEmpty 
-              ? '${admin.meta.stateName} State Admin'
+          adminName = admin.meta.stateName.isNotEmpty
+              ? '${admin.fullName}, ${admin.meta.stateName} State Admin'
+              : admin.fullName.isNotEmpty
+              ? admin.fullName
               : 'State Admin';
-          locationName = admin.meta.stateName.isNotEmpty 
+          locationName = admin.meta.stateName.isNotEmpty
               ? '${admin.meta.stateName} State'
               : 'State not found';
           overviewTitle = 'State Overview';
@@ -190,10 +206,10 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
       }
 
       _svc = ApplicationService(_config.apiBaseUrl, token: _auth.token);
-      
+
       // Fetch fresh admin details from backend
       await fetchAndSetAdminDetails();
-      
+
       await _loadStats();
     } else {
       // Fallback to AuthService directly
@@ -206,30 +222,62 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
           active = userData['active'] == true;
 
           // Set names based on role with fallbacks
+          // Note: This will be updated by fetchAndSetAdminDetails() with proper formatting
+          final fullName = userData['fullName']?.toString() ?? '';
           switch (adminRole.toLowerCase()) {
             case 'block':
-              final blockName = userData['blockName']?.toString() ?? 
-                               userData['meta']?['blockName']?.toString() ?? '';
-              adminName = blockName.isNotEmpty ? '$blockName Block Admin' : 'Block Admin';
-              locationName = blockName.isNotEmpty ? '$blockName Block' : 'Block not found';
+              final blockName =
+                  userData['blockName']?.toString() ??
+                  userData['meta']?['blockName']?.toString() ??
+                  '';
+              adminName = blockName.isNotEmpty && fullName.isNotEmpty
+                  ? '$fullName, $blockName Block Admin'
+                  : blockName.isNotEmpty
+                  ? '$blockName Block Admin'
+                  : fullName.isNotEmpty
+                  ? fullName
+                  : 'Block Admin';
+              locationName = blockName.isNotEmpty
+                  ? '$blockName Block'
+                  : 'Block not found';
               overviewTitle = 'Block Overview';
               break;
             case 'district':
-              final districtName = userData['districtName']?.toString() ?? 
-                                  userData['meta']?['districtName']?.toString() ?? '';
-              adminName = districtName.isNotEmpty ? '$districtName District Admin' : 'District Admin';
-              locationName = districtName.isNotEmpty ? '$districtName District' : 'District not found';
+              final districtName =
+                  userData['districtName']?.toString() ??
+                  userData['meta']?['districtName']?.toString() ??
+                  '';
+              adminName = districtName.isNotEmpty && fullName.isNotEmpty
+                  ? '$fullName, $districtName District Admin'
+                  : districtName.isNotEmpty
+                  ? '$districtName District Admin'
+                  : fullName.isNotEmpty
+                  ? fullName
+                  : 'District Admin';
+              locationName = districtName.isNotEmpty
+                  ? '$districtName District'
+                  : 'District not found';
               overviewTitle = 'District Overview';
               break;
             case 'state':
-              final stateName = userData['stateName']?.toString() ?? 
-                               userData['meta']?['stateName']?.toString() ?? '';
-              adminName = stateName.isNotEmpty ? '$stateName State Admin' : 'State Admin';
-              locationName = stateName.isNotEmpty ? '$stateName State' : 'State not found';
+              final stateName =
+                  userData['stateName']?.toString() ??
+                  userData['meta']?['stateName']?.toString() ??
+                  '';
+              adminName = stateName.isNotEmpty && fullName.isNotEmpty
+                  ? '$fullName, $stateName State Admin'
+                  : stateName.isNotEmpty
+                  ? '$stateName State Admin'
+                  : fullName.isNotEmpty
+                  ? fullName
+                  : 'State Admin';
+              locationName = stateName.isNotEmpty
+                  ? '$stateName State'
+                  : 'State not found';
               overviewTitle = 'State Overview';
               break;
             default:
-              adminName = userData['fullName']?.toString() ?? 'Admin';
+              adminName = fullName.isNotEmpty ? fullName : 'Admin';
               locationName = 'Location not found';
               overviewTitle = 'Admin Overview';
           }
@@ -237,10 +285,10 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
           final token = await AuthService.getToken();
           if (token != null) {
             _svc = ApplicationService(_config.apiBaseUrl, token: token);
-            
+
             // Fetch fresh admin details from backend
             await fetchAndSetAdminDetails();
-            
+
             await _loadStats();
           }
         }
@@ -253,10 +301,10 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
 
   Future<void> fetchAndSetAdminDetails() async {
     if (adminId.isEmpty) return;
-    
+
     try {
       Map<String, dynamic> data;
-      
+
       // Fetch admin details based on role
       switch (adminRole.toLowerCase()) {
         case 'blockadmin':
@@ -285,41 +333,48 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
             }
           }
       }
-      
+
       setState(() {
-        adminName = data['fullName'] ?? 'Admin';
+        final fullName = data['fullName']?.toString() ?? 'Admin';
         adminEmail = data['email'] ?? '';
         active = data['active'] ?? true;
-        
-        // Set location name based on available meta data
+
+        // Set location name and admin name based on available meta data
+        // Using the same logic as the approval page for consistent formatting
         final meta = data['meta'] ?? {};
-        if (meta['blockName'] != null && meta['blockName'].toString().isNotEmpty) {
-          locationName = '${meta['blockName']} Block';
-          adminName = adminName.isEmpty ? '${meta['blockName']} Block Admin' : adminName;
+        if (meta['blockName'] != null &&
+            meta['blockName'].toString().isNotEmpty) {
+          final blockName = meta['blockName'].toString();
+          locationName = '$blockName Block';
+          adminName = '$fullName, $blockName Block Admin';
           overviewTitle = 'Block Overview';
-        } else if (meta['districtName'] != null && meta['districtName'].toString().isNotEmpty) {
-          locationName = '${meta['districtName']} District';
-          adminName = adminName.isEmpty ? '${meta['districtName']} District Admin' : adminName;
+        } else if (meta['districtName'] != null &&
+            meta['districtName'].toString().isNotEmpty) {
+          final districtName = meta['districtName'].toString();
+          locationName = '$districtName District';
+          adminName = '$fullName, $districtName District Admin';
           overviewTitle = 'District Overview';
-        } else if (meta['stateName'] != null && meta['stateName'].toString().isNotEmpty) {
-          locationName = '${meta['stateName']} State';
-          adminName = adminName.isEmpty ? '${meta['stateName']} State Admin' : adminName;
+        } else if (meta['stateName'] != null &&
+            meta['stateName'].toString().isNotEmpty) {
+          final stateName = meta['stateName'].toString();
+          locationName = '$stateName State';
+          adminName = '$fullName, $stateName State Admin';
           overviewTitle = 'State Overview';
         } else {
           locationName = 'Location not found';
+          adminName = fullName;
           overviewTitle = 'Admin Overview';
         }
       });
     } catch (e) {
       // Handle error silently or show a message
-      print('Error fetching admin details: $e');
     }
   }
 
   Future<void> _loadStats() async {
     try {
       Map<String, int> stats = {};
-      
+
       // Load stats based on admin role
       switch (adminRole.toLowerCase()) {
         case 'block':
@@ -331,7 +386,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
         default:
           stats = {'total': 0, 'pending': 0, 'approved': 0, 'rejected': 0};
       }
-      
+
       if (!mounted) return;
       setState(() {
         _stats = stats;
@@ -385,7 +440,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
                 children: [
                   // Profile Card
                   _buildProfileCard(),
-                  
+
                   const SizedBox(height: 24),
 
                   // Admin Overview Stats
@@ -400,7 +455,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
 
                   // Logout Button
                   _buildLogoutButton(),
-                  
+
                   const SizedBox(height: 20),
                 ],
               ),
@@ -453,11 +508,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(
-                      Icons.email,
-                      size: 18,
-                      color: Colors.grey[600],
-                    ),
+                    Icon(Icons.email, size: 18, color: Colors.grey[600]),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -473,11 +524,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(
-                      Icons.location_on,
-                      size: 18,
-                      color: Colors.grey[600],
-                    ),
+                    Icon(Icons.location_on, size: 18, color: Colors.grey[600]),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -600,11 +647,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
   Widget _buildStatRow(String label, int value, IconData icon, Color color) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: const Color(0xFF6B7280),
-          size: 20,
-        ),
+        Icon(icon, color: const Color(0xFF6B7280), size: 20),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
@@ -664,10 +707,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            trailing: const Icon(
-              Icons.chevron_right,
-              color: Color(0xFF9CA3AF),
-            ),
+            trailing: const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF)),
             onTap: () {
               // Handle help & support navigation
             },
@@ -686,7 +726,8 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
           showDialog(
             context: context,
             barrierDismissible: false,
-            builder: (context) => const Center(child: CircularProgressIndicator()),
+            builder: (context) =>
+                const Center(child: CircularProgressIndicator()),
           );
 
           try {
@@ -695,7 +736,9 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
             if (!context.mounted) return;
             // Navigate to login screen and clear all routes
             Navigator.of(context).pop(); // Close loading dialog
-            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/login', (route) => false);
           } catch (e) {
             // Handle logout error
             if (!context.mounted) return;
@@ -719,10 +762,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
         ),
         child: const Text(
           'Logout',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
       ),
     );
