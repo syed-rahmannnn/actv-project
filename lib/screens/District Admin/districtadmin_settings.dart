@@ -25,14 +25,14 @@ class AuthProvider {
         adminId: userData['adminId'] ?? userData['_id'] ?? '',
         email: userData['email'] ?? '',
         role: userData['role'] ?? '',
+        fullName: userData['fullName'] ?? userData['adminName'] ?? '',
         meta: AdminMeta(
           state: userData['state'] ?? userData['meta']?['state'] ?? '',
           district: userData['district'] ?? userData['meta']?['district'] ?? '',
-          block:
-              userData['block'] ??
-              userData['blockName'] ??
-              userData['meta']?['block'] ??
-              '',
+          block: userData['block'] ?? userData['blockName'] ?? userData['meta']?['block'] ?? '',
+          stateName: userData['meta']?['stateName'] ?? userData['stateName'] ?? '',
+          districtName: userData['meta']?['districtName'] ?? userData['districtName'] ?? '',
+          blockName: userData['meta']?['blockName'] ?? userData['blockName'] ?? '',
         ),
         active: (userData['active'] ?? true) == true,
       );
@@ -44,12 +44,15 @@ class AdminData {
   final String adminId;
   final String email;
   final String role;
+  final String fullName;
   final AdminMeta meta;
   final bool active;
+  
   AdminData({
     required this.adminId,
     required this.email,
     required this.role,
+    required this.fullName,
     required this.meta,
     required this.active,
   });
@@ -59,7 +62,18 @@ class AdminMeta {
   final String state;
   final String district;
   final String block;
-  AdminMeta({required this.state, required this.district, required this.block});
+  final String stateName;
+  final String districtName;
+  final String blockName;
+  
+  AdminMeta({
+    required this.state,
+    required this.district,
+    required this.block,
+    required this.stateName,
+    required this.districtName,
+    required this.blockName,
+  });
 }
 
 class DistrictAdminSettingsPage extends StatefulWidget {

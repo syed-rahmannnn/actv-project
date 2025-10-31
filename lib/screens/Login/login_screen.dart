@@ -352,32 +352,63 @@ class _LoginScreenState extends State<LoginScreen> {
           );
           if (adminResult['ok'] == true) {
             // Admin login successful
+            print('DEBUG: Admin login successful, full response: $adminResult');
             final token = adminResult['token'];
             final adminRole = adminResult['role'];
-            final adminId =
-                adminResult['adminId']; // This now contains MongoDB _id if available
-            final mongoId =
-                adminResult['mongoId']; // Get MongoDB _id separately if needed
-            final adminData = adminResult; // Use the entire response as admin data
+            final adminData = adminResult['body'] ?? adminResult; // Extract from body first, fallback to adminResult
+            final adminId = adminData['id'] ?? adminResult['adminId']; // Get id from body first
+            final mongoId = adminData['id'] ?? adminResult['mongoId']; // Get id from body first
             final apiBaseUrl = ApiService.baseUrl;
+
+            print('=== LOGIN DEBUG: Backend Response ===');
+            print('Full adminResult: $adminResult');
+            print('AdminData (body): $adminData');
+            print('Email from backend: ${adminData['email']}');
+            print('FullName from backend: ${adminData['fullName']}');
+            print('Location from backend: ${adminData['location']}');
+            print('Location.block from backend: ${adminData['location']?['block']}');
+            print('Location.district from backend: ${adminData['location']?['district']}');
+            print('Location.state from backend: ${adminData['location']?['state']}');
+            print('Meta from backend: ${adminData['meta']}');
+            print('=====================================');
+
+            print('DEBUG: Extracted admin data - email: ${adminData['email']}, fullName: ${adminData['fullName']}');
+
+            final userDataToSave = {
+              'adminId': adminId, // Using the MongoDB _id as adminId
+              'mongoId': mongoId, // Store MongoDB _id separately for backward compatibility
+              'role': adminRole,
+              'email': adminData['email'] ?? _emailController.text.trim(),
+              'fullName': adminData['fullName'] ?? '',
+              'adminName': adminData['fullName'] ?? '', // Alias for fullName
+              'block': adminData['location']?['block'] ?? adminData['meta']?['block'] ?? '',
+              'blockName': adminData['location']?['block'] ?? adminData['meta']?['block'] ?? '', // Extract from location.block first
+              'district': adminData['location']?['district'] ?? adminData['meta']?['district'] ?? '',
+              'districtName': adminData['location']?['district'] ?? adminData['meta']?['district'] ?? '', // Extract from location.district first
+                'state': adminData['location']?['state'] ?? adminData['meta']?['state'] ?? '',
+                'stateName': adminData['location']?['state'] ?? adminData['meta']?['state'] ?? '', // Extract from location.state first
+                'active': adminData['active'] ?? true,
+                'isAdmin': true,
+                // Add meta structure that AuthProvider expects
+                'meta': {
+                  'state': adminData['location']?['state'] ?? adminData['meta']?['state'] ?? '',
+                  'district': adminData['location']?['district'] ?? adminData['meta']?['district'] ?? '',
+                  'block': adminData['location']?['block'] ?? adminData['meta']?['block'] ?? '',
+                  'stateName': adminData['location']?['state'] ?? adminData['meta']?['state'] ?? '',
+                  'districtName': adminData['location']?['district'] ?? adminData['meta']?['district'] ?? '',
+                  'blockName': adminData['location']?['block'] ?? adminData['meta']?['block'] ?? '',
+                },
+              };
+
+            print('=== LOGIN DEBUG: Data to Save ===');
+            print('userDataToSave: $userDataToSave');
+            print('Email in userDataToSave: ${userDataToSave['email']}');
+            print('================================');
 
             // Save admin login data with complete metadata
             await AuthService.saveLoginData(
               token: token,
-              userData: {
-                'adminId': adminId, // Using the MongoDB _id as adminId
-                'mongoId':
-                    mongoId, // Store MongoDB _id separately for backward compatibility
-                'role': adminRole,
-                'email': adminData['email'] ?? _emailController.text.trim(),
-                'adminName': adminData['fullName'] ?? adminData['adminName'] ?? adminData['name'] ?? '',
-                'block': adminData['location']?['block'] ?? adminData['block'] ?? '',
-                'blockName': adminData['location']?['block'] ?? adminData['block'] ?? '', // Alias for block
-                'district': adminData['location']?['district'] ?? adminData['district'] ?? '',
-                'state': adminData['location']?['state'] ?? adminData['state'] ?? '',
-                'active': adminData['active'] ?? true,
-                'isAdmin': true,
-              },
+              userData: userDataToSave,
             );
 
             if (mounted) {

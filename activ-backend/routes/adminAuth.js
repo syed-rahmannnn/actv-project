@@ -44,6 +44,7 @@ module.exports = (mongooseConnection) => {
         token,
         id: admin._id.toString(),     // <-- add this
         fullName: admin.fullName,
+        email: admin.email,           // <-- add email field
         role: admin.role,
         adminId: admin.adminId,       // human code (BA.../DA.../SA...)
         mustResetPassword: admin.meta?.mustResetPassword || false,
