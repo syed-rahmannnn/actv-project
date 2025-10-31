@@ -1,25 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/application_service.dart';
 import 'districtadmin_dashboard.dart' show UserDetailsDropdown;
 
 enum ApprovalCategory { pending, approved, rejected, all }
 
 class DistrictAdminApprovalPage extends StatefulWidget {
-  final String apiBaseUrl;
-  final String districtAdminId;
-  final String districtName;
+  // Make inputs optional and resolve sensible defaults at runtime.
+  final String? apiBaseUrl;
+  final String? districtAdminId;
+  final String? districtName;
   final String? token;
   final ApprovalCategory initialCategory;
+  final VoidCallback? onRefreshRequested;
 
   const DistrictAdminApprovalPage({
     super.key,
-    required this.apiBaseUrl,
-    required this.districtAdminId,
-    required this.districtName,
+    this.apiBaseUrl,
+    this.districtAdminId,
+    this.districtName,
     this.token,
     this.initialCategory = ApprovalCategory.pending,
+    this.onRefreshRequested,
   });
 
   @override
@@ -35,25 +39,51 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
   late ApplicationService _svc;
   String? _inFlightId;
   final DateFormat _fmt = DateFormat('dd/MM/yyyy');
+  // Resolved context
+  String? _resolvedDistrictAdminId;
+  String _resolvedDistrictName = '';
 
   @override
   void initState() {
     super.initState();
     _tab = widget.initialCategory;
-    _svc = ApplicationService(widget.apiBaseUrl);
+    _svc = ApplicationService(widget.apiBaseUrl ?? ApiService.baseUrl);
     debugPrint('[DA_APPROVAL] init for districtId=${widget.districtAdminId}');
-    _load();
+    _resolveContextAndLoad();
+  }
+
+  Future<void> _resolveContextAndLoad() async {
+    // If critical inputs are missing, try to resolve from logged-in user
+    if ((widget.districtAdminId == null || widget.districtAdminId!.isEmpty) ||
+        (widget.districtName == null || widget.districtName!.isEmpty)) {
+      try {
+        final user = await AuthService.getUserData();
+        _resolvedDistrictAdminId = (user?['adminId'] ?? user?['_id'] ?? '')
+            .toString();
+        _resolvedDistrictName =
+            (user?['districtName'] ?? 'District').toString();
+      } catch (_) {
+        // Leave as null/empty; _load will still guard.
+      }
+    }
+    await _load();
   }
 
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
       debugPrint('DA[_load]: called');
+      final districtId = (widget.districtAdminId?.isNotEmpty == true)
+          ? widget.districtAdminId!
+          : (_resolvedDistrictAdminId ?? '');
       debugPrint(
-        '[DA_API] GET /applications?districtId=${widget.districtAdminId}&status=all',
+        '[DA_API] GET /applications?districtId=$districtId&status=all',
       );
+      if (districtId.isEmpty) {
+        throw Exception('Missing district admin id');
+      }
       final apps = await _svc.getDistrictApplications(
-        districtAdminId: widget.districtAdminId,
+        districtAdminId: districtId,
         status: 'all',
       );
       _all = List<Map<String, dynamic>>.from(apps);
@@ -79,9 +109,11 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
             .toList();
       case ApprovalCategory.approved:
         return _all
-            .where((app) =>
-                (app['status'] == 'Pending-State') ||
-                (app['status'] == 'Approved'))
+            .where(
+              (app) =>
+                  (app['status'] == 'Pending-State') ||
+                  (app['status'] == 'Approved'),
+            )
             .toList();
       case ApprovalCategory.rejected:
         return _all.where((app) => app['status'] == 'Rejected').toList();
@@ -98,15 +130,23 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
     await _handleAction(appId, 'reject', reason: reason);
   }
 
-  Future<void> _handleAction(String appId, String action, {String? reason}) async {
+  Future<void> _handleAction(
+    String appId,
+    String action, {
+    String? reason,
+  }) async {
     debugPrint('DA[handleAction]: action=$action on appId=$appId');
-    debugPrint('DA[handleAction]: before=${_all.map((a)=>a['status']).toList()}');
+    debugPrint(
+      'DA[handleAction]: before=${_all.map((a) => a['status']).toList()}',
+    );
     if (mounted) setState(() => _inFlightId = appId);
     final messenger = ScaffoldMessenger.of(context);
     try {
       final res = await _svc.districtReview(
         appId: appId,
-        adminId: widget.districtAdminId,
+        adminId: (widget.districtAdminId?.isNotEmpty == true)
+            ? widget.districtAdminId!
+            : (_resolvedDistrictAdminId ?? ''),
         action: action,
         reason: reason,
       );
@@ -128,11 +168,17 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
         setState(() {
           _all[i] = updated;
         });
+        // Notify parent dashboard to refresh its stats and pending list
+        widget.onRefreshRequested?.call();
       } else {
         debugPrint('DA[handleAction]: appId not found locally; will refetch');
         await _load();
+        // Still notify parent in case counts changed
+        widget.onRefreshRequested?.call();
       }
-      debugPrint('DA[handleAction]: after=${_all.map((a)=>a['status']).toList()}');
+      debugPrint(
+        'DA[handleAction]: after=${_all.map((a) => a['status']).toList()}',
+      );
     } catch (e) {
       debugPrint('DA[handleAction]: error=${e.toString()}');
       if (mounted) {
@@ -211,8 +257,12 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
                         children: () {
-                          final items = _filtered.map(_buildApplicationCard).toList();
-                          debugPrint('DA[buildApplications]: displaying ${items.length} cards');
+                          final items = _filtered
+                              .map(_buildApplicationCard)
+                              .toList();
+                          debugPrint(
+                            'DA[buildApplications]: displaying ${items.length} cards',
+                          );
                           return items;
                         }(),
                       ),
@@ -253,7 +303,7 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Manage ${widget.districtName} Applications',
+                      'Manage ${(widget.districtName?.isNotEmpty == true ? widget.districtName! : (_resolvedDistrictName.isNotEmpty ? _resolvedDistrictName : 'District'))} Applications',
                       style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                   ],
@@ -342,7 +392,9 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
               _tab == ApprovalCategory.pending,
               () {
                 setState(() => _tab = ApprovalCategory.pending);
-                debugPrint('DA[filter]: tab=pending resultCount=${_filtered.length}');
+                debugPrint(
+                  'DA[filter]: tab=pending resultCount=${_filtered.length}',
+                );
               },
             ),
             const SizedBox(width: 8),
@@ -351,7 +403,9 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
               _tab == ApprovalCategory.approved,
               () {
                 setState(() => _tab = ApprovalCategory.approved);
-                debugPrint('DA[filter]: tab=approved resultCount=${_filtered.length}');
+                debugPrint(
+                  'DA[filter]: tab=approved resultCount=${_filtered.length}',
+                );
               },
             ),
             const SizedBox(width: 8),
@@ -360,18 +414,16 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
               _tab == ApprovalCategory.rejected,
               () {
                 setState(() => _tab = ApprovalCategory.rejected);
-                debugPrint('DA[filter]: tab=rejected resultCount=${_filtered.length}');
+                debugPrint(
+                  'DA[filter]: tab=rejected resultCount=${_filtered.length}',
+                );
               },
             ),
             const SizedBox(width: 8),
-            chip(
-              'All ($allCount)',
-              _tab == ApprovalCategory.all,
-              () {
-                setState(() => _tab = ApprovalCategory.all);
-                debugPrint('DA[filter]: tab=all resultCount=${_filtered.length}');
-              },
-            ),
+            chip('All ($allCount)', _tab == ApprovalCategory.all, () {
+              setState(() => _tab = ApprovalCategory.all);
+              debugPrint('DA[filter]: tab=all resultCount=${_filtered.length}');
+            }),
           ],
         ),
       ),
@@ -555,9 +607,7 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _inFlightId == id
-                          ? null
-                          : () => _approve(id),
+                      onPressed: _inFlightId == id ? null : () => _approve(id),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF16A34A),
                         foregroundColor: Colors.white,

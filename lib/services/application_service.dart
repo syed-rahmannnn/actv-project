@@ -283,22 +283,40 @@ class ApplicationService {
   }
 
   Future<Map<String, int>> getDistrictStats(String districtAdminId) async {
-    final pending = await getDistrictInbox(districtAdminId);
+    // Fetch all applications and derive counts to ensure accuracy
+    final all = await getDistrictApplications(districtAdminId: districtAdminId);
+
+    // Pending at district stage
+    final pendingCount = all.where((app) {
+      final status = (app['status'] ?? app['applicationStatus'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      return status.contains('pending-district');
+    }).length;
+
+    // Approved by district (includes Pending-State and Approved per backend route)
     final approved = await _getCount(
       adminId: districtAdminId,
       role: 'district',
       status: 'Approved',
     );
-    final rejected = await _getCount(
-      adminId: districtAdminId,
-      role: 'district',
-      status: 'Rejected',
-    );
+
+    // Rejected (any stage) assigned to this district admin
+    // Align with approvals page which shows all 'Rejected' regardless of reviewer
+    final rejected = all.where((app) {
+      final status = (app['status'] ?? app['applicationStatus'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      return status == 'rejected' || status.contains('rejected');
+    }).length;
+
     return {
-      'pending': pending.length,
+      'pending': pendingCount,
       'approved': approved,
       'rejected': rejected,
-      'total': pending.length + approved + rejected,
+      'total': pendingCount + approved + rejected,
     };
   }
 

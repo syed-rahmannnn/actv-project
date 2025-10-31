@@ -77,10 +77,18 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
     if (_districtAdminId == null) return;
 
     try {
-      // Fetch pending applications (block-approved -> Pending-District)
-      final applications = await _applicationService.getDistrictInbox(
-        _districtAdminId!,
+      // Fetch ALL applications and then filter Pending-District for dashboard list
+      final applications = await _applicationService.getDistrictApplications(
+        districtAdminId: _districtAdminId!,
+        status: 'all',
       );
+      final pendingApps = applications.where((app) {
+        final status = (app['status'] ?? app['applicationStatus'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
+        return status.contains('pending-district');
+      }).toList();
 
       // Fetch statistics from backend
       final stats = await _applicationService.getDistrictStats(
@@ -89,7 +97,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
       setState(() {
         // Replace pending list to avoid duplicates on refresh
         _pending.clear();
-        _pending.addAll(applications);
+        _pending.addAll(pendingApps);
         // Update stats with real data from backend
         _stats['pending'] = stats['pending'] ?? 0;
         _stats['approved'] = stats['approved'] ?? 0;
@@ -276,6 +284,10 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
           apiBaseUrl: ApiService.baseUrl,
           districtAdminId: _districtAdminId ?? '',
           districtName: 'Salem District', // You can make this dynamic
+          onRefreshRequested: () async {
+            await _fetchPendingApplications();
+            await _fetchStats();
+          },
         );
       case 2:
         return DistrictAdminMembersPage(
@@ -691,7 +703,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
           const SizedBox(height: 12),
 
           // Approve/Reject buttons only for pending
-          if (status == 'pending') ...[
+          if (status.contains('pending-district')) ...[
             const SizedBox(height: 16),
             // Log before rendering action buttons
             Builder(
