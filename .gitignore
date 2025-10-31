@@ -39,7 +39,7 @@ ios/Flutter/Flutter.podspec
 ios/ServiceDefinitions.json
 macos/Flutter/Flutter.framework
 macos/Flutter/Flutter.podspec
-
+register_user.dart
 # Symbolication related
 app.*.symbols
 

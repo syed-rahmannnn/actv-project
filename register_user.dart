@@ -16,8 +16,8 @@ String generateHexObjectId() {
 
 // Location values must match active admins in DB (meta.state/district/block)
 const String state = "Tamil Nadu";
-const String district = "Ariyalur";
-const String block = "Andimadam";
+const String district = "Salem";
+const String block = "Attur";
 
 Future<void> main() async {
   print("🚀 Starting automated user registration for block admin testing...\n");
@@ -33,6 +33,7 @@ Future<void> main() async {
     "fullName": "Test User $randomId",
     "email": "testuser$randomId@example.com",
     "phone": randomPhone,
+    "gender": "Male",
     "state": state,
     "district": district,
     "block": block,
@@ -102,7 +103,9 @@ Future<void> main() async {
             : null;
         if (msg != null) print("   Backend Message: $msg");
         if (errorJson is Map && errorJson.containsKey('details')) {
-          print("   Details: ${JsonEncoder.withIndent('  ').convert(errorJson['details'])}");
+          print(
+            "   Details: ${JsonEncoder.withIndent('  ').convert(errorJson['details'])}",
+          );
         }
       } catch (_) {
         // Ignore JSON parse errors

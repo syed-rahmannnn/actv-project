@@ -45,26 +45,17 @@ class ApplicationService {
 
   // ---------- INBOXES ----------
   Future<List<dynamic>> getBlockInbox(String blockAdminId) async {
-    print('ApplicationService: getBlockInbox called with adminId: $blockAdminId');
     final url = '$baseUrl/applications/block/$blockAdminId';
-    print('ApplicationService: Making request to: $url');
-    print('ApplicationService: Headers: $_headers');
     
     final res = await http.get(
       Uri.parse(url),
       headers: _headers,
     );
     
-    print('ApplicationService: getBlockInbox response status: ${res.statusCode}');
-    print('ApplicationService: getBlockInbox response body: ${res.body}');
-    
     final data = jsonDecode(res.body);
-    print('ApplicationService: Parsed data: $data');
-    print('ApplicationService: Data type: ${data.runtimeType}');
 
     // Handle error responses
     if (res.statusCode != 200) {
-      print('ApplicationService: Error response in getBlockInbox');
       // For error responses, data might be an object with message
       if (data is Map<String, dynamic>) {
         throw Exception(data['message'] ?? 'Failed to fetch block inbox');
@@ -75,10 +66,8 @@ class ApplicationService {
 
     // The backend returns applications directly as an array, not wrapped in an object
     if (data is List<dynamic>) {
-      print('ApplicationService: Applications list length: ${data.length}');
       return data;
     } else {
-      print('ApplicationService: Unexpected response format, returning empty list');
       return [];
     }
   }
@@ -96,6 +85,44 @@ class ApplicationService {
     }
 
     return (data['applications'] ?? []) as List<dynamic>;
+  }
+
+  /// Fetch ALL applications for a district admin.
+  /// Uses `/applications/district/:districtAdminId` which now returns all statuses.
+  Future<List<Map<String, dynamic>>> getDistrictApplications({
+    required String districtAdminId,
+    String status = 'all', // retained for compatibility; currently ignored
+  }) async {
+    try {
+      final res = await http.get(
+        Uri.parse('$baseUrl/applications/district/$districtAdminId'),
+        headers: _headers,
+      );
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data is Map && data['applications'] is List) {
+          return List<Map<String, dynamic>>.from(data['applications'] as List);
+        }
+        if (data is List) {
+          return data
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+        }
+        return [];
+      }
+    } catch (e) {
+      // Fallback to the known pending-only inbox if direct route fails
+      final inbox = await getDistrictInbox(districtAdminId);
+      return inbox
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    }
+
+    // HTTP error fallback
+    final inbox = await getDistrictInbox(districtAdminId);
+    return inbox
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
   }
 
   Future<List<dynamic>> getStateInbox(String stateAdminId) async {
@@ -197,73 +224,51 @@ class ApplicationService {
   }) async {
     try {
       final url = '$baseUrl/applications/by-admin/$adminId?role=$role&status=$status';
-      print('ApplicationService: Making API call to: $url');
-      print('ApplicationService: Headers: $_headers');
-      print('ApplicationService: AdminId: $adminId, Role: $role, Status: $status');
       
       final res = await http.get(
         Uri.parse(url),
         headers: _headers,
       );
       
-      print('ApplicationService: Response status code: ${res.statusCode}');
-      print('ApplicationService: Response body: ${res.body}');
-      
       if (res.statusCode == 200) {
         final responseData = jsonDecode(res.body);
-        print('ApplicationService: Parsed response data: $responseData');
-        print('ApplicationService: Response data type: ${responseData.runtimeType}');
         
         if (responseData is Map<String, dynamic>) {
           final count = responseData['count'];
-          print('ApplicationService: Count value: $count, Type: ${count.runtimeType}');
           return (count ?? 0) as int;
         } else {
-          print('ApplicationService: Response is not a Map, returning 0');
           return 0;
         }
       } else {
-        print('ApplicationService: Non-200 status code, returning 0');
         return 0;
       }
     } catch (e) {
-      print('ApplicationService: Exception in _getCount: $e');
       return 0;
     }
   }
 
   Future<Map<String, int>> getBlockStats(String blockAdminId) async {
-    print('ApplicationService: getBlockStats called with adminId: $blockAdminId');
-    print('ApplicationService: Base URL: $baseUrl');
-    print('ApplicationService: Token available: ${token != null && token!.isNotEmpty}');
     
     try {
-      print('ApplicationService: Fetching all applications...');
       final allApplications = await getBlockInbox(blockAdminId);
-      print('ApplicationService: All applications count: ${allApplications.length}');
       
       // Filter pending applications (same logic as Dashboard)
       final pendingApps = allApplications.where((app) {
         final status = (app['status'] ?? '').toString().toLowerCase();
         return status == 'pending-block' || status == 'submitted' || status == 'pending';
       }).toList();
-      print('ApplicationService: Pending applications count: ${pendingApps.length}');
       
-      print('ApplicationService: Fetching approved count...');
       final approved = await _getCount(
         adminId: blockAdminId,
         role: 'block',
         status: 'Approved',
       );
-      print('ApplicationService: Approved count: $approved');
       
-      print('ApplicationService: Fetching rejected count...');
       final rejected = await _getCount(
         adminId: blockAdminId,
         role: 'block',
         status: 'Rejected',
       );
-      print('ApplicationService: Rejected count: $rejected');
       
       final stats = {
         'pending': pendingApps.length,
@@ -271,12 +276,8 @@ class ApplicationService {
         'rejected': rejected,
         'total': pendingApps.length + approved + rejected,
       };
-      
-      print('ApplicationService: Final stats: $stats');
       return stats;
     } catch (e) {
-      print('ApplicationService: Exception in getBlockStats: $e');
-      print('ApplicationService: Stack trace: ${StackTrace.current}');
       rethrow;
     }
   }

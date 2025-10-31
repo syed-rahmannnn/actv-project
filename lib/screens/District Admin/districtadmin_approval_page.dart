@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../services/api_service.dart';
+import '../../services/application_service.dart';
+import 'districtadmin_dashboard.dart' show UserDetailsDropdown;
 
 enum ApprovalCategory { pending, approved, rejected, all }
 
@@ -20,7 +23,8 @@ class DistrictAdminApprovalPage extends StatefulWidget {
   });
 
   @override
-  State<DistrictAdminApprovalPage> createState() => _DistrictAdminApprovalPageState();
+  State<DistrictAdminApprovalPage> createState() =>
+      _DistrictAdminApprovalPageState();
 }
 
 class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
@@ -28,22 +32,35 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
   ApprovalCategory _tab = ApprovalCategory.pending;
 
   List<Map<String, dynamic>> _all = [];
+  late ApplicationService _svc;
+  String? _inFlightId;
+  final DateFormat _fmt = DateFormat('dd/MM/yyyy');
 
   @override
   void initState() {
     super.initState();
     _tab = widget.initialCategory;
+    _svc = ApplicationService(widget.apiBaseUrl);
+    debugPrint('[DA_APPROVAL] init for districtId=${widget.districtAdminId}');
     _load();
   }
 
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final apps = await ApiService.getDistrictAdminApplications(
-        widget.districtAdminId,
+      debugPrint('DA[_load]: called');
+      debugPrint(
+        '[DA_API] GET /applications?districtId=${widget.districtAdminId}&status=all',
+      );
+      final apps = await _svc.getDistrictApplications(
+        districtAdminId: widget.districtAdminId,
+        status: 'all',
       );
       _all = List<Map<String, dynamic>>.from(apps);
+      debugPrint('[DA_API] response 200 count=${_all.length}');
+      debugPrint('DA[_load]: fetched applications count = ${_all.length}');
     } catch (e) {
+      debugPrint('[DA_API] error 500 ${e.toString()}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading applications: $e')),
@@ -57,9 +74,15 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
   List<Map<String, dynamic>> get _filtered {
     switch (_tab) {
       case ApprovalCategory.pending:
-        return _all.where((app) => app['status'] == 'Pending-District').toList();
+        return _all
+            .where((app) => app['status'] == 'Pending-District')
+            .toList();
       case ApprovalCategory.approved:
-        return _all.where((app) => app['status'] == 'Pending-State').toList();
+        return _all
+            .where((app) =>
+                (app['status'] == 'Pending-State') ||
+                (app['status'] == 'Approved'))
+            .toList();
       case ApprovalCategory.rejected:
         return _all.where((app) => app['status'] == 'Rejected').toList();
       case ApprovalCategory.all:
@@ -67,32 +90,61 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
     }
   }
 
+  Future<void> _approve(String appId) async {
+    await _handleAction(appId, 'approve');
+  }
+
+  Future<void> _reject(String appId, {String? reason}) async {
+    await _handleAction(appId, 'reject', reason: reason);
+  }
+
   Future<void> _handleAction(String appId, String action, {String? reason}) async {
+    debugPrint('DA[handleAction]: action=$action on appId=$appId');
+    debugPrint('DA[handleAction]: before=${_all.map((a)=>a['status']).toList()}');
+    if (mounted) setState(() => _inFlightId = appId);
+    final messenger = ScaffoldMessenger.of(context);
     try {
-      final success = await ApiService.reviewDistrictApplication(
-        appId,
-        action,
+      final res = await _svc.districtReview(
+        appId: appId,
+        adminId: widget.districtAdminId,
+        action: action,
         reason: reason,
       );
+      debugPrint('DA[handleAction]: apiResponse=$res');
+      if (!mounted) return;
+      final message = res['message']?.toString() ?? 'Application ${action}d';
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: action == 'approve' ? Colors.green : Colors.red,
+        ),
+      );
 
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Application ${action}d successfully'),
-            backgroundColor: action == 'approve' ? Colors.green : Colors.red,
-          ),
-        );
+      // Non-destructive local update: keep card in _all and update status
+      final i = _all.indexWhere((a) => (a['_id']?.toString() ?? '') == appId);
+      if (i != -1) {
+        final updated = Map<String, dynamic>.from(_all[i]);
+        updated['status'] = action == 'approve' ? 'Pending-State' : 'Rejected';
+        setState(() {
+          _all[i] = updated;
+        });
+      } else {
+        debugPrint('DA[handleAction]: appId not found locally; will refetch');
         await _load();
       }
+      debugPrint('DA[handleAction]: after=${_all.map((a)=>a['status']).toList()}');
     } catch (e) {
+      debugPrint('DA[handleAction]: error=${e.toString()}');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
             content: Text('Error ${action}ing application: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _inFlightId = null);
     }
   }
 
@@ -127,11 +179,7 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                _handleAction(
-                  appId,
-                  'reject',
-                  reason: reasonController.text,
-                );
+                _reject(appId, reason: reasonController.text);
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               child: const Text('Reject'),
@@ -146,19 +194,33 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF1F6FF),
-      body: Column(
-        children: [
-          _buildHeader(),
-          _buildTabBar(),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    child: _buildApplicationsList(),
-                  ),
-          ),
-        ],
+      body: SafeArea(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _load,
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    _buildHeader(),
+
+                    const SizedBox(height: 12),
+                    _buildTabBar(),
+                    const SizedBox(height: 18),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        children: () {
+                          final items = _filtered.map(_buildApplicationCard).toList();
+                          debugPrint('DA[buildApplications]: displaying ${items.length} cards');
+                          return items;
+                        }(),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -221,44 +283,97 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
   }
 
   Widget _buildTabBar() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha((0.05 * 255).toInt()),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+    final pendingCount = _all
+        .where(
+          (a) => (a['status'] ?? '').toString().toLowerCase().contains(
+            'pending-district',
           ),
-        ],
-      ),
-      child: Row(
-        children: ApprovalCategory.values.map((category) {
-          final isSelected = _tab == category;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _tab = category),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF1E88FF) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _getCategoryLabel(category),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF6B7280),
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
+        )
+        .length;
+    final approvedCount = _all
+        .where(
+          (a) =>
+              (a['status'] ?? '') == 'Pending-State' ||
+              (a['status'] ?? '') == 'Approved',
+        )
+        .length;
+    final rejectedCount = _all
+        .where((a) => (a['status'] ?? '') == 'Rejected')
+        .length;
+    final allCount = _all.length;
+
+    Widget chip(String label, bool active, VoidCallback onTap) {
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: active ? Colors.white : const Color(0xFFEAF2FF),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: active
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withAlpha((0.06 * 255).toInt()),
+                      blurRadius: 10,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: active ? const Color(0xFF0F172A) : const Color(0xFF6B7280),
             ),
-          );
-        }).toList(),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            chip(
+              'Pending ($pendingCount)',
+              _tab == ApprovalCategory.pending,
+              () {
+                setState(() => _tab = ApprovalCategory.pending);
+                debugPrint('DA[filter]: tab=pending resultCount=${_filtered.length}');
+              },
+            ),
+            const SizedBox(width: 8),
+            chip(
+              'Approved ($approvedCount)',
+              _tab == ApprovalCategory.approved,
+              () {
+                setState(() => _tab = ApprovalCategory.approved);
+                debugPrint('DA[filter]: tab=approved resultCount=${_filtered.length}');
+              },
+            ),
+            const SizedBox(width: 8),
+            chip(
+              'Rejected ($rejectedCount)',
+              _tab == ApprovalCategory.rejected,
+              () {
+                setState(() => _tab = ApprovalCategory.rejected);
+                debugPrint('DA[filter]: tab=rejected resultCount=${_filtered.length}');
+              },
+            ),
+            const SizedBox(width: 8),
+            chip(
+              'All ($allCount)',
+              _tab == ApprovalCategory.all,
+              () {
+                setState(() => _tab = ApprovalCategory.all);
+                debugPrint('DA[filter]: tab=all resultCount=${_filtered.length}');
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -276,45 +391,34 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
     }
   }
 
-  Widget _buildApplicationsList() {
-    final applications = _filtered;
-    
-    if (applications.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.inbox_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No ${_getCategoryLabel(_tab).toLowerCase()} applications',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: applications.length,
-      itemBuilder: (context, index) {
-        final app = applications[index];
-        return _buildApplicationCard(app);
-      },
-    );
-  }
-
   Widget _buildApplicationCard(Map<String, dynamic> app) {
     final status = app['status'] ?? '';
-    final isPending = status == 'Pending-District';
+    final isPending = status.toString().toLowerCase().contains(
+      'pending-district',
+    );
+    final id = app['_id']?.toString() ?? '';
+    final fullName =
+        (app['fullName'] ?? app['name'] ?? app['memberName'] ?? 'Unknown')
+            .toString();
+    final phone = (app['phone'] ?? 'N/A').toString();
+    final email = (app['email'] ?? app['memberEmail'] ?? 'N/A').toString();
+    final block = (app['block'] ?? 'N/A').toString();
+    // Resolve gender from top-level or nested personalInfo, default to NA
+    final Map<String, dynamic>? personalInfo =
+        app['personalInfo'] as Map<String, dynamic>?;
+    final gender =
+        (app['gender'] ??
+                (personalInfo != null ? personalInfo['gender'] : null) ??
+                'NA')
+            .toString();
+    final appliedAt = app['blockApprovedAt'] ?? app['createdAt'];
+    String appliedOnStr = 'N/A';
+    try {
+      if (appliedAt != null) {
+        final dt = DateTime.parse(appliedAt.toString());
+        appliedOnStr = _fmt.format(dt);
+      }
+    } catch (_) {}
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -342,7 +446,7 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        app['name'] ?? 'Unknown',
+                        fullName,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -351,11 +455,8 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Phone: ${app['phone'] ?? 'N/A'}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                        'Phone: $phone',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                     ],
                   ),
@@ -366,7 +467,9 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(status).withAlpha((0.1 * 255).toInt()),
+                    color: _getStatusColor(
+                      status,
+                    ).withAlpha((0.1 * 255).toInt()),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -381,12 +484,70 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              'Block: ${app['block'] ?? 'N/A'}',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+            Row(
+              children: [
+                const Icon(
+                  Icons.location_on,
+                  size: 16,
+                  color: Color(0xFF6B7280),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Block: $block',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+                const Spacer(),
+                const Icon(
+                  Icons.calendar_today,
+                  size: 14,
+                  color: Color(0xFF6B7280),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Applied: $appliedOnStr',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Second line: Email (left) and Gender (right)
+            Row(
+              children: [
+                const Icon(Icons.email, size: 16, color: Color(0xFF6B7280)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Email: $email',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF374151),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Icon(Icons.person, size: 16, color: Color(0xFF6B7280)),
+                const SizedBox(width: 6),
+                Text(
+                  'Gender: $gender',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Tap to open details
+            GestureDetector(
+              onTap: () => _openProfileSheet(app),
+              child: const SizedBox.shrink(),
             ),
             if (isPending) ...[
               const SizedBox(height: 16),
@@ -394,31 +555,47 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () => _handleAction(app['_id'], 'approve'),
+                      onPressed: _inFlightId == id
+                          ? null
+                          : () => _approve(id),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF10B981),
+                        backgroundColor: const Color(0xFF16A34A),
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text('Approve'),
+                      child: _inFlightId == id
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Approve'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () => _showRejectDialog(app['_id']),
+                      onPressed: _inFlightId == id
+                          ? null
+                          : () => _showRejectDialog(id),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFEF4444),
+                        backgroundColor: const Color(0xFFFF5C5C),
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text('Reject'),
+                      child: _inFlightId == id
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Reject'),
                     ),
                   ),
                 ],
@@ -428,6 +605,68 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
         ),
       ),
     );
+  }
+
+  void _openProfileSheet(Map<String, dynamic> app) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final email = app["email"] ?? app["memberEmail"];
+      if (email != null) {
+        final memberRes = await ApiService.getMemberByEmail(email);
+        if (memberRes['success'] == true && memberRes['data'] != null) {
+          final memberId =
+              memberRes['data']['id'] ??
+              memberRes['data']['memberId'] ??
+              memberRes['data']['_id'];
+          if (memberId != null) {
+            final profileRes = await ApiService.getMemberProfile(
+              memberId.toString(),
+            );
+            if (mounted) Navigator.pop(context);
+            if (profileRes['success'] == true && profileRes['data'] != null) {
+              if (mounted) {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => UserDetailsDropdown(
+                    app: Map<String, dynamic>.from(app),
+                    onApprove: () => _approve(app['_id'].toString()),
+                    onReject: () => _showRejectDialog(app['_id'].toString()),
+                  ),
+                );
+              }
+              return;
+            }
+          }
+        }
+      }
+      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => UserDetailsDropdown(
+            app: Map<String, dynamic>.from(app),
+            onApprove: () => _approve(app['_id'].toString()),
+            onReject: () => _showRejectDialog(app['_id'].toString()),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
+      }
+    }
   }
 
   Color _getStatusColor(String status) {

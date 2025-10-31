@@ -408,6 +408,8 @@ module.exports = (mongooseConnection) => {
   });
 
   // ---------- GET APPLICATIONS FOR DISTRICT ADMIN ----------
+  // Return ALL applications assigned to the district admin (not only Pending-District),
+  // mirroring the behavior of the block admin route.
   router.get("/district/:districtAdminId", async (req, res) => {
     try {
       const _id = await resolveAdminObjectId('district', req.params.districtAdminId, { BlockAdmin, DistrictAdmin, StateAdmin });
@@ -419,15 +421,41 @@ module.exports = (mongooseConnection) => {
         });
       }
 
+      // Fetch all applications for this district admin, regardless of status
       const apps = await Application.find({
         assignedDistrictAdmin: _id,
-        status: "Pending-District",
       }).sort({ createdAt: -1 });
+
+      // Enhance applications similarly to the block admin route with reviewedBy and member info
+      const enhancedApps = await Promise.all(apps.map(async (app) => {
+        const appObj = app.toObject();
+
+        // ReviewedBy safety checks are handled in the GET /:appId route, but we add basic references here
+        // (Keep lightweight to avoid extra DB calls unless necessary)
+        // You can expand with DistrictAdmin/StateAdmin hydration if needed, matching the GET /:appId behavior.
+
+        // Attach simple member approval info if present
+        try {
+          const member = await MemberDetails.findOne({ userId: appObj.userId }).lean();
+          if (member && member.approvedBy) {
+            appObj.memberApprovedBy = {
+              blockAdmin: member.approvedBy.blockAdmin || null,
+              districtAdmin: member.approvedBy.districtAdmin || null,
+              stateAdmin: member.approvedBy.stateAdmin || null,
+            };
+            appObj.memberApprovedAt = member.approvedAt || null;
+          }
+        } catch (err) {
+          console.error('Error fetching member details for app', appObj._id, err);
+        }
+
+        return appObj;
+      }));
 
       res.json({ 
         success: true, 
-        applications: apps,
-        count: apps.length 
+        applications: enhancedApps,
+        count: enhancedApps.length 
       });
     } catch (err) {
       console.error("Fetch district applications error:", err);

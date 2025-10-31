@@ -352,27 +352,12 @@ class _LoginScreenState extends State<LoginScreen> {
           );
           if (adminResult['ok'] == true) {
             // Admin login successful
-            print('DEBUG: Admin login successful, full response: $adminResult');
             final token = adminResult['token'];
             final adminRole = adminResult['role'];
             final adminData = adminResult['body'] ?? adminResult; // Extract from body first, fallback to adminResult
             final adminId = adminData['id'] ?? adminResult['adminId']; // Get id from body first
             final mongoId = adminData['id'] ?? adminResult['mongoId']; // Get id from body first
             final apiBaseUrl = ApiService.baseUrl;
-
-            print('=== LOGIN DEBUG: Backend Response ===');
-            print('Full adminResult: $adminResult');
-            print('AdminData (body): $adminData');
-            print('Email from backend: ${adminData['email']}');
-            print('FullName from backend: ${adminData['fullName']}');
-            print('Location from backend: ${adminData['location']}');
-            print('Location.block from backend: ${adminData['location']?['block']}');
-            print('Location.district from backend: ${adminData['location']?['district']}');
-            print('Location.state from backend: ${adminData['location']?['state']}');
-            print('Meta from backend: ${adminData['meta']}');
-            print('=====================================');
-
-            print('DEBUG: Extracted admin data - email: ${adminData['email']}, fullName: ${adminData['fullName']}');
 
             final userDataToSave = {
               'adminId': adminId, // Using the MongoDB _id as adminId
@@ -400,10 +385,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               };
 
-            print('=== LOGIN DEBUG: Data to Save ===');
-            print('userDataToSave: $userDataToSave');
-            print('Email in userDataToSave: ${userDataToSave['email']}');
-            print('================================');
 
             // Save admin login data with complete metadata
             await AuthService.saveLoginData(

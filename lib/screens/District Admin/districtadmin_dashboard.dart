@@ -7,19 +7,6 @@ import 'districtadmin_approval_page.dart';
 import 'districtadmin_members_page.dart';
 import 'dart:developer' as developer;
 
-class DistrictAdminDashboardApp extends StatelessWidget {
-  const DistrictAdminDashboardApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'District Admin Dashboard',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const DistrictAdminDashboard(),
-    );
-  }
-}
-
 class DistrictAdminDashboard extends StatefulWidget {
   final String? adminId;
 
@@ -33,7 +20,6 @@ class DistrictAdminDashboard extends StatefulWidget {
 class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
   int _tab = 0;
 
-  List<dynamic> _pendingApplications = [];
   bool _isLoading = true;
   String? _districtAdminId;
   String _districtName = '';
@@ -45,6 +31,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
     'approved': 0,
     'rejected': 0,
   };
+  final List<dynamic> _pending = [];
 
   @override
   void initState() {
@@ -90,8 +77,8 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
     if (_districtAdminId == null) return;
 
     try {
-      // Fetch pending applications
-      final applications = await ApiService.getDistrictAdminApplications(
+      // Fetch pending applications (block-approved -> Pending-District)
+      final applications = await _applicationService.getDistrictInbox(
         _districtAdminId!,
       );
 
@@ -99,17 +86,16 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
       final stats = await _applicationService.getDistrictStats(
         _districtAdminId!,
       );
-
-      if (applications.isNotEmpty || stats.isNotEmpty) {
-        setState(() {
-          _pendingApplications = applications;
-          // Update stats with real data from backend
-          _stats['pending'] = stats['pending'] ?? 0;
-          _stats['approved'] = stats['approved'] ?? 0;
-          _stats['rejected'] = stats['rejected'] ?? 0;
-          _stats['total'] = stats['total'] ?? 0;
-        });
-      }
+      setState(() {
+        // Replace pending list to avoid duplicates on refresh
+        _pending.clear();
+        _pending.addAll(applications);
+        // Update stats with real data from backend
+        _stats['pending'] = stats['pending'] ?? 0;
+        _stats['approved'] = stats['approved'] ?? 0;
+        _stats['rejected'] = stats['rejected'] ?? 0;
+        _stats['total'] = stats['total'] ?? 0;
+      });
     } catch (e) {
       developer.log(
         'Error fetching applications and stats: $e',
@@ -118,35 +104,76 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
     }
   }
 
+  Future<void> _fetchStats() async {
+    if (_districtAdminId == null) return;
+    try {
+      final stats = await _applicationService.getDistrictStats(
+        _districtAdminId!,
+      );
+      setState(() {
+        _stats['pending'] = stats['pending'] ?? 0;
+        _stats['approved'] = stats['approved'] ?? 0;
+        _stats['rejected'] = stats['rejected'] ?? 0;
+        _stats['total'] = stats['total'] ?? 0;
+      });
+    } catch (e) {
+      developer.log('Error fetching stats: $e', name: 'DistrictAdminDashboard');
+    }
+  }
+
   Future<void> _handleApplicationAction(
     String applicationId,
     String action, {
     String? reason,
   }) async {
+    // Pre-capture messenger to avoid using BuildContext across async gaps
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _isLoading = true);
     try {
-      final success = await ApiService.reviewDistrictApplication(
-        applicationId,
-        action,
+      final res = await _applicationService.districtReview(
+        appId: applicationId,
+        adminId: _districtAdminId ?? '',
+        action: action,
         reason: reason,
       );
-
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Application ${action}d successfully'),
-            backgroundColor: action == 'approve' ? Colors.green : Colors.red,
-          ),
-        );
-        await _fetchPendingApplications();
-      }
+      if (!mounted) return;
+      final message = res['message']?.toString() ?? 'Application ${action}d';
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: action == 'approve' ? Colors.green : Colors.red,
+        ),
+      );
+      await _fetchPendingApplications();
+      await _fetchStats(); // Refresh stats after successful action
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!mounted) return;
+      messenger.showSnackBar(
         SnackBar(
           content: Text('Error ${action}ing application: $e'),
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  // Handle approve button click
+  Future<void> _handleApprove(Map<String, dynamic> app) async {
+    final applicationId = app['_id'] ?? '';
+    if (applicationId.isEmpty) return;
+
+    await _handleApplicationAction(applicationId, 'approve');
+    await _fetchStats(); // Refresh stats after action
+  }
+
+  // Handle reject button click
+  Future<void> _handleReject(Map<String, dynamic> app) async {
+    final applicationId = app['_id'] ?? '';
+    if (applicationId.isEmpty) return;
+
+    _showRejectDialog(applicationId);
   }
 
   void _showRejectDialog(String applicationId) {
@@ -185,6 +212,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
                   'reject',
                   reason: reasonController.text,
                 );
+                _fetchStats(); // Refresh stats after action
               },
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               child: const Text('Reject'),
@@ -239,7 +267,10 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
   Widget _page(int i) {
     switch (i) {
       case 0:
-        return RefreshIndicator(onRefresh: _fetchPendingApplications, child: _dashboard());
+        return RefreshIndicator(
+          onRefresh: _fetchPendingApplications,
+          child: _dashboard(),
+        );
       case 1:
         return DistrictAdminApprovalPage(
           apiBaseUrl: ApiService.baseUrl,
@@ -256,7 +287,9 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
         return DistrictAdminSettingsPage(
           apiBaseUrl: ApiService.baseUrl,
           districtAdminId: _districtAdminId ?? '',
-          districtName: _districtName.isNotEmpty ? _districtName : 'Salem District',
+          districtName: _districtName.isNotEmpty
+              ? _districtName
+              : 'Salem District',
           districtEmail: _adminEmail,
         );
       default:
@@ -314,35 +347,24 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
             ),
           ),
           const SizedBox(height: 16),
-          if (_pendingApplications.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Recent Applications',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
-                  ),
-                ),
-              ),
+          // Pending header chip
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _pill('Pending (${_stats['pending'] ?? 0})'),
             ),
-            const SizedBox(height: 12),
-            ..._pendingApplications
-                .take(3)
-                .map(
-                  (app) => Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 6,
-                    ),
-                    child: _userCard(app),
-                  ),
-                ),
-          ],
-          const SizedBox(height: 100),
+          ),
+          const SizedBox(height: 8),
+          // Pending list
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: _pending.map((app) => _userCard(app)).toList(),
+            ),
+          ),
+
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -369,8 +391,8 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
                     const Text(
                       'District Admin Dashboard',
                       style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
                         color: Color(0xFF0F172A),
                       ),
                     ),
@@ -382,7 +404,6 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
                   ],
                 ),
               ),
-              _iconButton(Icons.filter_list),
               const SizedBox(width: 12),
               Stack(
                 children: [
@@ -416,7 +437,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
 
   Widget _heroHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: Align(
         alignment: Alignment.centerLeft,
         child: _pill('District Administration'),
@@ -504,164 +525,229 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
   }
 
   Widget _userCard(dynamic app) {
+    // Helper to format dates like DD/MM/YYYY with safe fallback
+    String fmtDate(dynamic value) {
+      if (value == null) return 'N/A';
+      try {
+        final s = value.toString();
+        final dt = DateTime.parse(s);
+        final dd = dt.day.toString().padLeft(2, '0');
+        final mm = dt.month.toString().padLeft(2, '0');
+        final yyyy = dt.year.toString();
+        return '$dd/$mm/$yyyy';
+      } catch (_) {
+        return 'N/A';
+      }
+    }
+
+    // Normalized status
+    final status = (app['status'] ?? app['applicationStatus'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    developer.log('CARD status=$status, id=${app['_id']}');
+
+    final fullName = (app['fullName'] ?? app['name'] ?? 'Unknown').toString();
+    final phone = (app['phone'] ?? 'N/A').toString();
+    final block = (app['block'] ?? 'N/A').toString();
+    final email = (app['email'] ?? 'N/A').toString();
+    // Resolve gender from top-level or nested personalInfo, default to NA
+    final Map<String, dynamic>? personalInfo =
+        app['personalInfo'] as Map<String, dynamic>?;
+    final gender =
+        (app['gender'] ??
+                (personalInfo != null ? personalInfo['gender'] : null) ??
+                'NA')
+            .toString();
+    // Prefer block-approved timestamp for district inbox, else createdAt
+    final appliedDate = fmtDate(app['blockApprovedAt'] ?? app['createdAt']);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withAlpha((0.1 * 255).toInt()),
-            spreadRadius: 1,
-            blurRadius: 5,
-            offset: const Offset(0, 2),
+            color: Colors.black.withAlpha((0.06 * 255).toInt()),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
         border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: const Color(
-                      0xFF3B82F6,
-                    ).withAlpha((0.1 * 255).toInt()),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Icon(
-                    Icons.person,
-                    color: Color(0xFF3B82F6),
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        app['fullName'] ?? 'N/A',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
-                        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top row: avatar, name + phone, pending pill at right
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const CircleAvatar(
+                radius: 22,
+                backgroundColor: Color(0xFFE5E7EB),
+                child: Icon(Icons.person, color: Color(0xFF6B7280)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fullName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        app['email'] ?? 'N/A',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Phone: $phone',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF6B7280),
                       ),
-                    ],
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => _showUserDetailsDropdown(app),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(
-                        0xFF3B82F6,
-                      ).withAlpha((0.1 * 255).toInt()),
-                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
-                      Icons.expand_more,
-                      color: Color(0xFF3B82F6),
-                      size: 20,
-                    ),
+                  ],
+                ),
+              ),
+              // Pending pill styled like Block Admin
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFF59E0B)),
+                ),
+                child: const Text(
+                  'Pending',
+                  style: TextStyle(
+                    color: Color(0xFFF59E0B),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          // Block (left) and Applied on date (right)
+          Row(
+            children: [
+              const Icon(Icons.location_on, size: 16, color: Color(0xFF6B7280)),
+              const SizedBox(width: 6),
+              Text(
+                'Block: $block',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
+              ),
+              const Spacer(),
+              const Icon(
+                Icons.calendar_today,
+                size: 14,
+                color: Color(0xFF6B7280),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Applied: $appliedDate',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Second line: Email (left) and Gender (right)
+          Row(
+            children: [
+              const Icon(Icons.email, size: 16, color: Color(0xFF6B7280)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Email: $email',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF374151),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Icon(Icons.person, size: 16, color: Color(0xFF6B7280)),
+              const SizedBox(width: 6),
+              Text(
+                'Gender: $gender',
+                style: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Approve/Reject buttons only for pending
+          if (status == 'pending') ...[
+            const SizedBox(height: 16),
+            // Log before rendering action buttons
+            Builder(
+              builder: (context) {
+                developer.log('SHOW BUTTONS for ${app['_id']}');
+                return const SizedBox.shrink();
+              },
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Phone: ${app['phone'] ?? 'N/A'}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                ),
-                Expanded(
-                  child: Text(
-                    'Block: ${app['block'] ?? 'N/A'}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => _handleApplicationAction(
-                      app['id'].toString(),
-                      'approve',
-                    ),
+                    onPressed: () => _handleApprove(app),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF16A34A),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       elevation: 0,
                     ),
                     child: const Text(
                       'Approve',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                      style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => _showRejectDialog(app['id'].toString()),
+                    onPressed: () => _handleReject(app),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFF5C5C),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       elevation: 0,
                     ),
                     child: const Text(
                       'Reject',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                      style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
               ],
             ),
           ],
-        ),
+        ],
       ),
     );
   }
 
-  void _showUserDetailsDropdown(dynamic app) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => UserDetailsDropdown(
-        app: app,
-        onApprove: () =>
-            _handleApplicationAction(app['id'].toString(), 'approve'),
-        onReject: () => _showRejectDialog(app['id'].toString()),
-      ),
-    );
-  }
+  // Removed unused _showUserDetailsDropdown to satisfy linter
 
   Widget _pill(String text) {
     return Container(

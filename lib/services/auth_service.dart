@@ -11,12 +11,10 @@ class AuthService {
     required String token,
     required Map<String, dynamic> userData,
   }) async {
-    print('DEBUG AuthService.saveLoginData: Saving userData: $userData');
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
     await prefs.setString(_userDataKey, jsonEncode(userData));
     await prefs.setBool(_isLoggedInKey, true);
-    print('DEBUG AuthService.saveLoginData: Data saved successfully');
   }
 
   // NEW: Update only the stored user data (do not touch token)
@@ -37,13 +35,10 @@ class AuthService {
   static Future<Map<String, dynamic>?> getUserData() async {
     final prefs = await SharedPreferences.getInstance();
     final userDataString = prefs.getString(_userDataKey);
-    print('DEBUG AuthService.getUserData: Raw stored data: $userDataString');
     if (userDataString != null) {
       final userData = jsonDecode(userDataString);
-      print('DEBUG AuthService.getUserData: Decoded userData: $userData');
       return userData;
     }
-    print('DEBUG AuthService.getUserData: No user data found');
     return null;
   }
 

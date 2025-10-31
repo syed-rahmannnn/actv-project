@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../services/api_service.dart';
+import '../../services/application_service.dart';
+import 'districtadmin_dashboard.dart' show UserDetailsDropdown;
 
 class DistrictAdminMembersPage extends StatefulWidget {
   final String apiBaseUrl;
@@ -16,7 +19,8 @@ class DistrictAdminMembersPage extends StatefulWidget {
   });
 
   @override
-  State<DistrictAdminMembersPage> createState() => _DistrictAdminMembersPageState();
+  State<DistrictAdminMembersPage> createState() =>
+      _DistrictAdminMembersPageState();
 }
 
 class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
@@ -24,10 +28,14 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
   List<Map<String, dynamic>> _all = [];
   String _query = '';
   final TextEditingController _searchCtrl = TextEditingController();
+  final DateFormat _fmt = DateFormat('dd/MM/yyyy');
+  late ApplicationService _svc;
 
   @override
   void initState() {
     super.initState();
+    debugPrint('[DA_MEMBERS] init for districtId=${widget.districtAdminId}');
+    _svc = ApplicationService(widget.apiBaseUrl);
     _load();
     _searchCtrl.addListener(() {
       setState(() => _query = _searchCtrl.text.trim().toLowerCase());
@@ -43,15 +51,22 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final apps = await ApiService.getDistrictAdminApplications(
-        widget.districtAdminId,
+      debugPrint('DA[_load]: called');
+      debugPrint('[DA_API] GET /members?districtId=${widget.districtAdminId}');
+      final apps = await _svc.getDistrictApplications(
+        districtAdminId: widget.districtAdminId,
+        status: 'all',
       );
       _all = List<Map<String, dynamic>>.from(apps);
+      debugPrint('[DA_UI] users dropdown loaded: count=${_all.length}');
+      debugPrint('[DA_API] response 200 ${_all.length}');
+      debugPrint('DA[_load]: fetched applications count = ${_all.length}');
     } catch (e) {
+      debugPrint('[DA_API] error 500 ${e.toString()}');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading members: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading members: $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -63,8 +78,10 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
     return _all.where((app) {
       final name = (app['name'] ?? '').toString().toLowerCase();
       final phone = (app['phone'] ?? '').toString().toLowerCase();
-      final block = (app['block'] ?? '').toString().toLowerCase();
-      return name.contains(_query) || phone.contains(_query) || block.contains(_query);
+      final district = (app['district'] ?? '').toString().toLowerCase();
+      return name.contains(_query) ||
+          phone.contains(_query) ||
+          district.contains(_query);
     }).toList();
   }
 
@@ -163,7 +180,7 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
       child: TextField(
         controller: _searchCtrl,
         decoration: const InputDecoration(
-          hintText: 'Search members by name, phone, or block...',
+          hintText: 'Search members by name, phone, or district...',
           prefixIcon: Icon(Icons.search, color: Color(0xFF6B7280)),
           border: InputBorder.none,
           contentPadding: EdgeInsets.all(16),
@@ -174,7 +191,8 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
 
   Widget _buildMembersList() {
     final members = _filtered;
-    
+    debugPrint('DA[buildMembersList]: displaying ${members.length} cards');
+
     if (members.isEmpty) {
       return Center(
         child: Column(
@@ -187,11 +205,10 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
             ),
             const SizedBox(height: 16),
             Text(
-              _query.isEmpty ? 'No members found' : 'No members match your search',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
+              _query.isEmpty
+                  ? 'No members found'
+                  : 'No members match your search',
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
           ],
         ),
@@ -210,7 +227,34 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
 
   Widget _buildMemberCard(Map<String, dynamic> member) {
     final status = member['status'] ?? '';
-    
+    final name =
+        (member['fullName'] ??
+                member['name'] ??
+                member['memberName'] ??
+                'Unknown')
+            .toString();
+    final phone = (member['phone'] ?? 'N/A').toString();
+    final block = (member['block'] ?? 'N/A').toString();
+    final email = (member['email'] ?? member['memberEmail'] ?? 'N/A')
+        .toString();
+    // Resolve gender from top-level or nested personalInfo, default to NA
+    final Map<String, dynamic>? personalInfo =
+        member['personalInfo'] as Map<String, dynamic>?;
+    final gender =
+        (member['gender'] ??
+                (personalInfo != null ? personalInfo['gender'] : null) ??
+                'NA')
+            .toString();
+    final appliedAt =
+        member['blockApprovedAt'] ?? member['createdAt'] ?? member['appliedOn'];
+    String appliedOnStr = 'N/A';
+    try {
+      if (appliedAt != null) {
+        final dt = DateTime.parse(appliedAt.toString());
+        appliedOnStr = _fmt.format(dt);
+      }
+    } catch (_) {}
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -236,7 +280,9 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF3B82F6).withAlpha((0.1 * 255).toInt()),
+                    color: const Color(
+                      0xFF3B82F6,
+                    ).withAlpha((0.1 * 255).toInt()),
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: const Icon(
@@ -251,7 +297,7 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        member['name'] ?? 'Unknown',
+                        name,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -260,11 +306,8 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Phone: ${member['phone'] ?? 'N/A'}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                        'Phone: $phone',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                     ],
                   ),
@@ -275,7 +318,9 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(status).withAlpha((0.1 * 255).toInt()),
+                    color: _getStatusColor(
+                      status,
+                    ).withAlpha((0.1 * 255).toInt()),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -292,33 +337,87 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: _buildInfoItem(
-                    icon: Icons.location_on_outlined,
-                    label: 'Block',
-                    value: member['block'] ?? 'N/A',
+                const Icon(
+                  Icons.location_on,
+                  size: 16,
+                  color: Color(0xFF6B7280),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Block: $block',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF374151),
                   ),
                 ),
-                Expanded(
-                  child: _buildInfoItem(
-                    icon: Icons.calendar_today_outlined,
-                    label: 'Applied',
-                    value: _formatDate(member['createdAt']),
+                const Spacer(),
+                const Icon(
+                  Icons.calendar_today,
+                  size: 14,
+                  color: Color(0xFF6B7280),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Applied: $appliedOnStr',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF374151),
                   ),
                 ),
               ],
             ),
-            if (member['email'] != null) ...[
-              const SizedBox(height: 8),
-              _buildInfoItem(
-                icon: Icons.email_outlined,
-                label: 'Email',
-                value: member['email'],
+            const SizedBox(height: 8),
+            // Second line: Email (left) and Gender (right)
+            Row(
+              children: [
+                const Icon(Icons.email, size: 16, color: Color(0xFF6B7280)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Email: $email',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF374151),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Icon(Icons.person, size: 16, color: Color(0xFF6B7280)),
+                const SizedBox(width: 6),
+                Text(
+                  'Gender: $gender',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => _openProfile(member),
+                child: const Text('View Details'),
               ),
-            ],
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  void _openProfile(Map<String, dynamic> member) {
+    final app = Map<String, dynamic>.from(member);
+    final userId = app['userId'] ?? app['memberId'] ?? app['_id'];
+    debugPrint('[DA_UI] user selected userId=${userId ?? 'unknown'}');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) =>
+          UserDetailsDropdown(app: app, onApprove: () {}, onReject: () {}),
     );
   }
 
@@ -329,11 +428,7 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
   }) {
     return Row(
       children: [
-        Icon(
-          icon,
-          size: 16,
-          color: Colors.grey[500],
-        ),
+        Icon(icon, size: 16, color: Colors.grey[500]),
         const SizedBox(width: 4),
         Text(
           '$label: ',
@@ -346,10 +441,7 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF0F172A),
-            ),
+            style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A)),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -377,7 +469,7 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
       case 'Pending-District':
         return 'Pending';
       case 'Pending-State':
-        return 'At State';
+        return 'Approved';
       case 'Rejected':
         return 'Rejected';
       case 'Approved':
@@ -391,7 +483,7 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
     if (date == null) return 'N/A';
     try {
       final dateTime = DateTime.parse(date.toString());
-      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+      return _fmt.format(dateTime);
     } catch (e) {
       return 'N/A';
     }

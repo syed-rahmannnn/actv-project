@@ -641,37 +641,25 @@ class ApiService {
   static Future<List<Map<String, dynamic>>> getDistrictAdminApplications(
     String districtAdminId,
   ) async {
-    final url = Uri.parse(
-      '$baseUrl/api/applications/district/$districtAdminId',
-    );
-    developer.log(
-      'ApiService: getDistrictAdminApplications called for admin: $districtAdminId',
-      name: 'ApiService',
-    );
-
+    // Prefer direct route under baseUrl to avoid double-/api prefix issues
+    final url = Uri.parse('$baseUrl/applications/district/$districtAdminId');
+    http.Response res;
     try {
-      final resp = await http.get(
-        url,
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      final body = _jsonDecodeSafe(resp.body);
-      if (resp.statusCode >= 200 && resp.statusCode < 300) {
-        if (body is List) {
-          return List<Map<String, dynamic>>.from(body);
-        } else {
-          return [];
-        }
-      } else {
-        throw Exception(body['message'] ?? 'Failed to fetch applications');
-      }
+      res = await http.get(url, headers: await _staticHeaders());
     } catch (e) {
-      developer.log(
-        'getDistrictAdminApplications error: $e',
-        name: 'ApiService',
-      );
-      throw Exception('Network error: $e');
+      // Fallback: try legacy paths if direct route fails at network layer
+      res = await _getWithFallback('/district/$districtAdminId');
     }
+
+    if (res.statusCode == 200) {
+      final data = _jsonDecodeSafe(res.body);
+      if (data is Map) {
+        final apps = data['applications'];
+        if (apps is List) return List<Map<String, dynamic>>.from(apps);
+      }
+      return [];
+    }
+    throw _err(res);
   }
 
   // Review district application (approve/reject)
@@ -679,34 +667,16 @@ class ApiService {
     String applicationId,
     String action, {
     String? reason,
+    required String adminId,
   }) async {
-    final url = Uri.parse(
-      '$baseUrl/api/applications/district-review/$applicationId',
-    );
-    developer.log(
-      'ApiService: reviewDistrictApplication called - action: $action',
-      name: 'ApiService',
-    );
-
-    try {
-      final payload = {'action': action, if (reason != null) 'reason': reason};
-
-      final resp = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(payload),
-      );
-
-      final body = _jsonDecodeSafe(resp.body);
-      if (resp.statusCode >= 200 && resp.statusCode < 300) {
-        return body['success'] == true;
-      } else {
-        throw Exception(body['message'] ?? 'Failed to review application');
-      }
-    } catch (e) {
-      developer.log('reviewDistrictApplication error: $e', name: 'ApiService');
-      throw Exception('Network error: $e');
-    }
+    final body = {
+      'action': action,
+      'adminId': adminId,
+      if (reason != null) 'reason': reason,
+    };
+    final res = await _postWithFallback('/district-review/$applicationId', body);
+    if (res.statusCode == 200) return true;
+    throw _err(res);
   }
 }
 

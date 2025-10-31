@@ -29,10 +29,19 @@ class AuthProvider {
         meta: AdminMeta(
           state: userData['state'] ?? userData['meta']?['state'] ?? '',
           district: userData['district'] ?? userData['meta']?['district'] ?? '',
-          block: userData['block'] ?? userData['blockName'] ?? userData['meta']?['block'] ?? '',
-          stateName: userData['meta']?['stateName'] ?? userData['stateName'] ?? '',
-          districtName: userData['meta']?['districtName'] ?? userData['districtName'] ?? '',
-          blockName: userData['meta']?['blockName'] ?? userData['blockName'] ?? '',
+          block:
+              userData['block'] ??
+              userData['blockName'] ??
+              userData['meta']?['block'] ??
+              '',
+          stateName:
+              userData['meta']?['stateName'] ?? userData['stateName'] ?? '',
+          districtName:
+              userData['meta']?['districtName'] ??
+              userData['districtName'] ??
+              '',
+          blockName:
+              userData['meta']?['blockName'] ?? userData['blockName'] ?? '',
         ),
         active: (userData['active'] ?? true) == true,
       );
@@ -47,7 +56,7 @@ class AdminData {
   final String fullName;
   final AdminMeta meta;
   final bool active;
-  
+
   AdminData({
     required this.adminId,
     required this.email,
@@ -65,7 +74,7 @@ class AdminMeta {
   final String stateName;
   final String districtName;
   final String blockName;
-  
+
   AdminMeta({
     required this.state,
     required this.district,
@@ -129,37 +138,27 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
 
   Future<void> _loadFromParams() async {
     if (adminId.isEmpty) {
-      print('DistrictAdminSettings: adminId is empty, cannot load stats');
       setState(() => _loading = false);
       return;
     }
-    
+
     setState(() => _loading = true);
-    
+
     try {
-      print('DistrictAdminSettings: Loading stats for adminId: $adminId');
       // Reuses the same stats endpoint as dashboard (true numbers).
-      final data = await _svc.getDistrictStats(
-        adminId,
-      );
-      
-      print('DistrictAdminSettings: Received stats data: $data');
-      
+      final data = await _svc.getDistrictStats(adminId);
+
       if (!mounted) return;
       setState(() {
         _stats = data;
         _loading = false;
       });
-      
-      print('DistrictAdminSettings: Stats updated successfully: $_stats');
     } catch (e) {
-      print('DistrictAdminSettings: Error loading stats: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _initFromAuth() async {
-    print('DistrictAdminSettings: Initializing from auth');
     await _auth._loadAuthData();
     if (_auth.currentAdmin != null) {
       final a = _auth.currentAdmin!;
@@ -173,13 +172,10 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
 
       active = a.active;
       _svc = ApplicationService(_config.apiBaseUrl, token: _auth.token);
-      
-      print('DistrictAdminSettings: Auth data loaded - adminId: $adminId, districtName: $districtName');
       await _loadFromParams();
     } else {
       // If no admin data is available, try to load from AuthService directly
       try {
-        print('DistrictAdminSettings: No auth admin data, trying AuthService');
         final userData = await AuthService.getUserData();
         if (userData != null) {
           adminId = userData['adminId']?.toString() ?? '';
@@ -198,19 +194,17 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
           final token = await AuthService.getToken();
           if (token != null) {
             _svc = ApplicationService(_config.apiBaseUrl, token: token);
-            print('DistrictAdminSettings: AuthService data loaded - adminId: $adminId, districtName: $districtName');
             await _loadFromParams();
           }
         }
       } catch (e) {
-        print('DistrictAdminSettings: Error loading from AuthService: $e');
+        // Log initialization error to avoid empty catch lint
       }
       setState(() => _loading = false);
     }
   }
 
   Future<void> _refresh() async {
-    print('DistrictAdminSettings: Refreshing data');
     setState(() => _loading = true);
     try {
       if (widget.apiBaseUrl != null && widget.token != null) {
@@ -524,9 +518,7 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
               ),
             ),
             SizedBox(height: 20),
-            Center(
-              child: CircularProgressIndicator(),
-            ),
+            Center(child: CircularProgressIndicator()),
             SizedBox(height: 20),
           ],
         ),

@@ -351,7 +351,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
             alignment: Alignment.topRight,
             children: [
               _iconButton(Icons.notifications_none_rounded),
-              if (_pending.length > 0)
+              if (_pending.isNotEmpty)
                 Positioned(right: 0, top: 0, child: _notifDot(_pending.length.toString())),
             ],
           ),
