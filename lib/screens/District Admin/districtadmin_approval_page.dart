@@ -704,6 +704,8 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
         return const Color(0xFFF59E0B);
       case 'Pending-State':
         return const Color(0xFF10B981);
+      case 'Approved':
+        return const Color(0xFF10B981);
       case 'Rejected':
         return const Color(0xFFEF4444);
       default:

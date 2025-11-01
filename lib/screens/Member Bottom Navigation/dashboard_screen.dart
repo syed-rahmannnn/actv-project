@@ -3,7 +3,7 @@ import '../Member Profile/profile_screen.dart';
 import 'browse_members_screen.dart';
 import 'notification_screen.dart';
 import '../Member Addtional Details/personal_details_form.dart';
-import '../Application Status/application_submitted_screen.dart';
+import '../Application Status/application_status_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -351,7 +351,6 @@ Widget _buildCompletionCard(
 }
 
 Widget _buildStatusCard(BuildContext context, Map<String, dynamic> userData) {
-  final data = userData;
   return Card(
     elevation: 2,
     margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -394,8 +393,7 @@ Widget _buildStatusCard(BuildContext context, Map<String, dynamic> userData) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) =>
-                            ApplicationSubmittedScreen(userData: data),
+                        builder: (context) => const ApplicationStatusScreen(),
                       ),
                     );
                   },

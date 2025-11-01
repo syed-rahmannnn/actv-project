@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/application_status_service.dart';
+import '../Member Bottom Navigation/dashboard_screen.dart';
+import '../../services/auth_service.dart';
 
 // Stage model for dynamic UI rendering
 class ApplicationStage {
@@ -146,7 +148,9 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
         message: data.status == 'Approved'
             ? 'Your application has been approved. Please proceed to payment.'
             : '',
-        statusColor: data.status == 'Approved' ? Colors.green : Colors.blue,
+        statusColor: data.status == 'Approved'
+            ? const Color(0xFF4CAF50)
+            : const Color(0xFF90CAF9),
         icon: data.status == 'Approved' ? Icons.check : Icons.payment,
         isCompleted: data.status == 'Approved',
         isActive: false,
@@ -179,13 +183,13 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
     final status = _getStageStatus(stageType, data);
     switch (status) {
       case 'approved':
-        return Colors.green;
+        return const Color(0xFF4CAF50); // New green for approved
       case 'in_progress':
-        return Colors.orange;
+        return const Color(0xFF2196F3); // New blue for in progress
       case 'rejected':
-        return Colors.red;
+        return const Color(0xFFF44336); // New red for rejected
       default:
-        return Colors.blue;
+        return const Color(0xFF90CAF9); // New light blue for pending
     }
   }
 
@@ -391,23 +395,47 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Progress Bar
+                  // Progress Bar - using new gradient colors based on backend status
                   Container(
                     width: double.infinity,
-                    height: 8,
+                    height: 10,
                     decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(4),
+                      color: const Color(0xFFE8EAF6), // Light indigo background
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: FractionallySizedBox(
                       alignment: Alignment.centerLeft,
                       widthFactor: _getDynamicProgressPercentage(),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: applicationData!.isRejected
-                              ? Colors.red[600]
-                              : const Color(0xFF2196F3),
-                          borderRadius: BorderRadius.circular(4),
+                          gradient: applicationData!.isRejected
+                              ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFFE53E3E),
+                                    Color(0xFFC53030),
+                                  ], // Red gradient for rejected
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                )
+                              : const LinearGradient(
+                                  colors: [
+                                    Color(0xFF3182CE),
+                                    Color(0xFF2B6CB0),
+                                  ], // Blue gradient for progress
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                          borderRadius: BorderRadius.circular(6),
+                          boxShadow: [
+                            BoxShadow(
+                              color: applicationData!.isRejected
+                                  ? const Color(0xFFE53E3E).withOpacity(0.3)
+                                  : const Color(0xFF3182CE).withOpacity(0.3),
+                              spreadRadius: 0,
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -443,13 +471,30 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
 
           const SizedBox(height: 30),
 
+          // Payment Registration Button (when all stages approved)
+          if (_isAllStagesApproved()) _buildPaymentRegistrationButton(),
+
           // Back to Dashboard Button
           Container(
             width: double.infinity,
             margin: const EdgeInsets.symmetric(horizontal: 16),
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Navigate back to dashboard
+              onPressed: () async {
+                // Get user data from AuthService
+                final userData = await AuthService.getUserData();
+                if (userData != null && mounted) {
+                  // Navigate to dashboard and clear the navigation stack
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => DashboardScreen(userData: userData),
+                    ),
+                    (route) => false, // Remove all previous routes
+                  );
+                } else {
+                  // Fallback: just pop if userData is not available
+                  Navigator.of(context).pop();
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
@@ -512,33 +557,43 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
         .replaceAll('Admin Review', 'Admin')
         .replaceAll('Ready for Payment', 'Ready for\nPayment');
 
+    // Get colors based on backend status
+    Color stepColor;
+    Color iconColor = Colors.white;
+
+    if (stage.isCompleted) {
+      stepColor = const Color(0xFF4CAF50); // Green for completed
+    } else if (stage.isActive) {
+      stepColor = const Color(0xFF2196F3); // Blue for active/in progress
+    } else if (stage.status == 'rejected') {
+      stepColor = const Color(0xFFF44336); // Red for rejected
+      iconColor = Colors.white;
+    } else {
+      stepColor = const Color(0xFFE0E0E0); // Light grey for pending
+      iconColor = const Color(0xFF9E9E9E);
+    }
+
     return Expanded(
       child: Column(
         children: [
           Container(
-            width: 20, // Reduced from 40 to 32
-            height: 20, // Reduced from 40 to 32
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
-              color: stage.isCompleted
-                  ? const Color(0xFF2196F3) // Blue for completed
-                  : (stage.isActive
-                        ? const Color(0xFF2196F3)
-                        : Colors.grey[300]),
+              color: stepColor,
               shape: BoxShape.circle,
+              boxShadow: stage.isCompleted || stage.isActive
+                  ? [
+                      BoxShadow(
+                        color: stepColor.withOpacity(0.3),
+                        spreadRadius: 1,
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
             ),
-            child: stage.isCompleted
-                ? const Icon(
-                    Icons.check,
-                    color: Colors.white,
-                    size: 16, // Reduced from 20 to 16
-                  )
-                : stage.isActive
-                ? const Icon(
-                    Icons.hourglass_empty,
-                    color: Colors.white,
-                    size: 16, // Reduced from 20 to 16
-                  )
-                : Container(),
+            child: _getStepIcon(stage, iconColor),
           ),
           const SizedBox(height: 8),
           Text(
@@ -547,9 +602,9 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w500,
-              color: stage.isCompleted
-                  ? Colors.black87
-                  : (stage.isActive ? Colors.black87 : Colors.grey[600]),
+              color: stage.isCompleted || stage.isActive
+                  ? const Color(0xFF1A1A1A)
+                  : const Color(0xFF757575),
             ),
           ),
         ],
@@ -557,60 +612,70 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
     );
   }
 
+  Widget _getStepIcon(ApplicationStage stage, Color iconColor) {
+    if (stage.status == 'rejected') {
+      return Icon(Icons.close, color: iconColor, size: 18);
+    } else if (stage.isCompleted) {
+      return Icon(Icons.check, color: iconColor, size: 18);
+    } else if (stage.isActive) {
+      return Icon(Icons.hourglass_empty, color: iconColor, size: 18);
+    } else {
+      return Icon(Icons.circle, color: iconColor, size: 8);
+    }
+  }
+
   Widget _buildDynamicStatusCard(ApplicationStage stage) {
+    // Get colors and styling based on backend status - using new design system
     Color statusColor;
     Color backgroundColor;
     String statusText;
 
     switch (stage.status) {
       case 'approved':
-        statusColor = const Color(0xFF219653); // Green text
-        backgroundColor = const Color(0xFFD1F5DD); // Light green background
+        statusColor = const Color(
+          0xFF2E7D32,
+        ); // Dark green text for better contrast
+        backgroundColor = const Color(0xFFE8F5E8); // Light green background
         statusText = 'Approved';
         break;
       case 'in_progress':
-        statusColor = const Color(0xFFFFB300); // Orange text
-        backgroundColor = const Color(0xFFFFF8D9); // Light yellow background
-        statusText = 'In progress';
+        statusColor = const Color(0xFF1565C0); // Dark blue text
+        backgroundColor = const Color(0xFFE3F2FD); // Light blue background
+        statusText = 'In Progress';
         break;
       case 'pending':
-        statusColor = const Color(0xFF1976D2); // Blue text
-        backgroundColor = const Color(0xFFE3F2FD); // Light blue background
+        statusColor = const Color(0xFF5D4037); // Dark brown text
+        backgroundColor = const Color(0xFFF3E5F5); // Light purple background
         statusText = 'Pending';
         break;
       case 'rejected':
         statusColor = Colors.white;
-        backgroundColor = const Color(0xFFF44336); // Red
+        backgroundColor = const Color(0xFFF44336); // Red background
         statusText = 'Rejected';
         break;
       default:
-        statusColor = const Color(0xFF1976D2); // Blue text
-        backgroundColor = const Color(0xFFE3F2FD); // Light blue background
+        statusColor = const Color(0xFF5D4037); // Dark brown text
+        backgroundColor = const Color(0xFFF3E5F5); // Light purple background
         statusText = 'Pending';
     }
 
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white, // White background
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.08),
+            spreadRadius: 0,
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white, // White background for inner container
-          borderRadius: BorderRadius.circular(8),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -626,21 +691,20 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
                       Text(
                         stage.displayName,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black, // Changed from blue to black
+                          color: Color(0xFF1A1A1A),
+                          letterSpacing: -0.2,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       if (stage.reviewer != null &&
                           stage.reviewer!.isNotEmpty) ...[
                         Text(
                           stage.reviewer!,
                           style: const TextStyle(
                             fontSize: 14,
-                            color: Color(
-                              0xFF4A5568,
-                            ), // Dark grey text to match waiting section
+                            color: Color(0xFF6B7280),
                             fontWeight: FontWeight.w400,
                           ),
                         ),
@@ -648,27 +712,32 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
                       if (stage.reviewDate != null) ...[
                         const SizedBox(height: 4),
                         Text(
-                          'Review date: ${_formatDateTime(stage.reviewDate!)}',
+                          'Review Date: ${_formatDateTime(stage.reviewDate!)}',
                           style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(
-                              0xFF4A5568,
-                            ), // Dark grey text to match waiting section
+                            fontSize: 13,
+                            color: Color(0xFF9CA3AF),
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ],
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                    horizontal: 14,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
                     color: backgroundColor,
                     borderRadius: BorderRadius.circular(20),
+                    border: stage.status == 'rejected'
+                        ? null
+                        : Border.all(
+                            color: statusColor.withOpacity(0.2),
+                            width: 1,
+                          ),
                   ),
                   child: Text(
                     statusText,
@@ -676,36 +745,84 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: statusColor,
+                      letterSpacing: 0.2,
                     ),
                   ),
                 ),
               ],
             ),
 
-            // Message Box (if exists)
+            // Message Box (if exists) - using new design with dynamic colors
             if (stage.message != null && stage.message!.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.all(12),
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Color(
-                    0xFFFEF3C7,
-                  ), // Exact background color from palette #FEF3C7
-                  borderRadius: BorderRadius.circular(8),
+                  color: stage.status == 'approved'
+                      ? const Color(0xFFE8F5E8) // Light green for approved
+                      : stage.status == 'rejected'
+                      ? const Color(0xFFFFEBEE) // Light red for rejected
+                      : const Color(
+                          0xFFFEF3C7,
+                        ), // Yellow for in_progress/pending
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Color(0xFFF59E0B),
+                    color: stage.status == 'approved'
+                        ? const Color(0xFF4CAF50).withOpacity(
+                            0.3,
+                          ) // Green border for approved
+                        : stage.status == 'rejected'
+                        ? const Color(0xFFE53E3E).withOpacity(
+                            0.3,
+                          ) // Red border for rejected
+                        : const Color(0xFFF59E0B).withOpacity(
+                            0.3,
+                          ), // Yellow border for in_progress/pending
                     width: 1,
-                  ), // Exact border color from palette #F59E0B
-                ),
-                child: Text(
-                  stage.message!,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(
-                      0xFFF59E0B,
-                    ), // Exact text color from palette #F59E0B
-                    height: 1.4,
                   ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      stage.status == 'rejected'
+                          ? Icons.error_outline
+                          : stage.status == 'approved'
+                          ? Icons.check_circle_outline
+                          : Icons.info_outline,
+                      color: stage.status == 'approved'
+                          ? const Color(0xFF4CAF50) // Green icon for approved
+                          : stage.status == 'rejected'
+                          ? const Color(0xFFE53E3E) // Red icon for rejected
+                          : const Color(
+                              0xFFF59E0B,
+                            ), // Yellow icon for in_progress/pending
+                      size: 18,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        stage.message!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: stage.status == 'approved'
+                              ? const Color(
+                                  0xFF2E7D32,
+                                ) // Dark green text for approved
+                              : stage.status == 'rejected'
+                              ? const Color(
+                                  0xFFD32F2F,
+                                ) // Dark red text for rejected
+                              : const Color(
+                                  0xFFF59E0B,
+                                ), // Yellow text for in_progress/pending
+                          height: 1.5,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -806,6 +923,188 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // Helper method to check if all stages are approved
+  bool _isAllStagesApproved() {
+    if (applicationData == null) return false;
+    return applicationData!.isBlockApproved &&
+        applicationData!.isDistrictApproved &&
+        applicationData!.isStateApproved &&
+        !applicationData!.isRejected;
+  }
+
+  // Payment Registration Button Widget
+  Widget _buildPaymentRegistrationButton() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          // Success message
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E8),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFF4CAF50).withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: const Color(0xFF4CAF50),
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Congratulations! 🎉',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF2E7D32),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Your application has been approved by all authorities. You can now proceed with the payment registration.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: const Color(0xFF2E7D32),
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Payment Registration Button
+          ElevatedButton(
+            onPressed: () {
+              _handlePaymentRegistration();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2196F3),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 2,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.payment, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Register for Payment',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  // Handle payment registration
+  void _handlePaymentRegistration() {
+    // Show confirmation dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.payment, color: const Color(0xFF4CAF50)),
+              const SizedBox(width: 8),
+              Text('Payment Registration'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'You are about to proceed with the payment registration process.',
+                style: TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3E5F5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Next Steps:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF7B1FA2),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '• Complete payment process\n• Receive membership confirmation\n• Access member benefits',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: const Color(0xFF7B1FA2),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // TODO: Navigate to payment screen or process
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Payment registration initiated! 🎉'),
+                    backgroundColor: const Color(0xFF4CAF50),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4CAF50),
+                foregroundColor: Colors.white,
+              ),
+              child: Text('Proceed'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
