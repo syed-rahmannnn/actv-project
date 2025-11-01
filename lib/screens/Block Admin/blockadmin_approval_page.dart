@@ -61,16 +61,25 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
 
   // Helpers
   List<Map<String, dynamic>> get _pending => _all.where((a) {
-    final status = (a['status'] ?? '').toString().toLowerCase();
-    // Only treat exact 'pending-block' and 'submitted' as pending
-    return status == 'pending-block' || status == 'submitted';
+    final status = (a['status'] ?? '').toString();
+    final statusLower = status.toLowerCase();
+
+    // Applications that are truly pending at block level
+    return statusLower == 'pending-block' ||
+        statusLower == 'submitted' ||
+        statusLower == 'pending';
   }).toList();
 
   List<Map<String, dynamic>> get _approved => _all.where((a) {
     final status = (a['status'] ?? '').toString();
-    return status == 'Approved' ||
-        status == 'Pending-District' ||
-        status == 'Pending-State';
+    // Applications that have been approved by block admin (but may be pending at higher levels)
+    // Exclude any status that contains 'pending' at block level
+    return (status == 'Approved' ||
+            status == 'Pending-District' ||
+            status == 'Pending-State') &&
+        !status.toLowerCase().contains('pending-block') &&
+        status.toLowerCase() != 'pending' &&
+        status.toLowerCase() != 'submitted';
   }).toList();
 
   List<Map<String, dynamic>> get _rejected => _all.where((a) {
@@ -93,6 +102,26 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
 
   Future<void> _approve(String appId) async {
     try {
+      // Immediately update local state for instant UI feedback
+      setState(() {
+        // Find and update the application in all relevant lists
+        for (var list in [_pending, _approved, _rejected, _all]) {
+          final index = list.indexWhere(
+            (app) => app['_id'].toString() == appId,
+          );
+          if (index != -1) {
+            list[index]['status'] = 'Approved';
+            list[index]['reviewedBy'] = {
+              'blockAdmin': {
+                'fullName': 'Block Admin',
+                'meta': {'blockName': widget.blockName},
+              },
+            };
+            break;
+          }
+        }
+      });
+
       // Show loading indicator
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -118,7 +147,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
         'approve',
         adminId: widget.blockAdminId,
       );
-      
+
       if (ok) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -128,10 +157,15 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
             ),
           );
         }
-        // Refresh the data to update UI state
+        // Refresh the data to sync with server state
+        await _load();
+      } else {
+        // Revert local state if API call failed
         await _load();
       }
     } catch (e) {
+      // Revert local state if API call failed
+      await _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -161,9 +195,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFFFF5C5C),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFFFF5C5C)),
             child: const Text('Reject'),
           ),
         ],
@@ -171,6 +203,31 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
     );
     if (ok == true) {
       try {
+        final rejectionReason = reasonCtrl.text.trim();
+
+        // Immediately update local state for instant UI feedback
+        setState(() {
+          // Find and update the application in all relevant lists
+          for (var list in [_pending, _approved, _rejected, _all]) {
+            final index = list.indexWhere(
+              (app) => app['_id'].toString() == appId,
+            );
+            if (index != -1) {
+              list[index]['status'] = 'Rejected';
+              list[index]['rejectionReason'] = rejectionReason.isEmpty
+                  ? null
+                  : rejectionReason;
+              list[index]['reviewedBy'] = {
+                'blockAdmin': {
+                  'fullName': 'Block Admin',
+                  'meta': {'blockName': widget.blockName},
+                },
+              };
+              break;
+            }
+          }
+        });
+
         // Show loading indicator
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -195,9 +252,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
           appId,
           'reject',
           adminId: widget.blockAdminId,
-          reason: reasonCtrl.text.trim().isEmpty
-              ? null
-              : reasonCtrl.text.trim(),
+          reason: rejectionReason.isEmpty ? null : rejectionReason,
         );
         if (ok2) {
           if (mounted) {
@@ -208,10 +263,15 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
               ),
             );
           }
-          // Refresh the data to update UI state
+          // Refresh the data to sync with server state
+          await _load();
+        } else {
+          // Revert local state if API call failed
           await _load();
         }
       } catch (e) {
+        // Revert local state if API call failed
+        await _load();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -256,6 +316,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
                     memberProfile: Map<String, dynamic>.from(
                       profileRes['data'],
                     ),
+                    showActions: false,
                     onApprove: () => _approve(app['_id'].toString()),
                     onReject: () => _reject(app['_id'].toString()),
                   ),
@@ -274,6 +335,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
           backgroundColor: Colors.transparent,
           builder: (_) => UserDetailsDropdown(
             app: Map<String, dynamic>.from(app),
+            showActions: false,
             onApprove: () => _approve(app['_id'].toString()),
             onReject: () => _reject(app['_id'].toString()),
           ),
@@ -352,7 +414,11 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
             children: [
               _iconButton(Icons.notifications_none_rounded),
               if (_pending.isNotEmpty)
-                Positioned(right: 0, top: 0, child: _notifDot(_pending.length.toString())),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: _notifDot(_pending.length.toString()),
+                ),
             ],
           ),
           const SizedBox(width: 10),
@@ -415,17 +481,29 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            chip('Pending ($pendingCount)', _tab == ApprovalCategory.pending, () {
-              setState(() => _tab = ApprovalCategory.pending);
-            }),
+            chip(
+              'Pending ($pendingCount)',
+              _tab == ApprovalCategory.pending,
+              () {
+                setState(() => _tab = ApprovalCategory.pending);
+              },
+            ),
             const SizedBox(width: 8),
-            chip('Approved ($approvedCount)', _tab == ApprovalCategory.approved, () {
-              setState(() => _tab = ApprovalCategory.approved);
-            }),
+            chip(
+              'Approved ($approvedCount)',
+              _tab == ApprovalCategory.approved,
+              () {
+                setState(() => _tab = ApprovalCategory.approved);
+              },
+            ),
             const SizedBox(width: 8),
-            chip('Rejected ($rejectedCount)', _tab == ApprovalCategory.rejected, () {
-              setState(() => _tab = ApprovalCategory.rejected);
-            }),
+            chip(
+              'Rejected ($rejectedCount)',
+              _tab == ApprovalCategory.rejected,
+              () {
+                setState(() => _tab = ApprovalCategory.rejected);
+              },
+            ),
             const SizedBox(width: 8),
             chip('All ($allCount)', _tab == ApprovalCategory.all, () {
               setState(() => _tab = ApprovalCategory.all);
@@ -437,6 +515,21 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
   }
 
   Widget _memberCard(Map<String, dynamic> app) {
+    // Helper to format dates like DD/MM/YYYY with safe fallback
+    String fmtDate(dynamic value) {
+      if (value == null) return 'N/A';
+      try {
+        final s = value.toString();
+        final dt = DateTime.parse(s);
+        final dd = dt.day.toString().padLeft(2, '0');
+        final mm = dt.month.toString().padLeft(2, '0');
+        final yyyy = dt.year.toString();
+        return '$dd/$mm/$yyyy';
+      } catch (_) {
+        return 'N/A';
+      }
+    }
+
     final id = app['_id']?.toString() ?? '';
     final fullName = app['fullName']?.toString() ?? 'Member';
     final email = app['email']?.toString() ?? '';
@@ -445,45 +538,71 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
     final block = app['block']?.toString() ?? widget.blockName;
     final rejectionReason = app['rejectionReason']?.toString() ?? '';
 
+    // Extract applied date from createdAt or submittedAt
+    final appliedDate = fmtDate(app['createdAt'] ?? app['submittedAt']);
+
     final form = app['formData'] != null
         ? Map<String, dynamic>.from(app['formData'])
         : <String, dynamic>{};
     final role = (form['role'] ?? 'Member').toString();
-    final gender = (form['gender'] ?? '').toString();
+    final gender = (form['gender'] ?? 'NA').toString();
 
-    // Improved status detection logic
-    final statusLower = status.toLowerCase();
-    final isApproved = statusLower.contains('approved') || 
-                      statusLower.contains('pending-district') ||
-                      status == 'Approved' ||
-                      status == 'Pending-District';
-    final isRejected = statusLower.contains('rejected') || 
-                      status == 'Rejected';
-    final isPending = !isApproved && !isRejected && (
-                     statusLower.contains('pending-block') ||
-                     statusLower.contains('pending') ||
-                     statusLower == 'submitted' ||
-                     statusLower == 'pending');
+    // Context-aware status detection based on current tab
+    bool displayAsPending, displayAsApproved, displayAsRejected;
+    String statusText;
 
-    Color chipColor;
-    String chipText;
-    if (isApproved) {
-      chipColor = const Color(0xFF16A34A);
-      chipText = 'Approved';
-    } else if (isRejected) {
-      chipColor = const Color(0xFFFF5C5C);
-      chipText = 'Rejected';
+    if (_tab == ApprovalCategory.pending) {
+      // In pending tab, show as pending
+      displayAsPending = true;
+      displayAsApproved = false;
+      displayAsRejected = false;
+      statusText = 'Pending';
+    } else if (_tab == ApprovalCategory.approved) {
+      // In approved tab, show appropriate status based on actual status
+      displayAsPending = false;
+      displayAsApproved = true;
+      displayAsRejected = false;
+
+      // Show specific status for forwarded applications
+      if (status == 'Pending-District') {
+        statusText = 'Forwarded to District';
+      } else {
+        statusText = 'Forwarded to District';
+      }
+    } else if (_tab == ApprovalCategory.rejected) {
+      // In rejected tab, show as rejected
+      displayAsPending = false;
+      displayAsApproved = false;
+      displayAsRejected = true;
+      statusText = 'Rejected';
     } else {
-      chipColor = const Color(0xFF1E88FF);
-      chipText = 'Pending';
+      // In "All" tab, use actual status detection
+      final statusLower = status.toLowerCase();
+      final isApproved =
+          statusLower.contains('approved') ||
+          statusLower.contains('pending-district') ||
+          statusLower.contains('pending-state') ||
+          status == 'Approved' ||
+          status == 'Pending-District' ||
+          status == 'Pending-State';
+      final isRejected =
+          statusLower.contains('rejected') || status == 'Rejected';
+      final isPending = !isApproved && !isRejected;
+
+      displayAsPending = isPending;
+      displayAsApproved = isApproved;
+      displayAsRejected = isRejected;
+      statusText = displayAsPending
+          ? 'Pending'
+          : displayAsApproved
+          ? 'Approved'
+          : 'Rejected';
     }
 
     return GestureDetector(
-      onTap: () => _openProfileSheet(
-        app,
-      ), // same dropdown behavior as dashboard :contentReference[oaicite:5]{index=5}
+      onTap: () => _openProfileSheet(app),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
+        margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -500,14 +619,16 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Top row: avatar, name + phone, status pill at right
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const CircleAvatar(
                   radius: 22,
                   backgroundColor: Color(0xFFE5E7EB),
                   child: Icon(Icons.person, color: Color(0xFF6B7280)),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -516,71 +637,138 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
                         fullName,
                         style: const TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                           color: Color(0xFF0F172A),
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        email,
+                        'Phone: $phone',
                         style: const TextStyle(
+                          fontSize: 13,
                           color: Color(0xFF6B7280),
-                          fontSize: 14,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Role: $role, Gender: ${gender.isEmpty ? '—' : gender}',
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 14,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '$block Block',
-                        style: const TextStyle(
-                          color: Color(0xFF374151),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        phone,
-                        style: const TextStyle(
-                          color: Color(0xFF16A34A),
-                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
                   ),
                 ),
+                // Status pill styled like District Admin
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: chipColor.withAlpha((0.15 * 255).toInt()),
-                    borderRadius: BorderRadius.circular(16),
+                    color: displayAsPending
+                        ? const Color(0xFFFEF3C7)
+                        : displayAsApproved
+                        ? const Color(0xFFDCFCE7)
+                        : const Color(0xFFFEE2E2),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: displayAsPending
+                          ? const Color(0xFFF59E0B)
+                          : displayAsApproved
+                          ? const Color(0xFF16A34A)
+                          : const Color(0xFFFF5C5C),
+                    ),
                   ),
                   child: Text(
-                    chipText,
+                    statusText,
                     style: TextStyle(
-                      color: chipColor,
-                      fontWeight: FontWeight.w700,
+                      color: displayAsPending
+                          ? const Color(0xFFF59E0B)
+                          : displayAsApproved
+                          ? const Color(0xFF16A34A)
+                          : const Color(0xFFFF5C5C),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ],
             ),
+
+            const SizedBox(height: 10),
+
+            // Block (left) and Applied on date (right)
+            Row(
+              children: [
+                const Icon(
+                  Icons.location_on,
+                  size: 16,
+                  color: Color(0xFF6B7280),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Block: $block',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+                const Spacer(),
+                const Icon(
+                  Icons.calendar_today,
+                  size: 14,
+                  color: Color(0xFF6B7280),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Applied: $appliedDate',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // Second line: Email (left) and Gender (right)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.email, size: 16, color: Color(0xFF6B7280)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Email: $email',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF374151),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.person,
+                      size: 16,
+                      color: Color(0xFF6B7280),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Gender: $gender',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF374151),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
-            // Show buttons only for pending status, otherwise show status badge and reason
-            if (isPending)
+            // Show buttons only in pending tab (these are truly pending applications)
+            if (_tab == ApprovalCategory.pending)
               Row(
                 children: [
                   Expanded(
@@ -589,34 +777,40 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF16A34A),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         elevation: 0,
                       ),
                       child: const Text(
                         'Approve',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => _reject(id),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFF5C5C),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         elevation: 0,
                       ),
                       child: const Text(
                         'Reject',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ),
@@ -628,7 +822,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
                 children: [
                   // Status description only (no duplicate badge)
                   Text(
-                    isApproved
+                    _tab == ApprovalCategory.approved
                         ? _getApprovalText(app)
                         : _getRejectionText(app),
                     style: const TextStyle(
@@ -637,7 +831,8 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
                     ),
                   ),
                   // Show rejection reason if available
-                  if (isRejected && rejectionReason.isNotEmpty) ...[
+                  if (_tab == ApprovalCategory.rejected &&
+                      rejectionReason.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
                       'Reason: $rejectionReason',
@@ -701,27 +896,31 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
       final blockAdmin = reviewedBy['blockAdmin'];
       if (blockAdmin != null && blockAdmin is Map<String, dynamic>) {
         final adminName = blockAdmin['fullName']?.toString() ?? 'Block Admin';
-        final blockName = blockAdmin['meta']?['blockName']?.toString() ?? widget.blockName;
+        final blockName =
+            blockAdmin['meta']?['blockName']?.toString() ?? widget.blockName;
         return 'Approved by $adminName, $blockName Admin';
       }
-      
+
       // Check for district admin approval
       final districtAdmin = reviewedBy['districtAdmin'];
       if (districtAdmin != null && districtAdmin is Map<String, dynamic>) {
-        final adminName = districtAdmin['fullName']?.toString() ?? 'District Admin';
-        final districtName = districtAdmin['meta']?['districtName']?.toString() ?? 'District';
+        final adminName =
+            districtAdmin['fullName']?.toString() ?? 'District Admin';
+        final districtName =
+            districtAdmin['meta']?['districtName']?.toString() ?? 'District';
         return 'Approved by $adminName, $districtName Admin';
       }
-      
+
       // Check for state admin approval
       final stateAdmin = reviewedBy['stateAdmin'];
       if (stateAdmin != null && stateAdmin is Map<String, dynamic>) {
         final adminName = stateAdmin['fullName']?.toString() ?? 'State Admin';
-        final stateName = stateAdmin['meta']?['stateName']?.toString() ?? 'State';
+        final stateName =
+            stateAdmin['meta']?['stateName']?.toString() ?? 'State';
         return 'Approved by $adminName, $stateName Admin';
       }
     }
-    
+
     // Fallback to generic text if approval info is not available
     return 'Approved by ${widget.blockName}';
   }
@@ -734,27 +933,31 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
       final blockAdmin = reviewedBy['blockAdmin'];
       if (blockAdmin != null && blockAdmin is Map<String, dynamic>) {
         final adminName = blockAdmin['fullName']?.toString() ?? 'Block Admin';
-        final blockName = blockAdmin['meta']?['blockName']?.toString() ?? widget.blockName;
+        final blockName =
+            blockAdmin['meta']?['blockName']?.toString() ?? widget.blockName;
         return 'Rejected by $adminName, $blockName Admin';
       }
-      
+
       // Check for district admin rejection
       final districtAdmin = reviewedBy['districtAdmin'];
       if (districtAdmin != null && districtAdmin is Map<String, dynamic>) {
-        final adminName = districtAdmin['fullName']?.toString() ?? 'District Admin';
-        final districtName = districtAdmin['meta']?['districtName']?.toString() ?? 'District';
+        final adminName =
+            districtAdmin['fullName']?.toString() ?? 'District Admin';
+        final districtName =
+            districtAdmin['meta']?['districtName']?.toString() ?? 'District';
         return 'Rejected by $adminName, $districtName Admin';
       }
-      
+
       // Check for state admin rejection
       final stateAdmin = reviewedBy['stateAdmin'];
       if (stateAdmin != null && stateAdmin is Map<String, dynamic>) {
         final adminName = stateAdmin['fullName']?.toString() ?? 'State Admin';
-        final stateName = stateAdmin['meta']?['stateName']?.toString() ?? 'State';
+        final stateName =
+            stateAdmin['meta']?['stateName']?.toString() ?? 'State';
         return 'Rejected by $adminName, $stateName Admin';
       }
     }
-    
+
     // Fallback to generic text if rejection info is not available
     return 'Rejected by ${widget.blockName}';
   }

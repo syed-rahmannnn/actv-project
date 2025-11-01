@@ -255,154 +255,161 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
       }
     } catch (_) {}
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha((0.05 * 255).toInt()),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: const Color(
-                      0xFF3B82F6,
-                    ).withAlpha((0.1 * 255).toInt()),
-                    borderRadius: BorderRadius.circular(24),
+    return InkWell(
+      onTap: () => _openProfile(member),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha((0.05 * 255).toInt()),
+              blurRadius: 14,
+              offset: const Offset(0, 2),
+            ),
+          ],
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const CircleAvatar(
+                    radius: 22,
+                    backgroundColor: Color(0xFFE5E7EB),
+                    child: Icon(Icons.person, color: Color(0xFF6B7280)),
                   ),
-                  child: const Icon(
-                    Icons.person,
-                    color: Color(0xFF3B82F6),
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F172A),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Phone: $phone',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(
-                      status,
-                    ).withAlpha((0.1 * 255).toInt()),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    _getStatusText(status),
-                    style: TextStyle(
-                      color: _getStatusColor(status),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                        const SizedBox(height: 4),
+                        Text(
+                          'Phone: $phone',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(
-                  Icons.location_on,
-                  size: 16,
-                  color: Color(0xFF6B7280),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Block: $block',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF374151),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(
+                        status,
+                      ).withAlpha((0.1 * 255).toInt()),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _getStatusText(status),
+                      style: TextStyle(
+                        color: _getStatusColor(status),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-                const Spacer(),
-                const Icon(
-                  Icons.calendar_today,
-                  size: 14,
-                  color: Color(0xFF6B7280),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Applied: $appliedOnStr',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF374151),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.location_on,
+                    size: 16,
+                    color: Color(0xFF6B7280),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Second line: Email (left) and Gender (right)
-            Row(
-              children: [
-                const Icon(Icons.email, size: 16, color: Color(0xFF6B7280)),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Email: $email',
+                  const SizedBox(width: 6),
+                  Text(
+                    'Block: $block',
                     style: const TextStyle(
                       fontSize: 13,
                       color: Color(0xFF374151),
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(width: 12),
-                const Icon(Icons.person, size: 16, color: Color(0xFF6B7280)),
-                const SizedBox(width: 6),
-                Text(
-                  'Gender: $gender',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF374151),
+                  const Spacer(),
+                  const Icon(
+                    Icons.calendar_today,
+                    size: 14,
+                    color: Color(0xFF6B7280),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => _openProfile(member),
-                child: const Text('View Details'),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Applied: $appliedOnStr',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              // Second line: Email (left) and Gender (right)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.email,
+                        size: 16,
+                        color: Color(0xFF6B7280),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Email: $email',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF374151),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.person,
+                        size: 16,
+                        color: Color(0xFF6B7280),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Gender: $gender',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF374151),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              // Removed explicit button; entire card is tappable
+            ],
+          ),
         ),
       ),
     );
@@ -416,8 +423,12 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) =>
-          UserDetailsDropdown(app: app, onApprove: () {}, onReject: () {}),
+      builder: (_) => UserDetailsDropdown(
+        app: app,
+        onApprove: () {},
+        onReject: () {},
+        showActions: false,
+      ),
     );
   }
 

@@ -60,8 +60,8 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
         final user = await AuthService.getUserData();
         _resolvedDistrictAdminId = (user?['adminId'] ?? user?['_id'] ?? '')
             .toString();
-        _resolvedDistrictName =
-            (user?['districtName'] ?? 'District').toString();
+        _resolvedDistrictName = (user?['districtName'] ?? 'District')
+            .toString();
       } catch (_) {
         // Leave as null/empty; _load will still guard.
       }
@@ -118,7 +118,15 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
       case ApprovalCategory.rejected:
         return _all.where((app) => app['status'] == 'Rejected').toList();
       case ApprovalCategory.all:
-        return _all;
+        // Show only items that fall into pending/approved/rejected buckets
+        return _all.where((app) {
+          final s = (app['status'] ?? '').toString();
+          final sLower = s.toLowerCase();
+          final isPending = sLower.contains('pending-district');
+          final isApproved = s == 'Pending-State' || s == 'Approved';
+          final isRejected = s == 'Rejected';
+          return isPending || isApproved || isRejected;
+        }).toList();
     }
   }
 
@@ -350,7 +358,8 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
     final rejectedCount = _all
         .where((a) => (a['status'] ?? '') == 'Rejected')
         .length;
-    final allCount = _all.length;
+    // Make All equal to sum of category counts to avoid including other statuses
+    final allCount = pendingCount + approvedCount + rejectedCount;
 
     Widget chip(String label, bool active, VoidCallback onTap) {
       return GestureDetector(
@@ -472,251 +481,234 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
       }
     } catch (_) {}
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha((0.05 * 255).toInt()),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        fullName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Phone: $phone',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(
-                      status,
-                    ).withAlpha((0.1 * 255).toInt()),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    _getStatusText(status),
-                    style: TextStyle(
-                      color: _getStatusColor(status),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
+    return InkWell(
+      onTap: () => _openProfileSheet(app),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha((0.05 * 255).toInt()),
+              blurRadius: 14,
+              offset: const Offset(0, 2),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(
-                  Icons.location_on,
-                  size: 16,
-                  color: Color(0xFF6B7280),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Block: $block',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF374151),
-                  ),
-                ),
-                const Spacer(),
-                const Icon(
-                  Icons.calendar_today,
-                  size: 14,
-                  color: Color(0xFF6B7280),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Applied: $appliedOnStr',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF374151),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // Second line: Email (left) and Gender (right)
-            Row(
-              children: [
-                const Icon(Icons.email, size: 16, color: Color(0xFF6B7280)),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Email: $email',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF374151),
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Icon(Icons.person, size: 16, color: Color(0xFF6B7280)),
-                const SizedBox(width: 6),
-                Text(
-                  'Gender: $gender',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF374151),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Tap to open details
-            GestureDetector(
-              onTap: () => _openProfileSheet(app),
-              child: const SizedBox.shrink(),
-            ),
-            if (isPending) ...[
-              const SizedBox(height: 16),
+          ],
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _inFlightId == id ? null : () => _approve(id),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF16A34A),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: _inFlightId == id
-                          ? const SizedBox(
-                              height: 18,
-                              width: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Approve'),
-                    ),
+                  const CircleAvatar(
+                    radius: 26,
+                    backgroundColor: Color(0xFFE5E7EB),
+                    child: Icon(Icons.person, color: Color(0xFF6B7280)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: _inFlightId == id
-                          ? null
-                          : () => _showRejectDialog(id),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF5C5C),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          fullName,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F172A),
+                          ),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Phone: $phone',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(
+                        status,
+                      ).withAlpha((0.1 * 255).toInt()),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _getStatusText(status),
+                      style: TextStyle(
+                        color: _getStatusColor(status),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
-                      child: _inFlightId == id
-                          ? const SizedBox(
-                              height: 18,
-                              width: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Reject'),
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.location_on,
+                    size: 16,
+                    color: Color(0xFF6B7280),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Block: $block',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                  const Spacer(),
+                  const Icon(
+                    Icons.calendar_today,
+                    size: 14,
+                    color: Color(0xFF6B7280),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Applied: $appliedOnStr',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Second line: Email (left) and Gender (right)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.email,
+                        size: 16,
+                        color: Color(0xFF6B7280),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Email: $email',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF374151),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.person,
+                        size: 16,
+                        color: Color(0xFF6B7280),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Gender: $gender',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF374151),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              // Entire card is tappable; removed inner GestureDetector
+              if (isPending) ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _inFlightId == id
+                            ? null
+                            : () => _approve(id),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF16A34A),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: _inFlightId == id
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Approve'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _inFlightId == id
+                            ? null
+                            : () => _showRejectDialog(id),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF5C5C),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: _inFlightId == id
+                            ? const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Reject'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
 
-  void _openProfileSheet(Map<String, dynamic> app) async {
-    showDialog(
+  void _openProfileSheet(Map<String, dynamic> app) {
+    // Open details instantly without blocking network prefetch.
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => UserDetailsDropdown(
+        app: Map<String, dynamic>.from(app),
+        onApprove: () => _approve(app['_id'].toString()),
+        onReject: () => _showRejectDialog(app['_id'].toString()),
+        showActions: false,
+      ),
     );
-
-    try {
-      final email = app["email"] ?? app["memberEmail"];
-      if (email != null) {
-        final memberRes = await ApiService.getMemberByEmail(email);
-        if (memberRes['success'] == true && memberRes['data'] != null) {
-          final memberId =
-              memberRes['data']['id'] ??
-              memberRes['data']['memberId'] ??
-              memberRes['data']['_id'];
-          if (memberId != null) {
-            final profileRes = await ApiService.getMemberProfile(
-              memberId.toString(),
-            );
-            if (mounted) Navigator.pop(context);
-            if (profileRes['success'] == true && profileRes['data'] != null) {
-              if (mounted) {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (_) => UserDetailsDropdown(
-                    app: Map<String, dynamic>.from(app),
-                    onApprove: () => _approve(app['_id'].toString()),
-                    onReject: () => _showRejectDialog(app['_id'].toString()),
-                  ),
-                );
-              }
-              return;
-            }
-          }
-        }
-      }
-      if (mounted) Navigator.pop(context);
-      if (mounted) {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (_) => UserDetailsDropdown(
-            app: Map<String, dynamic>.from(app),
-            onApprove: () => _approve(app['_id'].toString()),
-            onReject: () => _showRejectDialog(app['_id'].toString()),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
-      }
-    }
   }
 
   Color _getStatusColor(String status) {

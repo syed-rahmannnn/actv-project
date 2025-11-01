@@ -414,12 +414,7 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
 
                   const SizedBox(height: 24),
 
-                  // Account section (same as mock; you'll wire later)
-                  _sectionCard(
-                    title: 'Account',
-                    items: const ['Profile Information', 'Notifications'],
-                  ),
-
+                  // Account section (same as mock; you'll wire later
                   const SizedBox(height: 16),
 
                   // Support section

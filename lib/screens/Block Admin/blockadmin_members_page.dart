@@ -219,6 +219,7 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
                     memberProfile: Map<String, dynamic>.from(
                       profileRes['data'],
                     ),
+                    showActions: false,
                     onApprove: () => _approve(app['_id'].toString()),
                     onReject: () => _reject(app['_id'].toString()),
                   ),
@@ -237,6 +238,7 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
           backgroundColor: Colors.transparent,
           builder: (_) => UserDetailsDropdown(
             app: Map<String, dynamic>.from(app),
+            showActions: false,
             onApprove: () => _approve(app['_id'].toString()),
             onReject: () => _reject(app['_id'].toString()),
           ),

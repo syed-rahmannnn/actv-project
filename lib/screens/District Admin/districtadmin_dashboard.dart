@@ -311,6 +311,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
 
   Widget _dashboard() {
     return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       child: Column(
         children: [
           _topBar(),
@@ -575,15 +576,15 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
     final appliedDate = fmtDate(app['blockApprovedAt'] ?? app['createdAt']);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha((0.06 * 255).toInt()),
-            blurRadius: 12,
+            blurRadius: 14,
             offset: const Offset(0, 6),
           ),
         ],
@@ -597,7 +598,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const CircleAvatar(
-                radius: 22,
+                radius: 26,
                 backgroundColor: Color(0xFFE5E7EB),
                 child: Icon(Icons.person, color: Color(0xFF6B7280)),
               ),
@@ -609,7 +610,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
                     Text(
                       fullName,
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 17,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF0F172A),
                       ),
@@ -675,35 +676,45 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
 
           const SizedBox(height: 8),
 
-          // Second line: Email (left) and Gender (right)
-          Row(
+          // Email and Gender vertically stacked (Gender below Email)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.email, size: 16, color: Color(0xFF6B7280)),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Email: $email',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF374151),
+              Row(
+                children: [
+                  const Icon(Icons.email, size: 16, color: Color(0xFF6B7280)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Email: $email',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF374151),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
+                ],
               ),
-              const SizedBox(width: 12),
-              const Icon(Icons.person, size: 16, color: Color(0xFF6B7280)),
-              const SizedBox(width: 6),
-              Text(
-                'Gender: $gender',
-                style: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(Icons.person, size: 16, color: Color(0xFF6B7280)),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Gender: $gender',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
 
-          const SizedBox(height: 12),
-
           // Approve/Reject buttons only for pending
-          if (status.contains('pending-district')) ...[
+          if (status.contains('pending')) ...[
             const SizedBox(height: 16),
             // Log before rendering action buttons
             Builder(
@@ -818,12 +829,14 @@ class UserDetailsDropdown extends StatelessWidget {
   final dynamic app;
   final VoidCallback onApprove;
   final VoidCallback onReject;
+  final bool showActions;
 
   const UserDetailsDropdown({
     super.key,
     required this.app,
     required this.onApprove,
     required this.onReject,
+    this.showActions = true,
   });
 
   @override
@@ -1123,7 +1136,8 @@ class UserDetailsDropdown extends StatelessWidget {
           ),
 
           // Action buttons
-          Container(
+          if (showActions)
+            Container(
             padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
               color: Colors.white,
