@@ -140,6 +140,39 @@ class ApplicationService {
     return (data['applications'] ?? []) as List<dynamic>;
   }
 
+  /// Fetch ALL applications for a state admin.
+  /// Uses `/applications/state/:stateAdminId` which will return all statuses
+  /// after backend update. Falls back to pending-only inbox if necessary.
+  Future<List<Map<String, dynamic>>> getStateApplications({
+    required String stateAdminId,
+    String status = 'all', // retained for compatibility; currently ignored
+  }) async {
+    try {
+      final res = await http.get(
+        Uri.parse('$baseUrl/applications/state/$stateAdminId'),
+        headers: _headers,
+      );
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data is Map && data['applications'] is List) {
+          return List<Map<String, dynamic>>.from(data['applications'] as List);
+        }
+        if (data is List) {
+          return data
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+        }
+        return [];
+      }
+    } catch (e) {
+      final inbox = await getStateInbox(stateAdminId);
+      return inbox.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+
+    final inbox = await getStateInbox(stateAdminId);
+    return inbox.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
   // ---------- REVIEWS ----------
   Future<Map<String, dynamic>> blockReview({
     required String appId,
@@ -320,6 +353,42 @@ class ApplicationService {
     };
   }
 
+  Future<Map<String, int>> getStateStats(String stateAdminId) async {
+    // Fetch all applications and derive counts to ensure accuracy
+    final all = await getStateApplications(stateAdminId: stateAdminId);
+
+    // Pending at state stage
+    final pendingCount = all.where((app) {
+      final status = (app['status'] ?? app['applicationStatus'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      return status == 'pending-state' || status.contains('pending-state');
+    }).length;
+
+    // Approved by state
+    final approved = await _getCount(
+      adminId: stateAdminId,
+      role: 'state',
+      status: 'Approved',
+    );
+
+    // Rejected (any stage) assigned to this state admin
+    final rejected = all.where((app) {
+      final status = (app['status'] ?? app['applicationStatus'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+      return status == 'rejected' || status.contains('rejected');
+    }).length;
+
+    return {
+      'pending': pendingCount,
+      'approved': approved,
+      'rejected': rejected,
+      'total': pendingCount + approved + rejected,
+    };
+  }
   // ---------- ADMIN DETAILS ----------
   Future<Map<String, dynamic>> getBlockAdminDetails(String adminId) async {
     final res = await http.get(

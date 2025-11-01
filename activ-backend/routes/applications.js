@@ -475,12 +475,34 @@ module.exports = (mongooseConnection) => {
         });
       }
 
+      // Fetch all applications for this state admin, regardless of status
       const apps = await Application.find({
         assignedStateAdmin: _id,
-        status: "Pending-State",
       }).sort({ createdAt: -1 });
 
-      res.json({ success: true, applications: apps, count: apps.length });
+      // Enhance applications similarly to the district admin route with member info
+      const enhancedApps = await Promise.all(apps.map(async (app) => {
+        const appObj = app.toObject();
+
+        // Attach simple member approval info if present
+        try {
+          const member = await MemberDetails.findOne({ userId: appObj.userId }).lean();
+          if (member && member.approvedBy) {
+            appObj.memberApprovedBy = {
+              blockAdmin: member.approvedBy.blockAdmin || null,
+              districtAdmin: member.approvedBy.districtAdmin || null,
+              stateAdmin: member.approvedBy.stateAdmin || null,
+            };
+            appObj.memberApprovedAt = member.approvedAt || null;
+          }
+        } catch (err) {
+          console.error('Error fetching member details for app', appObj._id, err);
+        }
+
+        return appObj;
+      }));
+
+      res.json({ success: true, applications: enhancedApps, count: enhancedApps.length });
     } catch (err) {
       console.error("Fetch state applications error:", err);
       res.status(500).json({ success: false, message: "Server error" });
