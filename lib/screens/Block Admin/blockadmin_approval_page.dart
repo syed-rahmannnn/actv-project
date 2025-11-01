@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart'; // uses your existing static helpers
+import '../../services/auth_service.dart';
+import '../../services/application_service.dart';
 import 'blockadmin_dashboard.dart'
     show UserDetailsDropdown; // reuse the same dropdown
 
@@ -31,6 +33,8 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
 
   // Raw list for this block admin (we’ll segment by status)
   List<Map<String, dynamic>> _all = [];
+  String _resolvedBlockName = '';
+  ApplicationService? _svc; // backend service for admin details
 
   @override
   void initState() {
@@ -42,12 +46,46 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      // This endpoint already exists in your code and returns applications for block admin.
-      // (It’s used in your project as: ApiService.getBlockAdminApplications) :contentReference[oaicite:0]{index=0}
-      final apps = await ApiService.getBlockAdminApplications(
+      // Try to resolve block name from authenticated user meta when not provided
+      if (widget.blockName.isEmpty) {
+        try {
+          final me = await AuthService.getUserData();
+          _resolvedBlockName =
+              me?['meta']?['blockName']?.toString() ??
+              me?['blockName']?.toString() ??
+              '';
+        } catch (_) {}
+      }
+      // If still unknown, resolve from backend like settings page does
+      if (_resolvedBlockName.isEmpty) {
+        try {
+          final token = await AuthService.getToken();
+          if (token != null && token.isNotEmpty) {
+            _svc = ApplicationService(widget.apiBaseUrl, token: token);
+            final details = await _svc!.getBlockAdminDetails(
+              widget.blockAdminId,
+            );
+            final meta = (details['meta'] ?? {}) as Map<String, dynamic>;
+            final candidate = (meta['blockName']?.toString() ?? '').trim();
+            if (candidate.isNotEmpty) {
+              _resolvedBlockName = candidate;
+            }
+          }
+        } catch (_) {}
+      }
+      // Fetch applications along with adminMeta in a single request
+      final resp = await ApiService.getBlockAdminApplicationsWithMeta(
         widget.blockAdminId,
       );
+      final apps = (resp['applications'] as List?) ?? const [];
       _all = List<Map<String, dynamic>>.from(apps);
+
+      // Prefer adminMeta.blockName when present for the subtitle
+      final meta = (resp['adminMeta'] as Map?) ?? const {};
+      final bn = (meta['blockName']?.toString() ?? '').trim();
+      if (bn.isNotEmpty) {
+        _resolvedBlockName = bn;
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -400,7 +438,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
       child: Row(
         children: [
           const Text(
-            'Approvals',
+            'Block Approvals',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
@@ -432,11 +470,11 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
     );
   }
 
-  Widget _subtitle() => const Padding(
-    padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
+  Widget _subtitle() => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
     child: Text(
-      'Manage member requests',
-      style: TextStyle(color: Color(0xFF6B7280)),
+      'Manage ${(widget.blockName.isNotEmpty == true ? widget.blockName : (_resolvedBlockName.isNotEmpty ? _resolvedBlockName : 'Block'))} Applications',
+      style: const TextStyle(color: Color(0xFF6B7280)),
     ),
   );
 
@@ -544,24 +582,21 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
     final form = app['formData'] != null
         ? Map<String, dynamic>.from(app['formData'])
         : <String, dynamic>{};
-    final role = (form['role'] ?? 'Member').toString();
     final gender = (form['gender'] ?? 'NA').toString();
 
     // Context-aware status detection based on current tab
-    bool displayAsPending, displayAsApproved, displayAsRejected;
+    bool displayAsPending, displayAsApproved;
     String statusText;
 
     if (_tab == ApprovalCategory.pending) {
       // In pending tab, show as pending
       displayAsPending = true;
       displayAsApproved = false;
-      displayAsRejected = false;
       statusText = 'Pending';
     } else if (_tab == ApprovalCategory.approved) {
       // In approved tab, show appropriate status based on actual status
       displayAsPending = false;
       displayAsApproved = true;
-      displayAsRejected = false;
 
       // Show specific status for forwarded applications
       if (status == 'Pending-District') {
@@ -573,7 +608,6 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
       // In rejected tab, show as rejected
       displayAsPending = false;
       displayAsApproved = false;
-      displayAsRejected = true;
       statusText = 'Rejected';
     } else {
       // In "All" tab, use actual status detection
@@ -591,7 +625,6 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
 
       displayAsPending = isPending;
       displayAsApproved = isApproved;
-      displayAsRejected = isRejected;
       statusText = displayAsPending
           ? 'Pending'
           : displayAsApproved

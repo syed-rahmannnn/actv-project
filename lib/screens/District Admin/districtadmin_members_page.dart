@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../services/api_service.dart';
 import '../../services/application_service.dart';
 import 'districtadmin_dashboard.dart' show UserDetailsDropdown;
 
@@ -74,8 +73,19 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
   }
 
   List<Map<String, dynamic>> get _filtered {
-    if (_query.isEmpty) return _all;
-    return _all.where((app) {
+    // Only show district-relevant statuses: Approved, Rejected, Pending-District
+    bool isAllowed(Map<String, dynamic> app) {
+      final raw = (app['status'] ?? '').toString();
+      final status = raw.trim();
+      return status == 'Approved' ||
+          status == 'Rejected' ||
+          status == 'Pending-District';
+    }
+
+    final base = _all.where(isAllowed).toList();
+    if (_query.isEmpty) return base;
+
+    return base.where((app) {
       final name = (app['name'] ?? '').toString().toLowerCase();
       final phone = (app['phone'] ?? '').toString().toLowerCase();
       final district = (app['district'] ?? '').toString().toLowerCase();
@@ -432,40 +442,10 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
     );
   }
 
-  Widget _buildInfoItem({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.grey[500]),
-        const SizedBox(width: 4),
-        Text(
-          '$label: ',
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A)),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Pending-District':
         return const Color(0xFFF59E0B);
-      case 'Pending-State':
-        return const Color(0xFF10B981);
       case 'Rejected':
         return const Color(0xFFEF4444);
       case 'Approved':
@@ -478,25 +458,13 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
   String _getStatusText(String status) {
     switch (status) {
       case 'Pending-District':
-        return 'Pending';
-      case 'Pending-State':
-        return 'Approved';
+        return 'Pending-District';
       case 'Rejected':
         return 'Rejected';
       case 'Approved':
         return 'Approved';
       default:
         return status;
-    }
-  }
-
-  String _formatDate(dynamic date) {
-    if (date == null) return 'N/A';
-    try {
-      final dateTime = DateTime.parse(date.toString());
-      return _fmt.format(dateTime);
-    } catch (e) {
-      return 'N/A';
     }
   }
 }

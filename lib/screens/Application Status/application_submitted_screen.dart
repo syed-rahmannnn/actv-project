@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../Member Bottom Navigation/dashboard_screen.dart';
 import 'package:activ/services/auth_service.dart';
+import 'application_status_screen.dart';
 
 class ApplicationSubmittedScreen extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -253,6 +254,24 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                           const SizedBox(height: 20),
                           _buildProgressStep(
                             stepNumber: 3,
+                            title: 'District Admin Review',
+                            description:
+                                'Pending review by district administrator.',
+                            isCompleted: false,
+                            isActive: false,
+                          ),
+                          const SizedBox(height: 20),
+                          _buildProgressStep(
+                            stepNumber: 4,
+                            title: 'State Admin Review',
+                            description:
+                                'Pending review by state administrator.',
+                            isCompleted: false,
+                            isActive: false,
+                          ),
+                          const SizedBox(height: 20),
+                          _buildProgressStep(
+                            stepNumber: 5,
                             title: 'Final Approval',
                             description:
                                 'Final approval and membership activation.',
@@ -322,12 +341,11 @@ class ApplicationSubmittedScreen extends StatelessWidget {
                       height: 50,
                       child: ElevatedButton(
                         onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Application Status feature coming soon!',
-                              ),
-                              backgroundColor: Colors.blue,
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const ApplicationStatusScreen(),
                             ),
                           );
                         },

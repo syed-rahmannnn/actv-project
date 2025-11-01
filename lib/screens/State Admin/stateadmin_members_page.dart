@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../services/api_service.dart';
 import '../../services/application_service.dart';
 import '../District Admin/districtadmin_dashboard.dart'
     show UserDetailsDropdown;
@@ -75,9 +74,36 @@ class _StateAdminMembersPageState extends State<StateAdminMembersPage> {
 
   // ---- status partitions (mirror block members semantics, adapted for state) ----
   List<Map<String, dynamic>> get _filtered {
-    if (_query.isEmpty) return _all;
-    return _all.where((app) {
-      final name = (app['name'] ?? '').toString().toLowerCase();
+    // Base status filter: only include
+    // - State-approved (Approved with state reviewer)
+    // - State-rejected (Rejected with state reviewer)
+    // - District-approved, state-pending (Pending-State with district reviewer)
+    final base = _all.where((app) {
+      final raw = (app['status'] ?? app['applicationStatus'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+
+      final rb = app['reviewedBy'];
+      final reviewedBy = rb is Map<String, dynamic> ? rb : <String, dynamic>{};
+      final stateReviewed = reviewedBy['stateAdmin'] != null;
+      final districtReviewed = reviewedBy['districtAdmin'] != null;
+
+      final isApprovedByState = raw == 'approved' && stateReviewed;
+      final isRejectedByState = raw == 'rejected' && stateReviewed;
+      final isDistrictApprovedStatePending =
+          raw == 'pending-state' && districtReviewed;
+
+      return isApprovedByState ||
+          isRejectedByState ||
+          isDistrictApprovedStatePending;
+    }).toList();
+
+    if (_query.isEmpty) return base;
+    return base.where((app) {
+      final name = (app['fullName'] ?? app['name'] ?? '')
+          .toString()
+          .toLowerCase();
       final phone = (app['phone'] ?? '').toString().toLowerCase();
       final district = (app['district'] ?? '').toString().toLowerCase();
       return name.contains(_query) ||
@@ -239,9 +265,7 @@ class _StateAdminMembersPageState extends State<StateAdminMembersPage> {
   }
 
   String _normStatus(Map<String, dynamic> a) {
-    final raw = (a['status'] ?? a['applicationStatus'] ?? '')
-        .toString()
-        .trim();
+    final raw = (a['status'] ?? a['applicationStatus'] ?? '').toString().trim();
     final lower = raw.toLowerCase();
     if (lower.contains('pending-state')) return 'Pending-State';
     if (raw == 'Approved' || lower == 'approved') return 'Approved';
@@ -455,9 +479,9 @@ class _StateAdminMembersPageState extends State<StateAdminMembersPage> {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      // Mirror District Admin chip colors
+      // Differentiate Pending-State clearly
       case 'Pending-State':
-        return const Color(0xFF10B981); // green like District 'Approved'
+        return const Color(0xFFF59E0B); // amber for pending
       case 'Rejected':
         return const Color(0xFFEF4444);
       case 'Approved':
@@ -469,25 +493,15 @@ class _StateAdminMembersPageState extends State<StateAdminMembersPage> {
 
   String _getStatusText(String status) {
     switch (status) {
-      // Mirror District Admin label mapping
+      // Show true status labels for State Admin
       case 'Pending-State':
-        return 'Approved';
+        return 'Pending-State';
       case 'Rejected':
         return 'Rejected';
       case 'Approved':
         return 'Approved';
       default:
         return status;
-    }
-  }
-
-  String _formatDate(dynamic date) {
-    if (date == null) return 'N/A';
-    try {
-      final dateTime = DateTime.parse(date.toString());
-      return _fmt.format(dateTime);
-    } catch (e) {
-      return 'N/A';
     }
   }
 }

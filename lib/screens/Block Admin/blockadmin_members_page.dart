@@ -357,36 +357,42 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
   }
 
   Widget _memberCard(Map<String, dynamic> app) {
+    // Helper to format dates like DD/MM/YYYY with safe fallback
+    String fmtDate(dynamic value) {
+      if (value == null) return 'N/A';
+      try {
+        final s = value.toString();
+        final dt = DateTime.parse(s);
+        final dd = dt.day.toString().padLeft(2, '0');
+        final mm = dt.month.toString().padLeft(2, '0');
+        final yyyy = dt.year.toString();
+        return '$dd/$mm/$yyyy';
+      } catch (_) {
+        return 'N/A';
+      }
+    }
+
     final fullName = (app['fullName'] ?? 'Member').toString();
     final email = (app['email'] ?? '').toString();
     final phone = (app['phone'] ?? '').toString();
     final block = (app['block'] ?? widget.blockName).toString();
+    final appliedDate = fmtDate(app['createdAt'] ?? app['submittedAt']);
     final form = app['formData'] != null
         ? Map<String, dynamic>.from(app['formData'])
         : <String, dynamic>{};
-    final gender = (form['gender'] ?? '').toString();
-    final title = (form['jobTitle'] ?? form['role'] ?? '').toString();
+    final gender = (form['gender'] ?? 'NA').toString();
 
-    // chip style (EXACT colors to match your mock)
-    // Approved: green, Pending: warm yellow, Rejected: red
-    bool approved = _isApproved(app);
-    bool rejected = _isRejected(app);
-
-    Color chipFG, chipBG;
-    String chipText;
-    if (approved) {
-      chipFG = const Color(0xFF16A34A);
-      chipBG = const Color(0xFFEAF7EE);
-      chipText = 'Approved';
-    } else if (rejected) {
-      chipFG = const Color(0xFFFF5C5C);
-      chipBG = const Color(0xFFFFECEC);
-      chipText = 'Rejected';
-    } else {
-      chipFG = const Color(0xFFF59E0B);
-      chipBG = const Color(0xFFFEF3C7);
-      chipText = 'Pending';
-    }
+    // Normalize and style status pill like approvals/dashboard
+    final status = (app['status'] ?? '').toString().trim().toLowerCase();
+    final bool approved = _isApproved(app);
+    final bool rejected = _isRejected(app);
+    final bool displayAsPending = status.isEmpty || status == 'pending';
+    final bool displayAsApproved = status == 'approved';
+    final String statusText = status.isEmpty
+        ? 'Pending'
+        : (displayAsApproved
+              ? 'Approved'
+              : (status == 'rejected' ? 'Rejected' : status));
 
     return GestureDetector(
       onTap: () => _openDetails(app),
@@ -436,38 +442,127 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
+                              horizontal: 12,
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: chipBG,
-                              borderRadius: BorderRadius.circular(16),
+                              color: displayAsPending
+                                  ? const Color(0xFFFEF3C7)
+                                  : displayAsApproved
+                                  ? const Color(0xFFDCFCE7)
+                                  : const Color(0xFFFFECEC),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: displayAsPending
+                                    ? const Color(0xFFF59E0B)
+                                    : displayAsApproved
+                                    ? const Color(0xFF16A34A)
+                                    : const Color(0xFFFF5C5C),
+                              ),
                             ),
                             child: Text(
-                              chipText,
+                              statusText,
                               style: TextStyle(
-                                color: chipFG,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12.5,
+                                color: displayAsPending
+                                    ? const Color(0xFFF59E0B)
+                                    : displayAsApproved
+                                    ? const Color(0xFF16A34A)
+                                    : const Color(0xFFFF5C5C),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 10,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-
-                      // lines: email, title, location+gender, phone
-                      _infoRow(Icons.mail_outline, email),
-                      if (title.isNotEmpty) _infoRow(Icons.access_time, title),
-                      _infoRow(
-                        Icons.location_on_outlined,
-                        [
-                          if (gender.isNotEmpty) gender,
-                          if (gender.isNotEmpty) ', ',
-                          block,
-                        ].join(),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Phone: $phone',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF6B7280),
+                        ),
                       ),
-                      _infoRow(Icons.call_outlined, phone),
+                      const SizedBox(height: 12),
+                      // Block (left) and Applied on date (right)
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on,
+                            size: 16,
+                            color: Color(0xFF6B7280),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Block: $block',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF374151),
+                            ),
+                          ),
+                          const Spacer(),
+                          const Icon(
+                            Icons.calendar_today,
+                            size: 14,
+                            color: Color(0xFF6B7280),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Applied: $appliedDate',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF374151),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // Second line: Email (left) and Gender (right)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.email,
+                                size: 16,
+                                color: Color(0xFF6B7280),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Email: $email',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xFF374151),
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.person,
+                                size: 16,
+                                color: Color(0xFF6B7280),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Gender: $gender',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF374151),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 6),
                       if (approved)
                         Text(
@@ -496,24 +591,6 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
     );
   }
 
-  Widget _infoRow(IconData icon, String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Row(
-      children: [
-        Icon(icon, size: 18, color: const Color(0xFF6B7280)),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(color: Color(0xFF374151), fontSize: 14),
-          ),
-        ),
-      ],
-    ),
-  );
-
-
-
   String _getApprovalText(Map<String, dynamic> app) {
     // Get reviewedBy information from the backend
     final reviewedBy = app['reviewedBy'];
@@ -524,24 +601,25 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
         final adminName = blockAdmin['fullName']?.toString() ?? 'Block Admin';
         return 'Approved by: $adminName';
       }
-      
+
       // Check for district admin approval
       final districtAdmin = reviewedBy['districtAdmin'];
       if (districtAdmin != null && districtAdmin is Map<String, dynamic>) {
-        final adminName = districtAdmin['fullName']?.toString() ?? 'District Admin';
+        final adminName =
+            districtAdmin['fullName']?.toString() ?? 'District Admin';
 
         return 'Approved by: $adminName';
       }
-      
+
       // Check for state admin approval
       final stateAdmin = reviewedBy['stateAdmin'];
       if (stateAdmin != null && stateAdmin is Map<String, dynamic>) {
         final adminName = stateAdmin['fullName']?.toString() ?? 'State Admin';
-  
+
         return 'Approved by: $adminName';
       }
     }
-    
+
     // Fallback to generic text if approval info is not available
     return 'Approved by: Block Admin';
   }
@@ -557,15 +635,16 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
 
         return 'Rejected by: $adminName';
       }
-      
+
       // Check for district admin rejection
       final districtAdmin = reviewedBy['districtAdmin'];
       if (districtAdmin != null && districtAdmin is Map<String, dynamic>) {
-        final adminName = districtAdmin['fullName']?.toString() ?? 'District Admin';
-        
+        final adminName =
+            districtAdmin['fullName']?.toString() ?? 'District Admin';
+
         return 'Rejected by: $adminName';
       }
-      
+
       // Check for state admin rejection
       final stateAdmin = reviewedBy['stateAdmin'];
       if (stateAdmin != null && stateAdmin is Map<String, dynamic>) {
@@ -574,7 +653,7 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
         return 'Rejected by: $adminName';
       }
     }
-    
+
     // Fallback to generic text if rejection info is not available
     return 'Rejected by: District Admin';
   }

@@ -44,7 +44,7 @@ module.exports = (mongooseConnection) => {
   // ---------- USER SUBMITS APPLICATION ----------
   router.post("/submit", async (req, res) => {
     try {
-      const { userId, fullName, email, phone, state, district, block, formData } = req.body;
+      const { userId, fullName, email, phone, state, district, block, formData, gender } = req.body;
 
       // Validate required fields
       if (!userId || !fullName || !email || !phone || !state || !district || !block || !formData) {
@@ -59,6 +59,25 @@ module.exports = (mongooseConnection) => {
       const S = norm(state);
       const D = norm(district);
       const B = norm(block);
+
+      // Normalize gender from body or derive from formData if provided
+      const normalizeGender = (g) => {
+        if (!g || typeof g !== 'string') return null;
+        const v = g.trim().toLowerCase();
+        if (v === 'm' || v === 'male') return 'Male';
+        if (v === 'f' || v === 'female') return 'Female';
+        if (v === 'o' || v === 'other') return 'Other';
+        // Attempt to map common variants
+        if (v.startsWith('male')) return 'Male';
+        if (v.startsWith('female')) return 'Female';
+        if (v.startsWith('other')) return 'Other';
+        return null;
+      };
+
+      const derivedGender = normalizeGender(
+        gender ??
+        (formData && (formData.gender || formData.personalDetails?.gender))
+      );
 
       // helpers
       const escapeRx = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -120,6 +139,7 @@ module.exports = (mongooseConnection) => {
         fullName,
         email,
         phone,
+        gender: derivedGender,
         state: S,
         district: D,
         block: B,
@@ -400,6 +420,34 @@ module.exports = (mongooseConnection) => {
         return appObj;
       }));
 
+      // Support optional wrapped response with top-level adminMeta, without breaking existing array shape
+      const includeMetaParam = String(req.query.includeMeta || '').toLowerCase();
+      const includeMeta = includeMetaParam === '1' || includeMetaParam === 'true' || includeMetaParam === 'yes';
+
+      if (includeMeta) {
+        let adminMeta = {};
+        try {
+          const ba = await BlockAdmin.findById(_id, 'fullName email adminId meta').lean();
+          if (ba) {
+            adminMeta = {
+              fullName: ba.fullName,
+              email: ba.email,
+              adminId: ba.adminId,
+              blockName: ba.meta?.block || ba.meta?.blockLc || 'Unknown Block',
+              districtName: ba.meta?.district || ba.meta?.districtLc || 'Unknown District',
+              stateName: ba.meta?.state || ba.meta?.stateLc || 'Unknown State',
+            };
+          } else {
+            adminMeta = { blockName: 'Unknown Block' };
+          }
+        } catch (e) {
+          console.error('Error fetching block admin meta:', e);
+          adminMeta = { blockName: 'Unknown Block' };
+        }
+        return res.json({ applications: enhancedApps, count: enhancedApps.length, adminMeta });
+      }
+
+      // Default: return array for backward compatibility
       res.json(enhancedApps); // Return enhanced applications with member approval info
     } catch (err) {
       console.error("Fetch block applications error:", err);
@@ -475,9 +523,29 @@ module.exports = (mongooseConnection) => {
         });
       }
 
-      // Fetch all applications for this state admin, regardless of status
+      // Only fetch applications relevant to State Admin members page:
+      // - Pending at state level ("Pending-State")
+      // - Approved by state ("Approved")
+      // - Rejected ("Rejected")
+      // Excludes block-pending and district-pending applications.
+      const statusParam = (req.query.status || '').toString().trim();
+      let statusFilter;
+      if (statusParam) {
+        // Optional filtering by a single status when provided
+        const allowed = ["Pending-State", "Approved", "Rejected"];
+        if (allowed.includes(statusParam)) {
+          statusFilter = statusParam;
+        } else {
+          // If an unsupported status is requested, default to allowed set
+          statusFilter = { $in: allowed };
+        }
+      } else {
+        statusFilter = { $in: ["Pending-State", "Approved", "Rejected"] };
+      }
+
       const apps = await Application.find({
         assignedStateAdmin: _id,
+        status: statusFilter,
       }).sort({ createdAt: -1 });
 
       // Enhance applications similarly to the district admin route with member info

@@ -439,19 +439,6 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
     );
   }
 
-  String _getCategoryLabel(ApprovalCategory category) {
-    switch (category) {
-      case ApprovalCategory.pending:
-        return 'Pending';
-      case ApprovalCategory.approved:
-        return 'Approved';
-      case ApprovalCategory.rejected:
-        return 'Rejected';
-      case ApprovalCategory.all:
-        return 'All';
-    }
-  }
-
   Widget _buildApplicationCard(Map<String, dynamic> app) {
     final status = app['status'] ?? '';
     final isPending = status.toString().toLowerCase().contains(

@@ -593,6 +593,46 @@ class ApiService {
   static Exception _err(http.Response r) =>
       Exception('HTTP ${r.statusCode}: ${r.body.isEmpty ? "No body" : r.body}');
 
+  // Get applications for block admin WITH adminMeta (wrapped response)
+  static Future<Map<String, dynamic>> getBlockAdminApplicationsWithMeta(
+    String blockAdminId,
+  ) async {
+    // Prefer direct route and request meta in one call
+    final url = Uri.parse(
+        '$baseUrl/applications/block/$blockAdminId?includeMeta=1');
+    http.Response res;
+    try {
+      res = await http.get(url, headers: await _staticHeaders());
+    } catch (e) {
+      // Fallback: legacy paths, preserving query param
+      res = await _getWithFallback('/block/$blockAdminId?includeMeta=1');
+    }
+
+    if (res.statusCode == 200) {
+      final data = _jsonDecodeSafe(res.body);
+      if (data is Map) {
+        final apps = (data['applications'] is List) ? data['applications'] : [];
+        final meta = (data['adminMeta'] is Map) ? data['adminMeta'] : {};
+        return {
+          'applications': List<dynamic>.from(apps),
+          'adminMeta': Map<String, dynamic>.from(meta),
+        };
+      }
+      if (data is List) {
+        // Server without includeMeta support: wrap minimally
+        return {
+          'applications': List<dynamic>.from(data),
+          'adminMeta': <String, dynamic>{},
+        };
+      }
+      return {
+        'applications': <dynamic>[],
+        'adminMeta': <String, dynamic>{},
+      };
+    }
+    throw _err(res);
+  }
+
   // Get applications for block admin
   static Future<List<dynamic>> getBlockAdminApplications(
     String blockAdminId,

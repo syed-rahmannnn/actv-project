@@ -207,62 +207,6 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
     }
   }
 
-  Future<void> _act(String appId, String action, {String? reason}) async {
-    setState(() => _isLoading = true);
-    try {
-      final result = await _svc.blockReview(
-        appId: appId,
-        adminId: widget.blockAdminId,
-        action: action,
-        reason: reason,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message']?.toString() ?? 'Done')),
-      );
-      await _load();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
-  }
-
-  Future<void> _rejectDialog(String appId) async {
-    final c = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Reject Application'),
-        content: TextField(
-          controller: c,
-          decoration: const InputDecoration(labelText: 'Reason (optional)'),
-          maxLines: 2,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Reject'),
-          ),
-        ],
-      ),
-    );
-
-    if (ok == true) {
-      await _act(
-        appId,
-        'reject',
-        reason: c.text.trim().isEmpty ? null : c.text.trim(),
-      );
-    }
-  }
-
   // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
@@ -586,11 +530,17 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
     final form = app['formData'] != null
         ? Map<String, dynamic>.from(app['formData'])
         : <String, dynamic>{};
-    final role = (form['role'] ?? 'Member').toString();
     final gender = (form['gender'] ?? 'NA').toString();
 
-    // Dashboard shows pending list; style as pending
-    final bool displayAsPending = true;
+    // Compute status for styling and label
+    final normalizedStatus = status.trim().toLowerCase();
+    final bool displayAsPending =
+        normalizedStatus.isEmpty || normalizedStatus == 'pending';
+    final String statusLabel = normalizedStatus.isEmpty
+        ? 'Pending'
+        : (normalizedStatus == 'approved'
+              ? 'Approved'
+              : (normalizedStatus == 'rejected' ? 'Rejected' : status));
 
     return GestureDetector(
       child: Container(
@@ -662,7 +612,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
                     ),
                   ),
                   child: Text(
-                    'Pending',
+                    statusLabel,
                     style: TextStyle(
                       color: displayAsPending
                           ? const Color(0xFFF59E0B)
@@ -877,7 +827,9 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF5C5C)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF5C5C),
+            ),
             child: const Text('Reject'),
           ),
         ],
@@ -936,7 +888,6 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
       }
     }
   }
-
 
   Widget _pill(String text) {
     return Container(
@@ -1130,7 +1081,6 @@ class UserDetailsDropdown extends StatelessWidget {
                       s(member['aadhaarNumber']),
                     ),
                     _buildDetailRow('Gender', s(member['gender'])),
-                    _buildDetailRow('Role', s(member['role'])),
                   ]),
 
                   const SizedBox(height: 16),

@@ -25,7 +25,21 @@ class ApplicationService {
     required String district,
     required String block,
     required Map<String, dynamic> formData,
+    String? gender,
   }) async {
+    // Try to derive gender from formData if not explicitly provided
+    final derivedGender = gender ?? (() {
+      final pd = formData['personalDetails'];
+      final fg = formData['gender'];
+      final v = (pd is Map ? pd['gender'] : null) ?? fg;
+      if (v is String) {
+        final low = v.trim().toLowerCase();
+        if (low == 'm' || low == 'male') return 'Male';
+        if (low == 'f' || low == 'female') return 'Female';
+        if (low == 'o' || low == 'other') return 'Other';
+      }
+      return null;
+    })();
     final res = await http.post(
       Uri.parse('$baseUrl/applications/submit'),
       headers: _headers,
@@ -38,6 +52,7 @@ class ApplicationService {
         'district': district.trim(),
         'block': block.trim(),
         'formData': formData,
+        if (derivedGender != null) 'gender': derivedGender,
       }),
     );
     return jsonDecode(res.body) as Map<String, dynamic>;

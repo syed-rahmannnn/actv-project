@@ -38,7 +38,6 @@ class _StateAdminDashboardPageState extends State<StateAdminDashboardPage> {
   final List<dynamic> _pending = [];
   String? _stateAdminId;
   String _stateName = '';
-  String _adminEmail = '';
   late ApplicationService _applicationService;
 
   @override
@@ -53,7 +52,6 @@ class _StateAdminDashboardPageState extends State<StateAdminDashboardPage> {
     try {
       final me = await AuthService.getUserData();
       _stateAdminId = (me?['adminId'] ?? me?['_id'] ?? '').toString();
-      _adminEmail = (me?['email'] ?? '').toString();
       _stateName = (me?['stateName'] ?? 'State').toString();
       await _fetchPendingApplications();
       await _fetchStats();

@@ -77,7 +77,7 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
     final buckets = _bucketCounts(src);
     final ids = src.take(10).map((a) => a['_id']?.toString() ?? '').toList();
     debugPrint(
-      '[StateAdminApproval] $where: total=${src.length} buckets=${buckets} ids(sample)=${ids}',
+      '[StateAdminApproval] $where: total=${src.length} buckets=$buckets ids(sample)=$ids',
     );
   }
 
@@ -376,19 +376,6 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
     }
   }
 
-  String _getCategoryLabel(ApprovalCategory category) {
-    switch (category) {
-      case ApprovalCategory.pending:
-        return 'Pending';
-      case ApprovalCategory.approved:
-        return 'Approved';
-      case ApprovalCategory.rejected:
-        return 'Rejected';
-      case ApprovalCategory.all:
-        return 'All';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     debugPrint(
@@ -417,9 +404,7 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
                         return ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          children: const [
-                            SizedBox(height: 24),
-                          ],
+                          children: const [SizedBox(height: 24)],
                         );
                       }
                       return ListView.builder(
