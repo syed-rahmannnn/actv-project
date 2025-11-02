@@ -46,6 +46,14 @@ module.exports = (mongooseConnection) => {
     try {
       const { userId, fullName, email, phone, state, district, block, formData, gender } = req.body;
 
+      // DEBUG: Log incoming request body
+      console.log('=== APPLICATION SUBMIT DEBUG ===');
+      console.log('Received gender from body:', gender);
+      console.log('formData.gender:', formData?.gender);
+      console.log('formData.personalDetails?.gender:', formData?.personalDetails?.gender);
+      console.log('formData.personalInfo?.gender:', formData?.personalInfo?.gender);
+      console.log('Full request body:', JSON.stringify(req.body, null, 2));
+
       // Validate required fields
       if (!userId || !fullName || !email || !phone || !state || !district || !block || !formData) {
         return res.status(400).json({
@@ -62,8 +70,13 @@ module.exports = (mongooseConnection) => {
 
       // Normalize gender from body or derive from formData if provided
       const normalizeGender = (g) => {
-        if (!g || typeof g !== 'string') return null;
+        console.log('normalizeGender input:', g);
+        if (!g || typeof g !== 'string') {
+          console.log('normalizeGender: returning null (no input or not string)');
+          return null;
+        }
         const v = g.trim().toLowerCase();
+        console.log('normalizeGender lowercase value:', v);
         if (v === 'm' || v === 'male') return 'Male';
         if (v === 'f' || v === 'female') return 'Female';
         if (v === 'o' || v === 'other') return 'Other';
@@ -71,6 +84,7 @@ module.exports = (mongooseConnection) => {
         if (v.startsWith('male')) return 'Male';
         if (v.startsWith('female')) return 'Female';
         if (v.startsWith('other')) return 'Other';
+        console.log('normalizeGender: no match, returning null');
         return null;
       };
 
@@ -78,6 +92,8 @@ module.exports = (mongooseConnection) => {
         gender ??
         (formData && (formData.gender || formData.personalDetails?.gender || formData.personalInfo?.gender))
       );
+      
+      console.log('Derived gender after normalization:', derivedGender);
 
       // helpers
       const escapeRx = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -149,6 +165,9 @@ module.exports = (mongooseConnection) => {
         assignedStateAdmin: stateAdmin._id,
         status: "Pending-Block",
       });
+
+      console.log('Created application with gender:', newApp.gender);
+      console.log('Application document:', JSON.stringify(newApp.toObject(), null, 2));
 
       res.status(201).json({ 
         success: true, 
@@ -324,19 +343,26 @@ module.exports = (mongooseConnection) => {
       const enhancedApps = await Promise.all(apps.map(async (app) => {
         const appObj = app.toObject();
         
-        // Enrich with member gender if application doesn't have it
-        if (!appObj.gender && appObj.email) {
+        console.log(`[ENRICHMENT DEBUG] Processing app ${appObj._id}, current gender:`, appObj.gender);
+        
+        // If gender is missing, try to fetch from MemberDetails
+        if (!appObj.gender) {
           try {
             const memberDetails = await MemberDetails.findOne({ 
-              email: appObj.email.toLowerCase().trim() 
-            }, 'gender').lean();
+              email: app.email.toLowerCase().trim() 
+            }, 'gender');
             
             if (memberDetails && memberDetails.gender) {
+              console.log(`[ENRICHMENT DEBUG] Found gender in MemberDetails for ${app.email}:`, memberDetails.gender);
               appObj.gender = memberDetails.gender;
+            } else {
+              console.log(`[ENRICHMENT DEBUG] No gender found in MemberDetails for ${app.email}`);
             }
           } catch (memberError) {
-            console.error("Error fetching member gender for app:", app._id, memberError);
+            console.error(`[ENRICHMENT DEBUG] Error fetching gender from MemberDetails for ${app.email}:`, memberError);
           }
+        } else {
+          console.log(`[ENRICHMENT DEBUG] App ${appObj._id} already has gender:`, appObj.gender);
         }
         
         // For approved applications, get member approval details

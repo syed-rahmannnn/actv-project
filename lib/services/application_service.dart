@@ -46,6 +46,19 @@ class ApplicationService {
           }
           return null;
         })();
+
+    // Debug logging
+    print('[SUBMIT DEBUG] Submitting application for $fullName');
+    print('[SUBMIT DEBUG] Provided gender parameter: $gender');
+    print(
+      '[SUBMIT DEBUG] formData.personalDetails.gender: ${formData['personalDetails']?['gender']}',
+    );
+    print(
+      '[SUBMIT DEBUG] formData.personalInfo.gender: ${formData['personalInfo']?['gender']}',
+    );
+    print('[SUBMIT DEBUG] formData.gender: ${formData['gender']}');
+    print('[SUBMIT DEBUG] Derived gender: $derivedGender');
+
     final res = await http.post(
       Uri.parse('$baseUrl/applications/submit'),
       headers: _headers,

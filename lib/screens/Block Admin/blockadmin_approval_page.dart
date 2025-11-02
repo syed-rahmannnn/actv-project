@@ -613,7 +613,17 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
         form['gender'] ??
         personalInfo?['gender'] ??
         personalDetails?['gender'];
+
+    // Debug logging
+    debugPrint(
+      '[FRONTEND DEBUG] App ${app['_id']}: rawGender=$rawGender, '
+      'app.gender=${app['gender']}, form.gender=${form['gender']}, '
+      'personalInfo.gender=${personalInfo?['gender']}, '
+      'personalDetails.gender=${personalDetails?['gender']}',
+    );
+
     final String gender = normalizeGender(rawGender);
+    debugPrint('[FRONTEND DEBUG] App ${app['_id']}: normalized gender=$gender');
 
     // Context-aware status detection based on current tab
     bool displayAsPending, displayAsApproved;
