@@ -324,6 +324,21 @@ module.exports = (mongooseConnection) => {
       const enhancedApps = await Promise.all(apps.map(async (app) => {
         const appObj = app.toObject();
         
+        // Enrich with member gender if application doesn't have it
+        if (!appObj.gender && appObj.email) {
+          try {
+            const memberDetails = await MemberDetails.findOne({ 
+              email: appObj.email.toLowerCase().trim() 
+            }, 'gender').lean();
+            
+            if (memberDetails && memberDetails.gender) {
+              appObj.gender = memberDetails.gender;
+            }
+          } catch (memberError) {
+            console.error("Error fetching member gender for app:", app._id, memberError);
+          }
+        }
+        
         // For approved applications, get member approval details
         if (app.status === 'Approved') {
           try {
