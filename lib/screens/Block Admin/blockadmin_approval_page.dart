@@ -97,32 +97,26 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
     }
   }
 
-  // Helpers
+  // Helpers - backend already normalizes status to Pending/Approved/Rejected
   List<Map<String, dynamic>> get _pending => _all.where((a) {
     final status = (a['status'] ?? '').toString();
     final statusLower = status.toLowerCase();
 
-    // Applications that are truly pending at block level
-    return statusLower == 'pending-block' ||
-        statusLower == 'submitted' ||
-        statusLower == 'pending';
+    // Applications that are pending (not yet reviewed by block admin)
+    return statusLower == 'submitted' ||
+        statusLower == 'pending' ||
+        statusLower.isEmpty;
   }).toList();
 
   List<Map<String, dynamic>> get _approved => _all.where((a) {
     final status = (a['status'] ?? '').toString();
-    // Applications that have been approved by block admin (but may be pending at higher levels)
-    // Exclude any status that contains 'pending' at block level
-    return (status == 'Approved' ||
-            status == 'Pending-District' ||
-            status == 'Pending-State') &&
-        !status.toLowerCase().contains('pending-block') &&
-        status.toLowerCase() != 'pending' &&
-        status.toLowerCase() != 'submitted';
+    // Applications that have been approved by block admin
+    return status.toLowerCase() == 'approved';
   }).toList();
 
   List<Map<String, dynamic>> get _rejected => _all.where((a) {
     final status = (a['status'] ?? '').toString();
-    return status == 'Rejected' || status.toLowerCase().contains('rejected');
+    return status.toLowerCase() == 'rejected';
   }).toList();
 
   List<Map<String, dynamic>> get _listForTab {
@@ -190,7 +184,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✅ Approved & forwarded to District'),
+              content: Text('✅ Approved'),
               backgroundColor: Color(0xFF16A34A),
             ),
           );
@@ -625,7 +619,10 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
     final String gender = normalizeGender(rawGender);
     debugPrint('[FRONTEND DEBUG] App ${app['_id']}: normalized gender=$gender');
 
-    // Context-aware status detection based on current tab
+    // Simple tri-state status detection from backend
+    // Backend already normalizes to: Pending, Approved, or Rejected
+    final statusLower = status.toLowerCase();
+
     bool displayAsPending, displayAsApproved;
     String statusText;
 
@@ -645,17 +642,9 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
       displayAsApproved = false;
       statusText = 'Rejected';
     } else {
-      // In "All" tab, use actual status detection
-      final statusLower = status.toLowerCase();
-      final isApproved =
-          statusLower.contains('approved') ||
-          statusLower.contains('pending-district') ||
-          statusLower.contains('pending-state') ||
-          status == 'Approved' ||
-          status == 'Pending-District' ||
-          status == 'Pending-State';
-      final isRejected =
-          statusLower.contains('rejected') || status == 'Rejected';
+      // In "All" tab, use actual status from backend (already normalized)
+      final isApproved = statusLower == 'approved';
+      final isRejected = statusLower == 'rejected';
       final isPending = !isApproved && !isRejected;
 
       displayAsPending = isPending;

@@ -172,12 +172,10 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
         widget.blockAdminId,
       );
 
-      // Filter pending applications (same logic as approvals page)
+      // Filter pending applications (backend already normalizes status)
       final pendingApps = allApplications.where((app) {
         final status = (app['status'] ?? '').toString().toLowerCase();
-        return status == 'pending-block' ||
-            status == 'submitted' ||
-            status == 'pending';
+        return status == 'submitted' || status == 'pending' || status.isEmpty;
       }).toList();
 
       // Get stats using the existing getBlockStats method which works correctly
@@ -576,12 +574,11 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
         personalDetails?['gender'];
     final String gender = normalizeGender(rawGender);
 
-    // Compute status for styling and label
+    // Simple tri-state status from backend (already normalized)
     final normalizedStatus = status.trim().toLowerCase();
     final bool displayAsPending =
         normalizedStatus.isEmpty ||
         normalizedStatus == 'pending' ||
-        normalizedStatus == 'pending-block' ||
         normalizedStatus == 'submitted';
     final String statusLabel = displayAsPending
         ? 'Pending'
@@ -837,7 +834,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✅ Approved & forwarded to District'),
+              content: Text('✅ Approved'),
               backgroundColor: Color(0xFF16A34A),
             ),
           );

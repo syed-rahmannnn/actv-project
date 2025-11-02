@@ -457,6 +457,35 @@ module.exports = (mongooseConnection) => {
           }
         }
         
+        // Block-level status normalization (do NOT reflect district/state pending here)
+        // Simple logic:
+        // - If block admin rejected => "Rejected"
+        // - If block admin approved (forwarded) => "Approved"
+        // - If not yet reviewed by block admin => "Pending"
+        try {
+          const rb = appObj.reviewedBy || {};
+          const hasBlockReview = !!rb.blockAdmin;
+          const originalStatus = String(app.status || '');
+          
+          if (!hasBlockReview) {
+            // Not reviewed by block admin yet
+            appObj.status = 'Pending';
+          } else {
+            // Block admin has reviewed
+            // Check if rejected at block level (status is Rejected AND no higher-level reviews)
+            if (originalStatus === 'Rejected' && !rb.districtAdmin && !rb.stateAdmin) {
+              appObj.status = 'Rejected';
+            } else {
+              // Block approved (may be Pending-District, Pending-State, or Approved)
+              appObj.status = 'Approved';
+            }
+          }
+        } catch (e) {
+          console.error('Status normalization error:', e);
+          // Fallback: keep original or default to Pending
+          appObj.status = 'Pending';
+        }
+
         console.log('Final enhanced app for ID:', appObj._id, 'reviewedBy:', JSON.stringify(appObj.reviewedBy, null, 2));
         return appObj;
       }));

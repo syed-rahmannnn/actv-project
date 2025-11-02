@@ -60,10 +60,9 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
     }
   }
 
-  // ---- status partitions ----
+  // ---- status partitions (use normalized status from backend) ----
   bool _isPending(Map a) {
     final status = (a['status'] ?? '').toString().trim().toLowerCase();
-    // On Block Admin page, only consider these as pending
     return status.isEmpty ||
         status == 'pending' ||
         status == 'submitted' ||
@@ -72,15 +71,12 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
 
   bool _isApproved(Map a) {
     final status = (a['status'] ?? '').toString().trim().toLowerCase();
-    // On Block Admin page, treat forwarded statuses as approved
-    return status == 'approved' ||
-        status == 'pending-district' ||
-        status == 'pending-state';
+    return status == 'approved';
   }
 
   bool _isRejected(Map a) {
-    final status = (a['status'] ?? '').toString();
-    return status == 'Rejected' || status.toLowerCase().contains('rejected');
+    final status = (a['status'] ?? '').toString().trim().toLowerCase();
+    return status == 'rejected';
   }
 
   List<Map<String, dynamic>> get _filtered {
@@ -126,9 +122,9 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
       );
       if (ok) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Approved & forwarded to District')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Approved')));
         }
         await _load();
       }
