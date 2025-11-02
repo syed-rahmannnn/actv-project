@@ -50,6 +50,16 @@ class ApiService {
     return 'https://actv-project.onrender.com/api';
   }
 
+  // Compute a safe request timeout. Render free tier can cold-start 50s+.
+  static Duration _requestTimeout() {
+    try {
+      final isRender = baseUrl.contains('onrender.com');
+      return Duration(seconds: isRender ? 75 : 12);
+    } catch (_) {
+      return const Duration(seconds: 12);
+    }
+  }
+
   String? _token;
 
   // Helper to get headers, include token if present
@@ -138,7 +148,7 @@ class ApiService {
     try {
       resp = await http
           .post(url, headers: _headers(), body: jsonEncode(payload))
-          .timeout(const Duration(seconds: 12));
+          .timeout(_requestTimeout());
     } catch (e) {
       developer.log('login request error: $e', name: 'ApiService');
       return {'ok': false, 'body': null, 'error': 'Network error or timeout'};
@@ -169,7 +179,7 @@ class ApiService {
     try {
       resp = await http
           .post(url, headers: _headers(), body: jsonEncode(payload))
-          .timeout(const Duration(seconds: 12));
+          .timeout(_requestTimeout());
     } catch (e) {
       developer.log('loginAdmin request error: $e', name: 'ApiService');
       return {
@@ -599,7 +609,8 @@ class ApiService {
   ) async {
     // Prefer direct route and request meta in one call
     final url = Uri.parse(
-        '$baseUrl/applications/block/$blockAdminId?includeMeta=1');
+      '$baseUrl/applications/block/$blockAdminId?includeMeta=1',
+    );
     http.Response res;
     try {
       res = await http.get(url, headers: await _staticHeaders());
@@ -625,10 +636,7 @@ class ApiService {
           'adminMeta': <String, dynamic>{},
         };
       }
-      return {
-        'applications': <dynamic>[],
-        'adminMeta': <String, dynamic>{},
-      };
+      return {'applications': <dynamic>[], 'adminMeta': <String, dynamic>{}};
     }
     throw _err(res);
   }
@@ -714,7 +722,10 @@ class ApiService {
       'adminId': adminId,
       if (reason != null) 'reason': reason,
     };
-    final res = await _postWithFallback('/district-review/$applicationId', body);
+    final res = await _postWithFallback(
+      '/district-review/$applicationId',
+      body,
+    );
     if (res.statusCode == 200) return true;
     throw _err(res);
   }
@@ -726,9 +737,14 @@ class DistrictApi {
   DistrictApi(this.base);
 
   // List pending apps for district
-  Future<List<Map<String, dynamic>>> getPendingForDistrict(String districtAdminId) async {
+  Future<List<Map<String, dynamic>>> getPendingForDistrict(
+    String districtAdminId,
+  ) async {
     final url = Uri.parse('$base/applications/district/$districtAdminId');
-    final resp = await http.get(url, headers: {'Content-Type': 'application/json'});
+    final resp = await http.get(
+      url,
+      headers: {'Content-Type': 'application/json'},
+    );
     if (resp.statusCode == 200) {
       final data = jsonDecode(resp.body);
       final apps = (data['applications'] as List?) ?? [];
@@ -743,8 +759,13 @@ class DistrictApi {
     required String role, // "district"
     required String status, // "Approved" or "Rejected"
   }) async {
-    final url = Uri.parse('$base/applications/by-admin/$adminId?role=$role&status=$status');
-    final resp = await http.get(url, headers: {'Content-Type': 'application/json'});
+    final url = Uri.parse(
+      '$base/applications/by-admin/$adminId?role=$role&status=$status',
+    );
+    final resp = await http.get(
+      url,
+      headers: {'Content-Type': 'application/json'},
+    );
     if (resp.statusCode == 200) {
       final data = jsonDecode(resp.body);
       return (data['count'] as num).toInt();
@@ -765,7 +786,11 @@ class DistrictApi {
       'adminId': adminId,
       if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
     });
-    final resp = await http.post(url, headers: {'Content-Type': 'application/json'}, body: body);
+    final resp = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw Exception('District review failed: ${resp.body}');
     }
