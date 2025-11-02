@@ -635,16 +635,10 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
       displayAsApproved = false;
       statusText = 'Pending';
     } else if (_tab == ApprovalCategory.approved) {
-      // In approved tab, show appropriate status based on actual status
+      // In approved tab, show as approved
       displayAsPending = false;
       displayAsApproved = true;
-
-      // Show specific status for forwarded applications
-      if (status == 'Pending-District') {
-        statusText = 'Forwarded to District';
-      } else {
-        statusText = 'Forwarded to District';
-      }
+      statusText = 'Approved';
     } else if (_tab == ApprovalCategory.rejected) {
       // In rejected tab, show as rejected
       displayAsPending = false;
@@ -969,70 +963,46 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
       // Check for block admin approval
       final blockAdmin = reviewedBy['blockAdmin'];
       if (blockAdmin != null && blockAdmin is Map<String, dynamic>) {
-        final adminName = blockAdmin['fullName']?.toString() ?? 'Block Admin';
         final blockName =
             blockAdmin['meta']?['blockName']?.toString() ?? widget.blockName;
-        return 'Approved by $adminName, $blockName Admin';
+        return 'Approved by $blockName Block Admin';
       }
 
       // Check for district admin approval
       final districtAdmin = reviewedBy['districtAdmin'];
       if (districtAdmin != null && districtAdmin is Map<String, dynamic>) {
-        final adminName =
-            districtAdmin['fullName']?.toString() ?? 'District Admin';
         final districtName =
             districtAdmin['meta']?['districtName']?.toString() ?? 'District';
-        return 'Approved by $adminName, $districtName Admin';
+        return 'Approved by $districtName District Admin';
       }
 
       // Check for state admin approval
       final stateAdmin = reviewedBy['stateAdmin'];
       if (stateAdmin != null && stateAdmin is Map<String, dynamic>) {
-        final adminName = stateAdmin['fullName']?.toString() ?? 'State Admin';
         final stateName =
             stateAdmin['meta']?['stateName']?.toString() ?? 'State';
-        return 'Approved by $adminName, $stateName Admin';
+        return 'Approved by $stateName State Admin';
       }
     }
 
     // Fallback to generic text if approval info is not available
-    return 'Approved by ${widget.blockName}';
+    return 'Approved by ${widget.blockName} Block Admin';
   }
 
   String _getRejectionText(Map<String, dynamic> app) {
-    // Get reviewedBy information from the backend
+    // In Block Admin page, only Block-level rejections are relevant.
+    // If rejected here, it won't be forwarded to District/State.
     final reviewedBy = app['reviewedBy'];
     if (reviewedBy != null && reviewedBy is Map<String, dynamic>) {
-      // Check for block admin rejection
       final blockAdmin = reviewedBy['blockAdmin'];
       if (blockAdmin != null && blockAdmin is Map<String, dynamic>) {
-        final adminName = blockAdmin['fullName']?.toString() ?? 'Block Admin';
         final blockName =
             blockAdmin['meta']?['blockName']?.toString() ?? widget.blockName;
-        return 'Rejected by $adminName, $blockName Admin';
-      }
-
-      // Check for district admin rejection
-      final districtAdmin = reviewedBy['districtAdmin'];
-      if (districtAdmin != null && districtAdmin is Map<String, dynamic>) {
-        final adminName =
-            districtAdmin['fullName']?.toString() ?? 'District Admin';
-        final districtName =
-            districtAdmin['meta']?['districtName']?.toString() ?? 'District';
-        return 'Rejected by $adminName, $districtName Admin';
-      }
-
-      // Check for state admin rejection
-      final stateAdmin = reviewedBy['stateAdmin'];
-      if (stateAdmin != null && stateAdmin is Map<String, dynamic>) {
-        final adminName = stateAdmin['fullName']?.toString() ?? 'State Admin';
-        final stateName =
-            stateAdmin['meta']?['stateName']?.toString() ?? 'State';
-        return 'Rejected by $adminName, $stateName Admin';
+        return 'Rejected by $blockName Block Admin';
       }
     }
 
-    // Fallback to generic text if rejection info is not available
-    return 'Rejected by ${widget.blockName}';
+    // Fallback to generic text if no reviewer info is present
+    return 'Rejected by ${widget.blockName} Block Admin';
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../services/api_service.dart';
 import '../../services/application_service.dart';
 import '../District Admin/districtadmin_dashboard.dart'
     show UserDetailsDropdown;
@@ -285,13 +286,53 @@ class _StateAdminMembersPageState extends State<StateAdminMembersPage> {
     final block = (member['block'] ?? 'N/A').toString();
     final email = (member['email'] ?? member['memberEmail'] ?? 'N/A')
         .toString();
+
+    // Gender extraction logic matching Block Admin implementation
+    final form = member['formData'] != null
+        ? Map<String, dynamic>.from(member['formData'])
+        : <String, dynamic>{};
+
+    String normalizeGender(dynamic g) {
+      if (g == null) return 'Not Specified';
+      final v = g.toString().trim();
+      if (v.isEmpty) return 'Not Specified';
+      final lc = v.toLowerCase();
+      if (lc == 'm' || lc == 'male' || lc.startsWith('male')) {
+        return 'Male';
+      }
+      if (lc == 'f' || lc == 'female' || lc.startsWith('female')) {
+        return 'Female';
+      }
+      if (lc == 'o' || lc == 'other' || lc.startsWith('other')) {
+        return 'Other';
+      }
+      return v; // show as-is if unknown
+    }
+
     final Map<String, dynamic>? personalInfo =
-        member['personalInfo'] as Map<String, dynamic>?;
-    final gender =
-        (member['gender'] ??
-                (personalInfo != null ? personalInfo['gender'] : null) ??
-                'NA')
-            .toString();
+        form['personalInfo'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(form['personalInfo'])
+        : null;
+    final Map<String, dynamic>? personalDetails =
+        form['personalDetails'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(form['personalDetails'])
+        : null;
+
+    // Also check if personalDetails exists directly in member (not in formData)
+    final Map<String, dynamic>? memberPersonalDetails =
+        member['personalDetails'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(member['personalDetails'])
+        : null;
+
+    final dynamic rawGender =
+        member['gender'] ??
+        form['gender'] ??
+        personalInfo?['gender'] ??
+        personalDetails?['gender'] ??
+        memberPersonalDetails?['gender'];
+
+    final String gender = normalizeGender(rawGender);
+
     final appliedAt =
         member['stateApprovedAt'] ?? member['createdAt'] ?? member['appliedOn'];
     String appliedOnStr = 'N/A';
@@ -460,21 +501,71 @@ class _StateAdminMembersPageState extends State<StateAdminMembersPage> {
     );
   }
 
-  void _openProfile(Map<String, dynamic> member) {
-    final app = Map<String, dynamic>.from(member);
-    final userId = app['userId'] ?? app['memberId'] ?? app['_id'];
-    debugPrint('[SA_UI] user selected userId=${userId ?? 'unknown'}');
-    showModalBottomSheet(
+  void _openProfile(Map<String, dynamic> member) async {
+    // Same behavior as approval page: try full profile by email, else fallback
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => UserDetailsDropdown(
-        app: app,
-        onApprove: () {},
-        onReject: () {},
-        showActions: false,
-      ),
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
     );
+
+    try {
+      final email = member["email"] ?? member["memberEmail"];
+      if (email != null) {
+        final memberRes = await ApiService.getMemberByEmail(email);
+        if (memberRes['success'] == true && memberRes['data'] != null) {
+          final memberId =
+              memberRes['data']['id'] ??
+              memberRes['data']['memberId'] ??
+              memberRes['data']['_id'];
+          if (memberId != null) {
+            final profileRes = await ApiService.getMemberProfile(
+              memberId.toString(),
+            );
+            if (mounted) Navigator.pop(context);
+            if (profileRes['success'] == true && profileRes['data'] != null) {
+              if (mounted) {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => UserDetailsDropdown(
+                    memberProfile: Map<String, dynamic>.from(
+                      profileRes['data'],
+                    ),
+                    showActions: false,
+                    onApprove: () {},
+                    onReject: () {},
+                  ),
+                );
+                return;
+              }
+            }
+          }
+        }
+      }
+      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => UserDetailsDropdown(
+            app: Map<String, dynamic>.from(member),
+            showActions: false,
+            onApprove: () {},
+            onReject: () {},
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
+      }
+    }
   }
 
   Color _getStatusColor(String status) {

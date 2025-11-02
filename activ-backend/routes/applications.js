@@ -519,6 +519,28 @@ module.exports = (mongooseConnection) => {
       const enhancedApps = await Promise.all(apps.map(async (app) => {
         const appObj = app.toObject();
 
+        console.log(`[DISTRICT ENRICHMENT DEBUG] Processing app ${appObj._id}, current gender:`, appObj.gender);
+        
+        // If gender is missing, try to fetch from MemberDetails
+        if (!appObj.gender) {
+          try {
+            const memberDetails = await MemberDetails.findOne({ 
+              email: app.email.toLowerCase().trim() 
+            }, 'gender');
+            
+            if (memberDetails && memberDetails.gender) {
+              console.log(`[DISTRICT ENRICHMENT DEBUG] Found gender in MemberDetails for ${app.email}:`, memberDetails.gender);
+              appObj.gender = memberDetails.gender;
+            } else {
+              console.log(`[DISTRICT ENRICHMENT DEBUG] No gender found in MemberDetails for ${app.email}`);
+            }
+          } catch (memberError) {
+            console.error(`[DISTRICT ENRICHMENT DEBUG] Error fetching gender from MemberDetails for ${app.email}:`, memberError);
+          }
+        } else {
+          console.log(`[DISTRICT ENRICHMENT DEBUG] App ${appObj._id} already has gender:`, appObj.gender);
+        }
+
         // ReviewedBy safety checks are handled in the GET /:appId route, but we add basic references here
         // (Keep lightweight to avoid extra DB calls unless necessary)
         // You can expand with DistrictAdmin/StateAdmin hydration if needed, matching the GET /:appId behavior.
@@ -592,6 +614,28 @@ module.exports = (mongooseConnection) => {
       // Enhance applications similarly to the district admin route with member info
       const enhancedApps = await Promise.all(apps.map(async (app) => {
         const appObj = app.toObject();
+
+        console.log(`[STATE ENRICHMENT DEBUG] Processing app ${appObj._id}, current gender:`, appObj.gender);
+        
+        // If gender is missing, try to fetch from MemberDetails
+        if (!appObj.gender) {
+          try {
+            const memberDetails = await MemberDetails.findOne({ 
+              email: app.email.toLowerCase().trim() 
+            }, 'gender');
+            
+            if (memberDetails && memberDetails.gender) {
+              console.log(`[STATE ENRICHMENT DEBUG] Found gender in MemberDetails for ${app.email}:`, memberDetails.gender);
+              appObj.gender = memberDetails.gender;
+            } else {
+              console.log(`[STATE ENRICHMENT DEBUG] No gender found in MemberDetails for ${app.email}`);
+            }
+          } catch (memberError) {
+            console.error(`[STATE ENRICHMENT DEBUG] Error fetching gender from MemberDetails for ${app.email}:`, memberError);
+          }
+        } else {
+          console.log(`[STATE ENRICHMENT DEBUG] App ${appObj._id} already has gender:`, appObj.gender);
+        }
 
         // Attach simple member approval info if present
         try {
