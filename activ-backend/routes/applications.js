@@ -76,7 +76,7 @@ module.exports = (mongooseConnection) => {
 
       const derivedGender = normalizeGender(
         gender ??
-        (formData && (formData.gender || formData.personalDetails?.gender))
+        (formData && (formData.gender || formData.personalDetails?.gender || formData.personalInfo?.gender))
       );
 
       // helpers

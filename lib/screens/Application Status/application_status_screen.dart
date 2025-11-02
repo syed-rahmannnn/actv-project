@@ -361,7 +361,7 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
+                  color: Colors.grey.withValues(alpha: 0.1),
                   spreadRadius: 1,
                   blurRadius: 8,
                   offset: const Offset(0, 2),
@@ -429,8 +429,12 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
                           boxShadow: [
                             BoxShadow(
                               color: applicationData!.isRejected
-                                  ? const Color(0xFFE53E3E).withOpacity(0.3)
-                                  : const Color(0xFF3182CE).withOpacity(0.3),
+                                  ? const Color(
+                                      0xFFE53E3E,
+                                    ).withValues(alpha: 0.3)
+                                  : const Color(
+                                      0xFF3182CE,
+                                    ).withValues(alpha: 0.3),
                               spreadRadius: 0,
                               blurRadius: 4,
                               offset: const Offset(0, 2),
@@ -482,7 +486,8 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
               onPressed: () async {
                 // Get user data from AuthService
                 final userData = await AuthService.getUserData();
-                if (userData != null && mounted) {
+                if (!mounted) return;
+                if (userData != null) {
                   // Navigate to dashboard and clear the navigation stack
                   Navigator.pushAndRemoveUntil(
                     context,
@@ -585,7 +590,7 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
               boxShadow: stage.isCompleted || stage.isActive
                   ? [
                       BoxShadow(
-                        color: stepColor.withOpacity(0.3),
+                        color: stepColor.withValues(alpha: 0.3),
                         spreadRadius: 1,
                         blurRadius: 4,
                         offset: const Offset(0, 2),
@@ -667,7 +672,7 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             spreadRadius: 0,
             blurRadius: 12,
             offset: const Offset(0, 4),
@@ -735,7 +740,7 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
                     border: stage.status == 'rejected'
                         ? null
                         : Border.all(
-                            color: statusColor.withOpacity(0.2),
+                            color: statusColor.withValues(alpha: 0.2),
                             width: 1,
                           ),
                   ),
@@ -769,15 +774,15 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: stage.status == 'approved'
-                        ? const Color(0xFF4CAF50).withOpacity(
-                            0.3,
+                        ? const Color(0xFF4CAF50).withValues(
+                            alpha: 0.3,
                           ) // Green border for approved
                         : stage.status == 'rejected'
-                        ? const Color(0xFFE53E3E).withOpacity(
-                            0.3,
+                        ? const Color(0xFFE53E3E).withValues(
+                            alpha: 0.3,
                           ) // Red border for rejected
-                        : const Color(0xFFF59E0B).withOpacity(
-                            0.3,
+                        : const Color(0xFFF59E0B).withValues(
+                            alpha: 0.3,
                           ), // Yellow border for in_progress/pending
                     width: 1,
                   ),
@@ -848,7 +853,7 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.15),
+            color: Colors.grey.withValues(alpha: 0.15),
             spreadRadius: 2,
             blurRadius: 10,
             offset: const Offset(0, 4),
@@ -950,7 +955,7 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
               color: const Color(0xFFE8F5E8),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: const Color(0xFF4CAF50).withOpacity(0.3),
+                color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
                 width: 1,
               ),
             ),
@@ -1087,7 +1092,7 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                // TODO: Navigate to payment screen or process
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Payment registration initiated! 🎉'),

@@ -2,6 +2,7 @@
 // Usage: dart run register_user.dart
 
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 
@@ -41,33 +42,34 @@ Future<void> main() async {
   try {
     regBody = jsonDecode(regRes.body) as Map<String, dynamic>;
   } catch (_) {
-    print('Registration failed: invalid JSON response');
-    print(regRes.body);
+    stdout.writeln('Registration failed: invalid JSON response');
+    stdout.writeln(regRes.body);
     return;
   }
 
   if (regRes.statusCode < 200 || regRes.statusCode >= 300) {
-    print('Registration failed (${regRes.statusCode}): $regBody');
+    stdout.writeln('Registration failed (${regRes.statusCode}): $regBody');
     return;
   }
 
   final token = regBody['data']?['token'] ?? regBody['token'];
-  final memberId = regBody['data']?['member']?['id'] ?? regBody['member']?['id'];
+  final memberId =
+      regBody['data']?['member']?['id'] ?? regBody['member']?['id'];
 
   if (memberId == null || memberId.toString().isEmpty) {
-    print(
+    stdout.writeln(
       'Registration succeeded but userId not found in response. Body: $regBody',
     );
     return;
   }
   if (token == null || token.toString().isEmpty) {
-    print(
+    stdout.writeln(
       'Registration succeeded but token not found in response. Body: $regBody',
     );
     return;
   }
 
-  print('Registered userId=$memberId, gender=$gender');
+  stdout.writeln('Registered userId=$memberId, gender=$gender');
 
   // 2) Submit application (backend expects these exact top-level fields)
   final appPayload = {
@@ -98,10 +100,12 @@ Future<void> main() async {
   try {
     appBody = jsonDecode(appRes.body) as Map<String, dynamic>;
   } catch (_) {
-    print('Application submission failed: invalid JSON response');
-    print(appRes.body);
+    stdout.writeln('Application submission failed: invalid JSON response');
+    stdout.writeln(appRes.body);
     return;
   }
 
-  print('Application submit status=${appRes.statusCode}, body=$appBody');
+  stdout.writeln(
+    'Application submit status=${appRes.statusCode}, body=$appBody',
+  );
 }

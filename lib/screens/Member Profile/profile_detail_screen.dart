@@ -725,18 +725,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                                     'Status',
                                     s(declaration['status']),
                                   ),
-                                  _buildDetailRow(
-                                    'Review Notes',
-                                    s(declaration['reviewNotes']),
-                                  ),
-                                  _buildDetailRow(
-                                    'Reviewed By',
-                                    s(declaration['reviewedBy']),
-                                  ),
-                                  _buildDetailRow(
-                                    'Reviewed At',
-                                    s(_formatDate(declaration['reviewedAt'])),
-                                  ),
                                 ],
                               );
                             }

@@ -530,7 +530,38 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
     final form = app['formData'] != null
         ? Map<String, dynamic>.from(app['formData'])
         : <String, dynamic>{};
-    final gender = (form['gender'] ?? 'NA').toString();
+    // Gender can be at root level or nested. Normalize common variants.
+    String normalizeGender(dynamic g) {
+      if (g == null) return 'NA';
+      final v = g.toString().trim();
+      if (v.isEmpty) return 'NA';
+      final lc = v.toLowerCase();
+      if (lc == 'm' || lc == 'male' || lc.startsWith('male')) {
+        return 'Male';
+      }
+      if (lc == 'f' || lc == 'female' || lc.startsWith('female')) {
+        return 'Female';
+      }
+      if (lc == 'o' || lc == 'other' || lc.startsWith('other')) {
+        return 'Other';
+      }
+      return v;
+    }
+
+    final Map<String, dynamic>? personalInfo =
+        form['personalInfo'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(form['personalInfo'])
+        : null;
+    final Map<String, dynamic>? personalDetails =
+        form['personalDetails'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(form['personalDetails'])
+        : null;
+    final dynamic rawGender =
+        app['gender'] ??
+        form['gender'] ??
+        personalInfo?['gender'] ??
+        personalDetails?['gender'];
+    final String gender = normalizeGender(rawGender);
 
     // Compute status for styling and label
     final normalizedStatus = status.trim().toLowerCase();

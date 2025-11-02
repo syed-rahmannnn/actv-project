@@ -28,18 +28,24 @@ class ApplicationService {
     String? gender,
   }) async {
     // Try to derive gender from formData if not explicitly provided
-    final derivedGender = gender ?? (() {
-      final pd = formData['personalDetails'];
-      final fg = formData['gender'];
-      final v = (pd is Map ? pd['gender'] : null) ?? fg;
-      if (v is String) {
-        final low = v.trim().toLowerCase();
-        if (low == 'm' || low == 'male') return 'Male';
-        if (low == 'f' || low == 'female') return 'Female';
-        if (low == 'o' || low == 'other') return 'Other';
-      }
-      return null;
-    })();
+    final derivedGender =
+        gender ??
+        (() {
+          final pd = formData['personalDetails'];
+          final pi = formData['personalInfo'];
+          final fg = formData['gender'];
+          final v =
+              (pd is Map ? pd['gender'] : null) ??
+              (pi is Map ? pi['gender'] : null) ??
+              fg;
+          if (v is String) {
+            final low = v.trim().toLowerCase();
+            if (low == 'm' || low == 'male') return 'Male';
+            if (low == 'f' || low == 'female') return 'Female';
+            if (low == 'o' || low == 'other') return 'Other';
+          }
+          return null;
+        })();
     final res = await http.post(
       Uri.parse('$baseUrl/applications/submit'),
       headers: _headers,
@@ -61,12 +67,9 @@ class ApplicationService {
   // ---------- INBOXES ----------
   Future<List<dynamic>> getBlockInbox(String blockAdminId) async {
     final url = '$baseUrl/applications/block/$blockAdminId';
-    
-    final res = await http.get(
-      Uri.parse(url),
-      headers: _headers,
-    );
-    
+
+    final res = await http.get(Uri.parse(url), headers: _headers);
+
     final data = jsonDecode(res.body);
 
     // Handle error responses
@@ -119,25 +122,19 @@ class ApplicationService {
           return List<Map<String, dynamic>>.from(data['applications'] as List);
         }
         if (data is List) {
-          return data
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList();
+          return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
         }
         return [];
       }
     } catch (e) {
       // Fallback to the known pending-only inbox if direct route fails
       final inbox = await getDistrictInbox(districtAdminId);
-      return inbox
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
+      return inbox.map((e) => Map<String, dynamic>.from(e as Map)).toList();
     }
 
     // HTTP error fallback
     final inbox = await getDistrictInbox(districtAdminId);
-    return inbox
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
+    return inbox.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
   Future<List<dynamic>> getStateInbox(String stateAdminId) async {
@@ -173,9 +170,7 @@ class ApplicationService {
           return List<Map<String, dynamic>>.from(data['applications'] as List);
         }
         if (data is List) {
-          return data
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList();
+          return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
         }
         return [];
       }
@@ -271,16 +266,14 @@ class ApplicationService {
     required String status, // 'Approved' | 'Rejected'
   }) async {
     try {
-      final url = '$baseUrl/applications/by-admin/$adminId?role=$role&status=$status';
-      
-      final res = await http.get(
-        Uri.parse(url),
-        headers: _headers,
-      );
-      
+      final url =
+          '$baseUrl/applications/by-admin/$adminId?role=$role&status=$status';
+
+      final res = await http.get(Uri.parse(url), headers: _headers);
+
       if (res.statusCode == 200) {
         final responseData = jsonDecode(res.body);
-        
+
         if (responseData is Map<String, dynamic>) {
           final count = responseData['count'];
           return (count ?? 0) as int;
@@ -296,28 +289,29 @@ class ApplicationService {
   }
 
   Future<Map<String, int>> getBlockStats(String blockAdminId) async {
-    
     try {
       final allApplications = await getBlockInbox(blockAdminId);
-      
+
       // Filter pending applications (same logic as Dashboard)
       final pendingApps = allApplications.where((app) {
         final status = (app['status'] ?? '').toString().toLowerCase();
-        return status == 'pending-block' || status == 'submitted' || status == 'pending';
+        return status == 'pending-block' ||
+            status == 'submitted' ||
+            status == 'pending';
       }).toList();
-      
+
       final approved = await _getCount(
         adminId: blockAdminId,
         role: 'block',
         status: 'Approved',
       );
-      
+
       final rejected = await _getCount(
         adminId: blockAdminId,
         role: 'block',
         status: 'Rejected',
       );
-      
+
       final stats = {
         'pending': pendingApps.length,
         'approved': approved,
@@ -404,6 +398,7 @@ class ApplicationService {
       'total': pendingCount + approved + rejected,
     };
   }
+
   // ---------- ADMIN DETAILS ----------
   Future<Map<String, dynamic>> getBlockAdminDetails(String adminId) async {
     final res = await http.get(
@@ -425,7 +420,9 @@ class ApplicationService {
     if (res.statusCode == 200) {
       return jsonDecode(res.body) as Map<String, dynamic>;
     } else {
-      throw Exception('Failed to fetch district admin details: ${res.statusCode}');
+      throw Exception(
+        'Failed to fetch district admin details: ${res.statusCode}',
+      );
     }
   }
 
