@@ -92,6 +92,37 @@ const memberDetailsSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  // Membership information
+  membershipStatus: {
+    type: String,
+    enum: ['pending', 'active', 'expired', 'cancelled'],
+    default: 'pending'
+  },
+  membershipType: {
+    type: String,
+    enum: ['annual', 'lifetime', 'none'],
+    default: 'none'
+  },
+  membershipActivatedAt: {
+    type: Date,
+    default: null
+  },
+  membershipExpiresAt: {
+    type: Date,
+    default: null
+  },
+  paymentId: {
+    type: String,
+    default: null
+  },
+  paymentAmount: {
+    type: Number,
+    default: null
+  },
+  lastPaymentDate: {
+    type: Date,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

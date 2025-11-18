@@ -16,6 +16,7 @@ const memberRoutes = require('./routes/members');
 const profileRoutes = require('./routes/profile');
 const adminAuthRouteFactory = require('./routes/adminAuth');
 const applicationsRouteFactory = require('./routes/applications');
+const webhookRoutes = require('./routes/webhook');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -65,6 +66,16 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Log ALL incoming requests for debugging
+app.use((req, res, next) => {
+  console.log('\n>>> INCOMING REQUEST <<<');
+  console.log(`Method: ${req.method}`);
+  console.log(`Path: ${req.url}`);
+  console.log(`Time: ${new Date().toISOString()}`);
+  console.log(`Headers:`, req.headers);
+  next();
+});
+
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/membersdb')
 .then(() => {
@@ -81,6 +92,7 @@ app.use('/api/members', memberRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/admin', adminAuthRouteFactory(mongoose.connection));
 app.use('/api/applications', applicationsRouteFactory(mongoose.connection));
+app.use('/api/webhook', webhookRoutes); // Webhook route for payment notifications
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

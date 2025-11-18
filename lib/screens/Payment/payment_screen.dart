@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../services/payment_service.dart';
+import '../../services/auth_service.dart';
+import 'payment_webview_screen.dart';
+import 'payment_success_screen.dart';
 
 class PaymentScreen extends StatefulWidget {
   const PaymentScreen({super.key});
@@ -209,6 +213,37 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       // Support ACTIV Card
                       _buildSupportCard(),
                       const SizedBox(height: 32),
+
+                      // Test Mode Banner
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          border: Border.all(color: Colors.green.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.science,
+                              color: Colors.green.shade700,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '🧪 TEST MODE ACTIVE - Payments simulated for testing',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.green.shade700,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
 
                       // Secure Payment Section
                       const Text(
@@ -752,28 +787,220 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  void _processPayment() {
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
+  void _processPayment() async {
+    try {
+      // Get user data
+      final userData = await AuthService.getUserData();
+
+      if (userData == null) {
+        _showErrorDialog(
+          'Unable to retrieve user information. Please try again.',
+        );
+        return;
+      }
+
+      // Show loading indicator
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // Create payment request
+      final result = await PaymentService.createPaymentRequest(
+        amount: _getSelectedAmount().toDouble(),
+        purpose: _getSelectedTitle(),
+        buyerName: userData['fullName'] ?? 'Member',
+        email: userData['email'] ?? '',
+        phone: userData['phoneNumber'] ?? '',
+        redirectUrl:
+            'https://activ-app.com/payment/success', // Redirect URL after payment
+      );
+
+      // Close loading dialog
+      if (!mounted) return;
+      Navigator.of(context).pop();
+
+      if (result['success']) {
+        // Check if in test mode
+        if (result['test_mode'] == true) {
+          // TEST MODE: Show immediate success
+          await Future.delayed(const Duration(seconds: 1));
+          _showTestSuccessDialog(result['payment_request_id']);
+          return;
+        }
+
+        // LIVE MODE: Navigate to payment WebView
+        final paymentResult = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaymentWebViewScreen(
+              paymentUrl: result['payment_url'],
+              paymentRequestId: result['payment_request_id'],
+            ),
+          ),
+        );
+
+        // Handle payment result
+        if (paymentResult == true) {
+          // Payment was successful
+          _showSuccessDialog(
+            'Your payment has been completed successfully! Your membership will be activated shortly.',
+          );
+        } else if (paymentResult == false) {
+          // Payment failed or was cancelled
+          _showErrorDialog(
+            'Payment was not completed. Please try again or contact support.',
+          );
+        }
+      } else {
+        _showErrorDialog('Payment failed: ${result['error']}');
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+      _showErrorDialog('An error occurred: $e');
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
           children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Payment of ₹${_getSelectedAmount()} initiated successfully!',
-              ),
+            Icon(Icons.error_outline, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Payment Error'),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2196F3),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSuccessDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text('Success'),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4CAF50),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTestSuccessDialog(String paymentId) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 8),
+            Text('Success'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '✅ TEST PAYMENT SUCCESSFUL!',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Text('Payment ID: $paymentId'),
+            Text('Amount: ₹${_getSelectedAmount()}'),
+            const SizedBox(height: 12),
+            const Text(
+              '🧪 This is a test transaction.\nIn production, real payment will be processed.',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF4CAF50),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
+        actions: [
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop(); // Close dialog
+
+              // Get user data
+              final userData = await AuthService.getUserData();
+              final memberName = userData?['name'] ?? 'Member';
+
+              // Get plan details
+              String planName = '';
+              String validity = '';
+              double amount = _getSelectedAmount().toDouble();
+
+              if (selectedPlan == 'annual') {
+                planName = 'Annual Membership';
+                validity = '1 Year';
+              } else if (selectedPlan == 'lifetime') {
+                planName = 'Lifetime Membership';
+                validity = 'LifeTime';
+              } else if (selectedPlan == 'support') {
+                planName = 'Support Donation';
+                validity = 'N/A';
+              }
+
+              // Navigate to success screen
+              if (!mounted) return;
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PaymentSuccessScreen(
+                    membershipId:
+                        'ACTIV-2024-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+                    memberName: memberName,
+                    plan: planName,
+                    amount: amount,
+                    validity: validity,
+                    paymentReference: paymentId,
+                  ),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4CAF50),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('OK'),
+          ),
+        ],
       ),
     );
-
-    // TODO: Integrate with payment gateway
-    // For now, just show a success message
   }
 }

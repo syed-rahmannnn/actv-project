@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:activ/screens/Login/login_screen.dart';
 import 'package:activ/screens/onboarding_screen.dart';
 import 'package:activ/screens/Member%20Bottom%20Navigation/dashboard_screen.dart';
@@ -10,6 +11,7 @@ import 'package:activ/screens/Application%20Status/application_submitted_screen.
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
 

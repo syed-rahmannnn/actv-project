@@ -465,10 +465,7 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
                         // If user confirmed logout
                         if (shouldLogout == true) {
                           if (!mounted) return;
-                          // Capture navigator and messenger before async gaps
-                          final navigator = Navigator.of(context);
-                          final messenger = ScaffoldMessenger.of(context);
-                          // Show loading indicator
+                          // Show loading indicator BEFORE capturing context
                           showDialog(
                             context: context,
                             barrierDismissible: false,
@@ -476,6 +473,10 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
                               child: CircularProgressIndicator(),
                             ),
                           );
+                          
+                          // Capture navigator and messenger after showing dialog
+                          final navigator = Navigator.of(context);
+                          final messenger = ScaffoldMessenger.of(context);
 
                           try {
                             // Clear session and token
