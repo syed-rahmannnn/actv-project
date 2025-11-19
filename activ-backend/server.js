@@ -14,6 +14,7 @@ if (process.env.NODE_ENV === 'production') {
 const authRoutes = require('./routes/auth');
 const memberRoutes = require('./routes/members');
 const profileRoutes = require('./routes/profile');
+const memberDetailsRoutes = require('./routes/memberDetails');
 const adminAuthRouteFactory = require('./routes/adminAuth');
 const applicationsRouteFactory = require('./routes/applications');
 const webhookRoutes = require('./routes/webhook');
@@ -42,6 +43,7 @@ const allowedOrigins = [
   'http://localhost:5000', 
   'http://127.0.0.1:5000',
   'http://192.168.29.130:3000',
+  'http://10.201.103.174:3000',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'https://actv-project.onrender.com',
@@ -89,6 +91,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/membersdb
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/members', memberRoutes);
+app.use('/api/members', memberDetailsRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/admin', adminAuthRouteFactory(mongoose.connection));
 app.use('/api/applications', applicationsRouteFactory(mongoose.connection));

@@ -4,133 +4,218 @@ import 'browse_members_screen.dart';
 import 'notification_screen.dart';
 import '../Member Addtional Details/personal_details_form.dart';
 import '../Application Status/application_status_screen.dart';
+import '../../services/member_service.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
 
   const DashboardScreen({super.key, required this.userData});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  String displayName = 'Member';
+  String companyName = 'Your Company';
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMemberData();
+  }
+
+  Future<void> _loadMemberData() async {
+    print('\n🚀 === DASHBOARD _loadMemberData CALLED ===');
+    print('📦 widget.userData: ${widget.userData}');
+    print('🔑 userData keys: ${widget.userData.keys.toList()}');
+
+    // First, try to get name from userData passed from login
+    final initialName =
+        widget.userData['fullName'] ??
+        widget.userData['member']?['fullName'] ??
+        'Member';
+
+    print('📝 Initial name extracted: $initialName');
+
+    setState(() {
+      displayName = initialName;
+    });
+
+    print('=== DASHBOARD SCREEN INIT ===');
+    print('Initial name from userData: $displayName');
+    print('🌐 About to call MemberService.getMemberDetails()...');
+
+    // Then fetch fresh data from API
+    try {
+      final data = await MemberService.getMemberDetails();
+
+      print('📡 API Response received: ${data != null}');
+      print('📊 Full API response: $data');
+
+      if (data != null && data['success'] == true) {
+        final memberData = data['data'];
+        final personalDetails = memberData['personal_and_demographic_details'];
+        final businessInfo = memberData['business_information'];
+
+        print('👤 Personal details: $personalDetails');
+        print('🏢 Business info: $businessInfo');
+        print('📛 Extracted full_name: ${personalDetails?['full_name']}');
+        print(
+          '🏭 Extracted organization_name: ${businessInfo?['organization_name']}',
+        );
+
+        setState(() {
+          displayName = personalDetails?['full_name'] ?? displayName;
+          companyName = businessInfo?['organization_name'] ?? 'Your Company';
+          isLoading = false;
+        });
+
+        print('✅ Dashboard data loaded from API');
+        print('✅ Final display name: $displayName');
+        print('✅ Final company name: $companyName');
+      } else {
+        setState(() => isLoading = false);
+        print('⚠️ Could not fetch fresh data, using login data');
+        print('⚠️ API response was: $data');
+      }
+    } catch (e, stackTrace) {
+      setState(() => isLoading = false);
+      print('❌ Error loading dashboard data: $e');
+      print('❌ Stack trace: $stackTrace');
+    }
+  }
 
   // Removed unused helper to satisfy analyzer
 
   @override
   Widget build(BuildContext context) {
-    // Debug logs removed for security - no longer printing sensitive user data
+    // Debug: Print userData to see what's available
+    print('=== DASHBOARD SCREEN BUILD ===');
+    print('UserData received: ${widget.userData}');
+    print('UserData keys: ${widget.userData.keys.toList()}');
+    print('Current display name: $displayName');
+    print('Current company name: $companyName');
 
     return Scaffold(
       backgroundColor: Colors.white,
       bottomNavigationBar: _buildBottomNavigation(context),
 
       // 🔹 Body starts
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // 🔹 Full Blue Header
-            Container(
-              height: 200,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
-                ),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-              ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ProfileScreen(),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(
-                        top: 50,
-                        left: 20,
-                        right: 20,
+                  // 🔹 Full Blue Header
+                  Container(
+                    height: 200,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
                       ),
-                      child: Row(
-                        children: [
-                          const CircleAvatar(
-                            radius: 25,
-                            backgroundImage: AssetImage(
-                              'assets/images/profile.png',
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(20),
+                        bottomRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ProfileScreen(),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(
+                              top: 50,
+                              left: 20,
+                              right: 20,
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Row(
                               children: [
-                                Text(
-                                  'Welcome back , ${userData['fullName'] ?? userData['registrationForm']?['fullName'] ?? 'User'}',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
+                                const CircleAvatar(
+                                  radius: 25,
+                                  backgroundImage: AssetImage(
+                                    'assets/images/profile.png',
                                   ),
                                 ),
-                                const Text(
-                                  'TechCorp Solution',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.black54,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Welcome back, $displayName',
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      Text(
+                                        companyName,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.black54,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 20),
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 20),
+                          child: TextField(
+                            decoration: InputDecoration(
+                              hintText: 'Search by location...',
+                              hintStyle: const TextStyle(color: Colors.black54),
+                              prefixIcon: const Icon(
+                                Icons.search,
+                                color: Colors.black54,
+                              ),
+                              filled: true,
+                              fillColor: Color.lerp(
+                                const Color(0xFFE6D8FF),
+                                Colors.white,
+                                0.55,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(25),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 15,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+
                   const SizedBox(height: 20),
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Search by location...',
-                        hintStyle: const TextStyle(color: Colors.black54),
-                        prefixIcon: const Icon(
-                          Icons.search,
-                          color: Colors.black54,
-                        ),
-                        filled: true,
-                        fillColor: Color.lerp(
-                          const Color(0xFFE6D8FF),
-                          Colors.white,
-                          0.55,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(25),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 15,
-                        ),
-                      ),
-                    ),
-                  ),
+
+                  // 🔹 Dynamic Card based on registration progress
+                  _buildProgressCard(context, widget.userData),
                 ],
               ),
             ),
-
-            const SizedBox(height: 20),
-
-            // 🔹 Dynamic Card based on registration progress
-            _buildProgressCard(context, userData),
-          ],
-        ),
-      ),
     );
   }
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:activ/services/auth_service.dart';
-import 'package:activ/screens/Member%20Profile/profile_detail_screen.dart';
 import 'package:activ/services/api_service.dart';
+import '../Member Dashboard/my_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -127,13 +127,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     _buildMenuItem(
                       icon: Icons.person_outline,
                       title: 'My Profile',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ProfileDetailScreen(),
-                          ),
+                      onTap: () async {
+                        // Get user data for member name display
+                        final userData = await AuthService.getUserData();
+
+                        print('=== PROFILE SCREEN DEBUG ===');
+                        print(
+                          'Navigating to MyProfileScreen with dynamic data fetch...',
                         );
+
+                        final memberName =
+                            userData?['fullName'] ??
+                            userData?['member']?['fullName'] ??
+                            userData?['registrationForm']?['fullName'] ??
+                            'Member';
+
+                        print('Member name: $memberName');
+
+                        if (mounted) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  MyProfileScreen(memberName: memberName),
+                            ),
+                          );
+                        }
                       },
                     ),
                     const SizedBox(height: 20),

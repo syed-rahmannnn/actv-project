@@ -15,7 +15,9 @@ class InstamojoConfig {
     if (kDebugMode) {
       print('API Key: ${apiKey.isNotEmpty ? "✓ Loaded" : "✗ Missing"}');
       print('Auth Token: ${authToken.isNotEmpty ? "✓ Loaded" : "✗ Missing"}');
-      print('Private Salt: ${privateSalt.isNotEmpty ? "✓ Loaded" : "✗ Missing"}');
+      print(
+        'Private Salt: ${privateSalt.isNotEmpty ? "✓ Loaded" : "✗ Missing"}',
+      );
     }
   }
 

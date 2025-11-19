@@ -24,18 +24,19 @@ class PaymentService {
           print('💰 Amount: ₹$amount');
           print('📝 Purpose: $purpose');
         }
-        
+
         // Simulate API delay
         await Future.delayed(const Duration(seconds: 1));
-        
+
         // Generate mock payment data
         final testPaymentId = 'TEST_${DateTime.now().millisecondsSinceEpoch}';
-        final testPaymentUrl = 'https://test-payment-simulator.com?amount=$amount&id=$testPaymentId';
-        
+        final testPaymentUrl =
+            'https://test-payment-simulator.com?amount=$amount&id=$testPaymentId';
+
         if (kDebugMode) {
           print('✅ Test payment created: $testPaymentId');
         }
-        
+
         return {
           'success': true,
           'payment_url': testPaymentUrl,

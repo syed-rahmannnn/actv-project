@@ -2,27 +2,65 @@ import 'package:flutter/material.dart';
 import 'profile_screen.dart';
 import 'browse_members_screen.dart';
 import 'notifications_screen.dart';
+import '../../services/member_service.dart';
 
-class MemberDashboardScreen extends StatelessWidget {
-  final String memberName;
-  final String companyName;
-  final String membershipType;
-  final String memberSince;
-  final String memberId;
-  final bool isActive;
+class MemberDashboardScreen extends StatefulWidget {
+  const MemberDashboardScreen({super.key});
 
-  const MemberDashboardScreen({
-    super.key,
-    required this.memberName,
-    required this.companyName,
-    this.membershipType = 'Lifetime',
-    required this.memberSince,
-    required this.memberId,
-    this.isActive = true,
-  });
+  @override
+  State<MemberDashboardScreen> createState() => _MemberDashboardScreenState();
+}
+
+class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
+  String memberName = 'Member';
+  String companyName = 'Your Company';
+  String membershipType = 'Lifetime';
+  String memberSince = '2024';
+  String memberId = 'Loading...';
+  bool isActive = true;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMemberData();
+  }
+
+  Future<void> _loadMemberData() async {
+    print('🚀 === MEMBER DASHBOARD: Loading data ===');
+    try {
+      final response = await MemberService.getMemberDetails();
+      print('📦 API Response: $response');
+
+      if (response != null && response['success'] == true && response['data'] != null) {
+        final data = response['data'];
+        final personalDetails = data['personal_and_demographic_details'];
+        final businessInfo = data['business_information'];
+
+        setState(() {
+          memberName = personalDetails['full_name'] ?? 'Member';
+          companyName = businessInfo['organization_name'] ?? 'Your Company';
+          memberId = personalDetails['email'] ?? 'N/A';
+          memberSince =
+              personalDetails['date_of_birth']?.split('-')[2] ?? '2024';
+          isLoading = false;
+        });
+
+        print('✅ Data loaded: $memberName from $companyName');
+      } else {
+        setState(() => isLoading = false);
+      }
+    } catch (e) {
+      print('❌ Error loading dashboard data: $e');
+      setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -52,10 +90,7 @@ class MemberDashboardScreen extends StatelessWidget {
                           height: 70,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white,
-                              width: 2,
-                            ),
+                            border: Border.all(color: Colors.white, width: 2),
                           ),
                           child: const CircleAvatar(
                             radius: 35,
@@ -92,7 +127,7 @@ class MemberDashboardScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Search Bar
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -108,17 +143,14 @@ class MemberDashboardScreen extends StatelessWidget {
                             fontSize: 16,
                           ),
                           border: InputBorder.none,
-                          icon: Icon(
-                            Icons.search,
-                            color: Colors.grey[600],
-                          ),
+                          icon: Icon(Icons.search, color: Colors.grey[600]),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              
+
               // White Content Section (Scrollable)
               Expanded(
                 child: Container(
@@ -159,7 +191,8 @@ class MemberDashboardScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   // Lifetime Badge
                                   Container(
@@ -168,7 +201,9 @@ class MemberDashboardScreen extends StatelessWidget {
                                       vertical: 6,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.3),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.3,
+                                      ),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
@@ -238,9 +273,9 @@ class MemberDashboardScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                        
+
                         const SizedBox(height: 32),
-                        
+
                         // Official Documents Section
                         const Text(
                           'Official Documents',
@@ -259,9 +294,9 @@ class MemberDashboardScreen extends StatelessWidget {
                             height: 1.5,
                           ),
                         ),
-                        
+
                         const SizedBox(height: 20),
-                        
+
                         // Download Membership Certificate
                         _buildDownloadButton(
                           icon: Icons.workspace_premium,
@@ -272,9 +307,9 @@ class MemberDashboardScreen extends StatelessWidget {
                             // TODO: Implement certificate download
                           },
                         ),
-                        
+
                         const SizedBox(height: 12),
-                        
+
                         // Download Tax Exemption Certificate
                         _buildDownloadButton(
                           icon: Icons.receipt_long,
@@ -285,9 +320,9 @@ class MemberDashboardScreen extends StatelessWidget {
                             // TODO: Implement certificate download
                           },
                         ),
-                        
+
                         const SizedBox(height: 32),
-                        
+
                         // Quick Actions Grid
                         GridView.count(
                           crossAxisCount: 2,
@@ -346,7 +381,7 @@ class MemberDashboardScreen extends StatelessWidget {
                             ),
                           ],
                         ),
-                        
+
                         const SizedBox(height: 20),
                       ],
                     ),
@@ -385,11 +420,7 @@ class MemberDashboardScreen extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                icon,
-                color: iconColor,
-                size: 24,
-              ),
+              child: Icon(icon, color: iconColor, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -402,11 +433,7 @@ class MemberDashboardScreen extends StatelessWidget {
                 ),
               ),
             ),
-            Icon(
-              Icons.download_outlined,
-              color: iconColor,
-              size: 22,
-            ),
+            Icon(Icons.download_outlined, color: iconColor, size: 22),
           ],
         ),
       ),
@@ -430,11 +457,7 @@ class MemberDashboardScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 48,
-              color: const Color(0xFF1565C0),
-            ),
+            Icon(icon, size: 48, color: const Color(0xFF1565C0)),
             const SizedBox(height: 12),
             Text(
               title,
@@ -519,11 +542,7 @@ class MemberDashboardScreen extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            color: isSelected ? Colors.black : Colors.grey,
-            size: 28,
-          ),
+          Icon(icon, color: isSelected ? Colors.black : Colors.grey, size: 28),
           const SizedBox(height: 4),
           Text(
             label,

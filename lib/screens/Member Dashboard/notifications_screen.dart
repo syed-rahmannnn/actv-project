@@ -13,7 +13,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     {
       'type': 'approval',
       'title': 'New Approval Request',
-      'message': 'Aditi Sharma has submitted a new membership application for review',
+      'message':
+          'Aditi Sharma has submitted a new membership application for review',
       'time': '30m ago',
       'badge': 'Block',
       'badgeColor': Color(0xFFFFA726),
@@ -23,7 +24,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     {
       'type': 'approved',
       'title': 'Application Approved',
-      'message': 'Rajesh Kumar\'s membership application has been approved by the district admin',
+      'message':
+          'Rajesh Kumar\'s membership application has been approved by the district admin',
       'time': '2h ago',
       'badge': 'District',
       'badgeColor': Color(0xFF66BB6A),
@@ -33,7 +35,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     {
       'type': 'alert',
       'title': 'System Alert',
-      'message': 'Server maintenance scheduled for tonight at 11:00 PM. Expected downtime: 2 hours',
+      'message':
+          'Server maintenance scheduled for tonight at 11:00 PM. Expected downtime: 2 hours',
       'time': '4h ago',
       'badge': 'State',
       'badgeColor': Color(0xFF9C27B0),
@@ -44,7 +47,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     {
       'type': 'status',
       'title': 'Status Update',
-      'message': 'Monthly membership report is now available for download in the reports section',
+      'message':
+          'Monthly membership report is now available for download in the reports section',
       'time': '1d ago',
       'badge': 'Block',
       'badgeColor': Color(0xFFFFA726),
@@ -54,7 +58,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     {
       'type': 'status',
       'title': 'Status Update',
-      'message': 'Monthly membership report is now available for download in the reports section',
+      'message':
+          'Monthly membership report is now available for download in the reports section',
       'time': '1d ago',
       'badge': 'Block',
       'badgeColor': Color(0xFFFFA726),
@@ -63,7 +68,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     },
   ];
 
-  int get unreadCount => notifications.where((n) => n['isUnread'] == true).length;
+  int get unreadCount =>
+      notifications.where((n) => n['isUnread'] == true).length;
 
   void markAllAsRead() {
     setState(() {
@@ -135,7 +141,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ],
               ),
             ),
-            
+
             // Notifications List
             Expanded(
               child: ListView.builder(
@@ -154,7 +160,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Widget _buildNotificationCard(Map<String, dynamic> notification) {
     final isAlert = notification['isAlert'] == true;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -189,10 +195,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   color: Color(0xFF5F6368),
                   size: 20,
                 ),
-              
+
               if (isAlert || notification['type'] == 'status')
                 const SizedBox(width: 8),
-              
+
               // Title
               Expanded(
                 child: Text(
@@ -200,11 +206,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: isAlert ? const Color(0xFFEA4335) : const Color(0xFF202124),
+                    color: isAlert
+                        ? const Color(0xFFEA4335)
+                        : const Color(0xFF202124),
                   ),
                 ),
               ),
-              
+
               // Unread indicator
               if (notification['isUnread'] == true)
                 Container(
@@ -218,9 +226,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
             ],
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           // Message
           Text(
             notification['message'],
@@ -230,19 +238,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               height: 1.4,
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Time and Badge
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 notification['time'],
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF5F6368),
-                ),
+                style: const TextStyle(fontSize: 13, color: Color(0xFF5F6368)),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -250,7 +255,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: (notification['badgeColor'] as Color).withOpacity(0.15),
+                  color: (notification['badgeColor'] as Color).withOpacity(
+                    0.15,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(

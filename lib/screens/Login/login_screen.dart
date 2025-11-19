@@ -329,10 +329,11 @@ class _LoginScreenState extends State<LoginScreen> {
       final email = _emailController.text.trim().toLowerCase();
       final isLikelyAdmin =
           email.contains('admin') ||
-          email.startsWith('block.') ||
-          email.startsWith('district.') ||
-          email.startsWith('state.') ||
-          email.startsWith('super.');
+          (email.contains('@activ.com') &&
+              (email.startsWith('block.') ||
+                  email.startsWith('district.') ||
+                  email.startsWith('state.') ||
+                  email.startsWith('super.')));
 
       // First try admin login with different roles
       Map<String, dynamic>? adminResult;
@@ -522,6 +523,20 @@ class _LoginScreenState extends State<LoginScreen> {
         // Member login successful
         final member = result['body']['data']['member'];
         final token = result['token'];
+
+        // Debug: Print what member data we got from login
+        print('=== LOGIN SUCCESS DEBUG ===');
+        print('Member data from API: $member');
+        print('Member keys: ${member.keys.toList()}');
+        if (member['id'] != null) {
+          print('Found member.id: ${member['id']}');
+        }
+        if (member['_id'] != null) {
+          print('Found member._id: ${member['_id']}');
+        }
+        if (member['memberId'] != null) {
+          print('Found member.memberId: ${member['memberId']}');
+        }
 
         await AuthService.saveLoginData(token: token, userData: member);
 

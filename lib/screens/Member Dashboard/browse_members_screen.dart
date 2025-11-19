@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'location_selection_screen.dart';
 
 class BrowseMembersScreen extends StatefulWidget {
   const BrowseMembersScreen({super.key});
@@ -9,7 +10,7 @@ class BrowseMembersScreen extends StatefulWidget {
 
 class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
   final TextEditingController _searchController = TextEditingController();
-  
+
   // Sample members data
   final List<Map<String, dynamic>> members = [
     {
@@ -95,129 +96,151 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFE3F2FD),
       body: SafeArea(
         child: Column(
           children: [
-            // Header Section with White Background
+            // Header Section with Light Blue Background
             Container(
-              color: Colors.white,
+              color: const Color(0xFFE3F2FD),
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
               child: Column(
                 children: [
-                  // Back Button and Title
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.black),
-                          onPressed: () => Navigator.pop(context),
+                  // Back button and Browse Members title
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.black,
+                          size: 24,
                         ),
-                        const Expanded(
-                          child: Column(
-                            children: [
-                              Text(
-                                'Browse Members',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF202124),
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Connect with community members and leaders',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF5F6368),
-                                ),
-                              ),
-                            ],
+                        onPressed: () => Navigator.pop(context),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: const Text(
+                            'Browse Members',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF202124),
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 48), // Balance for back button
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 48), // Balance the back button
+                    ],
                   ),
-                  
-                  // Breadcrumb
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    color: const Color(0xFFE3F2FD),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Home',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        Text(
-                          '  >  ',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const Text(
-                          'Members',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF1976D2),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Search Bar
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Search by name, area, or role',
-                        hintStyle: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 15,
-                        ),
-                        prefixIcon: Icon(
-                          Icons.search,
-                          color: Colors.grey[600],
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF4285F4), width: 2),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                  const SizedBox(height: 8),
+                  // Subtitle
+                  Center(
+                    child: Text(
+                      'Connect with community members and leaders',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            
+
+            // Search Bar with Filter
+            Container(
+              color: const Color(0xFFE3F2FD),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search by state, District, or Block',
+                          hintStyle: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 15,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: Colors.grey[600],
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF4285F4),
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Filter Button
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4285F4),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.filter_list,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const LocationSelectionScreen(),
+                            ),
+                          );
+                        },
+                        tooltip: 'Filter',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             // Members List
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: members.length,
-                itemBuilder: (context, index) {
-                  return _buildMemberCard(members[index]);
-                },
+              child: Container(
+                color: const Color(0xFFE3F2FD),
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: members.length,
+                  itemBuilder: (context, index) {
+                    return _buildMemberCard(members[index]);
+                  },
+                ),
               ),
             ),
           ],
@@ -266,9 +289,9 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
                   ),
                 ),
               ),
-              
+
               const SizedBox(width: 12),
-              
+
               // Name and Role
               Expanded(
                 child: Column(
@@ -314,7 +337,7 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
                   ],
                 ),
               ),
-              
+
               // Active Badge
               if (member['isActive'])
                 Container(
@@ -337,18 +360,15 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
                 ),
             ],
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Location
           Row(
             children: [
               const Text(
                 'Location: ',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF5F6368),
-                ),
+                style: TextStyle(fontSize: 13, color: Color(0xFF5F6368)),
               ),
               Text(
                 member['location'],
@@ -360,9 +380,9 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Action Buttons
           Row(
             children: [
@@ -382,10 +402,7 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
                   ),
                   child: const Text(
                     'View Profile',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -406,10 +423,7 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
                   ),
                   child: const Text(
                     'Connect',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),

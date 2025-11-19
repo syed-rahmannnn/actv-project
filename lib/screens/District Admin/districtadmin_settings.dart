@@ -473,7 +473,7 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
                               child: CircularProgressIndicator(),
                             ),
                           );
-                          
+
                           // Capture navigator and messenger after showing dialog
                           final navigator = Navigator.of(context);
                           final messenger = ScaffoldMessenger.of(context);

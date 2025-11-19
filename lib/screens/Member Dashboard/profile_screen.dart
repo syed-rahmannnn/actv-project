@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'my_profile_screen.dart';
 
 class AccountScreen extends StatelessWidget {
   final String memberName;
@@ -34,24 +35,21 @@ class AccountScreen extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Content
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
                   children: [
                     const SizedBox(height: 32),
-                    
+
                     // Profile Picture
                     Container(
                       width: 120,
                       height: 120,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white,
-                          width: 4,
-                        ),
+                        border: Border.all(color: Colors.white, width: 4),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.1),
@@ -65,9 +63,9 @@ class AccountScreen extends StatelessWidget {
                         backgroundImage: AssetImage(profileImageUrl),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 20),
-                    
+
                     // Name
                     Text(
                       memberName,
@@ -77,9 +75,9 @@ class AccountScreen extends StatelessWidget {
                         color: Color(0xFF202124),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 8),
-                    
+
                     // Company Name
                     Text(
                       companyName,
@@ -88,9 +86,9 @@ class AccountScreen extends StatelessWidget {
                         color: Color(0xFF5F6368),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 32),
-                    
+
                     // Menu Items Container
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -111,7 +109,15 @@ class AccountScreen extends StatelessWidget {
                             icon: Icons.person_outline,
                             title: 'My Profile',
                             onTap: () {
-                              // TODO: Navigate to profile details
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => MyProfileScreen(
+                                    memberName: memberName,
+                                    profileImageUrl: profileImageUrl,
+                                  ),
+                                ),
+                              );
                             },
                           ),
                           _buildDivider(),
@@ -134,13 +140,13 @@ class AccountScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 32),
                   ],
                 ),
               ),
             ),
-            
+
             // Bottom Navigation Bar
             _buildBottomNavBar(context),
           ],
@@ -161,11 +167,7 @@ class AccountScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: const Color(0xFF202124),
-              size: 24,
-            ),
+            Icon(icon, color: const Color(0xFF202124), size: 24),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
@@ -177,11 +179,7 @@ class AccountScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const Icon(
-              Icons.chevron_right,
-              color: Color(0xFF5F6368),
-              size: 24,
-            ),
+            const Icon(Icons.chevron_right, color: Color(0xFF5F6368), size: 24),
           ],
         ),
       ),
