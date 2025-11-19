@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'location_selection_screen.dart';
+import '../../services/browse_members_service.dart';
 
 class BrowseMembersScreen extends StatefulWidget {
   const BrowseMembersScreen({super.key});
@@ -10,82 +11,183 @@ class BrowseMembersScreen extends StatefulWidget {
 
 class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
   final TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> members = [];
+  bool isLoading = true;
+  String? currentUserId;
+  int currentPage = 1;
+  bool hasMore = true;
 
-  // Sample members data
-  final List<Map<String, dynamic>> members = [
-    {
-      'name': 'Aditi Sharma',
-      'role': 'Community Leader',
-      'gender': 'Female',
-      'location': 'Adidravidar Block',
-      'initials': 'AS',
-      'color': Color(0xFF4285F4),
-      'isActive': true,
-    },
-    {
-      'name': 'Rajesh Kumar',
-      'role': 'Block Coordinator',
-      'gender': 'Male',
-      'location': 'Central Block',
-      'initials': 'RK',
-      'color': Color(0xFF4285F4),
-      'isActive': true,
-    },
-    {
-      'name': 'Priya Patel',
-      'role': 'Member',
-      'gender': 'Female',
-      'location': 'North Block',
-      'initials': 'PP',
-      'color': Color(0xFF4285F4),
-      'isActive': true,
-    },
-    {
-      'name': 'Suresh Reddy',
-      'role': 'District Admin',
-      'gender': 'Male',
-      'location': 'South Block',
-      'initials': 'SR',
-      'color': Color(0xFF4285F4),
-      'isActive': true,
-    },
-    {
-      'name': 'Meera Singh',
-      'role': 'Member',
-      'gender': 'Female',
-      'location': 'East Block',
-      'initials': 'MS',
-      'color': Color(0xFF4285F4),
-      'isActive': true,
-    },
-    {
-      'name': 'Amit Gupta',
-      'role': 'Block Admin',
-      'gender': 'Male',
-      'location': 'West Block',
-      'initials': 'AG',
-      'color': Color(0xFF4285F4),
-      'isActive': true,
-    },
-    {
-      'name': 'Kavya Nair',
-      'role': 'Member',
-      'gender': 'Female',
-      'location': 'Central Block',
-      'initials': 'KN',
-      'color': Color(0xFF4285F4),
-      'isActive': true,
-    },
-    {
-      'name': 'Ravi Verma',
-      'role': 'Community Volunteer',
-      'gender': 'Male',
-      'location': 'North Block',
-      'initials': 'RV',
-      'color': Color(0xFF4285F4),
-      'isActive': true,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    await _loadCurrentUser();
+    await _loadMembers();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    currentUserId = await BrowseMembersService.getCurrentUserId();
+    print('📱 Current user ID: $currentUserId');
+  }
+
+  Future<void> _loadMembers({bool refresh = false}) async {
+    if (refresh) {
+      setState(() {
+        members = [];
+        currentPage = 1;
+        hasMore = true;
+        isLoading = true;
+      });
+    }
+
+    try {
+      print('🔄 Loading members - Page: $currentPage, Refresh: $refresh');
+      print('🚫 Excluding current user: $currentUserId');
+
+      final response = await BrowseMembersService.getApprovedMembers(
+        page: currentPage,
+        limit: 20,
+        search: _searchController.text.isNotEmpty
+            ? _searchController.text
+            : null,
+        excludeUserId: currentUserId,
+      );
+
+      print('📦 API Response: ${response['success']}');
+      print('📊 Total members in response: ${response['data']?.length ?? 0}');
+
+      if (response['success'] == true) {
+        final List<dynamic> fetchedMembers = response['data'] ?? [];
+
+        print('✅ Processing ${fetchedMembers.length} members');
+
+        // Log each member for debugging
+        if (fetchedMembers.isEmpty) {
+          print('⚠️ No members found! This means:');
+          print('   - No users have been approved by state admin, OR');
+          print('   - No users have completed payment (active membership), OR');
+          print('   - No users have completed their profile');
+        } else {
+          fetchedMembers.take(3).forEach((member) {
+            print('👤 Member: ${member['name']}');
+            print(
+              '   Status: ${member['approvalStatus']} / ${member['paymentStatus']}',
+            );
+          });
+        }
+
+        setState(() {
+          if (refresh) {
+            members = fetchedMembers.cast<Map<String, dynamic>>();
+          } else {
+            members.addAll(fetchedMembers.cast<Map<String, dynamic>>());
+          }
+          isLoading = false;
+          hasMore = fetchedMembers.length == 20;
+        });
+
+        print('✅ Loaded ${fetchedMembers.length} members');
+      } else {
+        print('❌ API returned success: false');
+        print('   Message: ${response['message']}');
+        setState(() => isLoading = false);
+      }
+    } catch (e, stackTrace) {
+      print('❌ Error loading members: $e');
+      print('Stack trace: $stackTrace');
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _handleConnect(String recipientId, String recipientName) async {
+    if (currentUserId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please login to connect')));
+      return;
+    }
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final response = await BrowseMembersService.sendConnectionRequest(
+        senderId: currentUserId!,
+        recipientId: recipientId,
+        message: 'Wants to connect with you',
+      );
+
+      Navigator.pop(context); // Close loading dialog
+
+      if (response['success'] == true) {
+        // Immediately remove user from list
+        setState(() {
+          members.removeWhere((member) => member['id'] == recipientId);
+        });
+
+        print('✅ Connection request sent and user removed from list');
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Connection request sent to $recipientName'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response['message'] ?? 'Failed to send request'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _handleViewProfile(String userId, String userName) async {
+    print('👤 Viewing profile for: $userName (ID: $userId)');
+
+    // Navigate to user profile/dashboard screen
+    // TODO: Replace with your actual profile screen route
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(title: Text('$userName\'s Profile')),
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  userName,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('User ID: $userId'),
+                const SizedBox(height: 32),
+                const Text('Profile screen will be implemented here'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -234,13 +336,40 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
             Expanded(
               child: Container(
                 color: const Color(0xFFE3F2FD),
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: members.length,
-                  itemBuilder: (context, index) {
-                    return _buildMemberCard(members[index]);
-                  },
-                ),
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : members.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.people_outline,
+                              size: 80,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No members found',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: () => _loadMembers(refresh: true),
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: members.length,
+                          itemBuilder: (context, index) {
+                            return _buildMemberCard(members[index]);
+                          },
+                        ),
+                      ),
               ),
             ),
           ],
@@ -250,6 +379,24 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
   }
 
   Widget _buildMemberCard(Map<String, dynamic> member) {
+    // Extract data safely
+    final String name = member['name'] ?? 'Unknown';
+    final String role = member['role'] ?? 'Member';
+    final String gender = member['gender'] ?? 'N/A';
+    final String organization = member['organization'] ?? 'N/A';
+    final Map<String, dynamic> location = member['location'] ?? {};
+    final String block = location['block'] ?? 'Unknown';
+    final String id = member['id'] ?? '';
+    final bool isActive = member['isActive'] ?? true;
+
+    // Generate initials
+    final List<String> nameParts = name.split(' ');
+    final String initials = nameParts.length >= 2
+        ? '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase()
+        : nameParts[0].length >= 2
+        ? nameParts[0].substring(0, 2).toUpperCase()
+        : nameParts[0][0].toUpperCase();
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -274,13 +421,13 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
               Container(
                 width: 50,
                 height: 50,
-                decoration: BoxDecoration(
-                  color: member['color'],
+                decoration: const BoxDecoration(
+                  color: Color(0xFF4285F4),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
                   child: Text(
-                    member['initials'],
+                    initials,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -298,7 +445,7 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      member['name'],
+                      name,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -309,7 +456,7 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
                     Row(
                       children: [
                         Text(
-                          member['role'],
+                          role,
                           style: const TextStyle(
                             fontSize: 13,
                             color: Color(0xFF5F6368),
@@ -326,7 +473,7 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          member['gender'],
+                          gender,
                           style: const TextStyle(
                             fontSize: 13,
                             color: Color(0xFF5F6368),
@@ -339,7 +486,7 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
               ),
 
               // Active Badge
-              if (member['isActive'])
+              if (isActive)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -363,21 +510,48 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
 
           const SizedBox(height: 12),
 
-          // Location
-          Row(
+          // Location and Organization
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Location: ',
-                style: TextStyle(fontSize: 13, color: Color(0xFF5F6368)),
+              Row(
+                children: [
+                  const Text(
+                    'Location: ',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF5F6368)),
+                  ),
+                  Text(
+                    '$block',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF202124),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                member['location'],
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF202124),
-                  fontWeight: FontWeight.w500,
+              if (organization != 'N/A') ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Text(
+                      'Organization: ',
+                      style: TextStyle(fontSize: 13, color: Color(0xFF5F6368)),
+                    ),
+                    Expanded(
+                      child: Text(
+                        organization,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF202124),
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
+              ],
             ],
           ),
 
@@ -388,9 +562,7 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
             children: [
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {
-                    // View profile functionality
-                  },
+                  onPressed: () => _handleViewProfile(id, name),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4285F4),
                     foregroundColor: Colors.white,
@@ -409,9 +581,7 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Connect functionality
-                  },
+                  onPressed: () => _handleConnect(id, name),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF34A853),
                     foregroundColor: Colors.white,

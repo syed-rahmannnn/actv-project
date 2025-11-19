@@ -32,7 +32,9 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
       final response = await MemberService.getMemberDetails();
       print('📦 API Response: $response');
 
-      if (response != null && response['success'] == true && response['data'] != null) {
+      if (response != null &&
+          response['success'] == true &&
+          response['data'] != null) {
         final data = response['data'];
         final personalDetails = data['personal_and_demographic_details'];
         final businessInfo = data['business_information'];

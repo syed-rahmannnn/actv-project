@@ -18,6 +18,8 @@ const memberDetailsRoutes = require('./routes/memberDetails');
 const adminAuthRouteFactory = require('./routes/adminAuth');
 const applicationsRouteFactory = require('./routes/applications');
 const webhookRoutes = require('./routes/webhook');
+const browseMembersRoutes = require('./routes/browseMembers');
+const notificationsRoutes = require('./routes/notifications');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -96,6 +98,8 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/admin', adminAuthRouteFactory(mongoose.connection));
 app.use('/api/applications', applicationsRouteFactory(mongoose.connection));
 app.use('/api/webhook', webhookRoutes); // Webhook route for payment notifications
+app.use('/api/browse-members', browseMembersRoutes); // Browse members and connections
+app.use('/api/notifications', notificationsRoutes); // Notifications
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

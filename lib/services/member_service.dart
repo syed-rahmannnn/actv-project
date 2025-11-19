@@ -5,12 +5,8 @@ import 'auth_service.dart';
 
 class MemberService {
   // Backend URL Configuration
-  // Using machine's local WiFi IP for emulator/device connectivity
+  // Using machine's local WiFi IP for device connectivity
   static const String baseUrl = 'http://10.201.103.174:3000/api';
-
-  // Note: If this doesn't work, alternatives:
-  // - For Android Emulator localhost: 'http://10.0.2.2:3000/api'
-  // - For production: use your deployed backend URL
 
   // Get current user's identifier (email) from secure storage
   static Future<String?> _getCurrentUserIdentifier() async {
