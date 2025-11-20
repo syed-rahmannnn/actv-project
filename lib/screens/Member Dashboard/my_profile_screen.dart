@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../services/member_service.dart';
+import '../../services/browse_members_service.dart';
 
 class MyProfileScreen extends StatefulWidget {
   final String memberName;
   final String profileImageUrl;
+  final String?
+  memberId; // Add memberId - if provided, fetch that member's data
 
   const MyProfileScreen({
     super.key,
     required this.memberName,
     this.profileImageUrl = 'assets/images/profile.png',
+    this.memberId, // Optional memberId
   });
 
   @override
@@ -34,20 +38,54 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     setState(() => _isLoading = true);
 
     print('=== MY PROFILE SCREEN DEBUG ===');
-    print('Member Name: ${widget.memberName}');
-    print('🔄 Fetching data dynamically from session...');
+    print('📛 Member Name from widget: ${widget.memberName}');
+    print('🆔 Member ID from widget: ${widget.memberId}');
+    print('🔍 Has memberId? ${widget.memberId != null}');
+    print('🔄 Fetching data...');
 
     try {
-      // Fetch data dynamically - no email parameter needed!
-      final data = await MemberService.getMemberDetails();
-      print('API Response: $data');
+      Map<String, dynamic>? data;
+
+      if (widget.memberId != null && widget.memberId!.isNotEmpty) {
+        // Fetch specific member's data
+        print('✅ Fetching SPECIFIC member data for ID: ${widget.memberId}');
+        data = await BrowseMembersService.getMemberById(widget.memberId!);
+        print(
+          '📦 Response from BrowseMembersService: Success=${data['success']}',
+        );
+      } else {
+        // Fetch logged-in user's data
+        print('👤 No memberId provided - Fetching LOGGED-IN user data');
+        data = await MemberService.getMemberDetails();
+        print('📦 Response from MemberService: Success=${data?['success']}');
+      }
+
+      print('📊 Full API Response: $data');
 
       if (data != null && data['success'] == true) {
-        setState(() {
-          _memberData = data['data'];
-          _isLoading = false;
-        });
-        print('✅ Member data loaded successfully');
+        final memberData = data['data'];
+        if (memberData != null) {
+          setState(() {
+            _memberData = memberData;
+            _isLoading = false;
+          });
+          print('✅ Member data loaded successfully');
+          print(
+            '📊 Business Info Keys: ${memberData['business_information']?.keys.toList()}',
+          );
+          print('📊 Business Data: ${memberData['business_information']}');
+          print(
+            '📊 Financial Info Keys: ${memberData['financial_information']?.keys.toList()}',
+          );
+          print('📊 Financial Data: ${memberData['financial_information']}');
+          print(
+            '📊 Declaration Keys: ${memberData['declaration']?.keys.toList()}',
+          );
+          print('📊 Declaration Data: ${memberData['declaration']}');
+        } else {
+          setState(() => _isLoading = false);
+          print('❌ No member data in response');
+        }
       } else {
         setState(() => _isLoading = false);
         print('❌ Failed to load: data=$data');
@@ -113,60 +151,133 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
       ),
       _buildDetailRow(
         'Organization Name',
-        business['organization_name'] ?? 'N/A',
+        (business['organization_name']?.toString() ?? '').isEmpty
+            ? ''
+            : business['organization_name'].toString(),
       ),
       _buildDetailRow(
         'Constitution Type',
-        business['constitution_type'] ?? 'N/A',
+        (business['constitution_type']?.toString() ?? '').isEmpty
+            ? ''
+            : business['constitution_type'].toString(),
       ),
       _buildDetailRow(
-        'Business Types',
-        (business['business_types'] as List?)?.join(', ') ?? 'N/A',
+        'Business Type',
+        (business['business_type']?.toString() ?? '').isEmpty
+            ? ''
+            : business['business_type'].toString(),
       ),
-      _buildDetailRow('Activities', business['activities'] ?? 'N/A'),
+      _buildDetailRow(
+        'Activities',
+        (business['activities']?.toString() ?? '').isEmpty
+            ? ''
+            : business['activities'].toString(),
+      ),
       _buildDetailRow(
         'Commencement Year',
-        business['commencement_year'] ?? 'N/A',
+        (business['commencement_year']?.toString() ?? '').isEmpty
+            ? ''
+            : business['commencement_year'].toString(),
       ),
       _buildDetailRow(
-        'Employee Count',
-        business['employee_count']?.toString() ?? 'N/A',
+        'Number of Employees',
+        (business['number_of_employees']?.toString() ?? '').isEmpty
+            ? ''
+            : business['number_of_employees'].toString(),
       ),
       _buildDetailRow(
-        'Chamber Membership',
-        business['chamber_membership'] == true ? 'Yes' : 'No',
+        'Member of Other Chamber',
+        business['member_of_other_chamber'] == true ? 'Yes' : 'No',
       ),
-      _buildDetailRow('Chamber Details', business['chamber_details'] ?? 'N/A'),
+      _buildDetailRow(
+        'Other Chamber Details',
+        (business['other_chamber']?.toString() ?? '').isEmpty
+            ? ''
+            : business['other_chamber'].toString(),
+      ),
       _buildDetailRow(
         'Govt Registrations',
-        (business['govt_registrations'] as List?)?.join(', ') ?? 'N/A',
+        (business['govt_registrations'] as List?)?.join(', ') ?? '',
       ),
     ];
   }
 
   List<Widget> _buildFinancialDetails() {
-    final financial = _memberData['financial_and_compliance'] ?? {};
-    final turnover = financial['turnover_last_3_years'] ?? {};
+    final financial = _memberData['financial_information'] ?? {};
     return [
-      _buildDetailRow('PAN Number', financial['pan_number'] ?? 'N/A'),
-      _buildDetailRow('GST Number', financial['gst_number'] ?? 'N/A'),
-      _buildDetailRow('Udyam Number', financial['udyam_number'] ?? 'N/A'),
       _buildDetailRow(
-        'IT Returns Filed',
-        financial['it_returns_filed'] == true ? 'Yes' : 'No',
-      ),
-      _buildDetailRow('ITR Years', financial['itr_years']?.toString() ?? 'N/A'),
-      _buildDetailRow('Turnover Range', financial['turnover_range'] ?? 'N/A'),
-      _buildDetailRow('Turnover 2024-25', turnover['year_2024_25'] ?? 'N/A'),
-      _buildDetailRow('Turnover 2023-24', turnover['year_2023_24'] ?? 'N/A'),
-      _buildDetailRow('Turnover 2022-23', turnover['year_2022_23'] ?? 'N/A'),
-      _buildDetailRow(
-        'Govt Schemes Benefitted',
-        financial['govt_schemes_benefitted'] == true ? 'Yes' : 'No',
+        'PAN Number',
+        (financial['pan_number']?.toString() ?? '').isEmpty
+            ? ''
+            : financial['pan_number'].toString(),
       ),
       _buildDetailRow(
-        'Govt Scheme List',
-        (financial['govt_scheme_list'] as List?)?.join(', ') ?? 'N/A',
+        'GST Number',
+        (financial['gst_number']?.toString() ?? '').isEmpty
+            ? ''
+            : financial['gst_number'].toString(),
+      ),
+      _buildDetailRow(
+        'Udyam Number',
+        (financial['udyam_number']?.toString() ?? '').isEmpty
+            ? ''
+            : financial['udyam_number'].toString(),
+      ),
+      _buildDetailRow(
+        'Filed ITR',
+        financial['filed_itr'] == true ? 'Yes' : 'No',
+      ),
+      _buildDetailRow(
+        'ITR Years',
+        (financial['itr_years']?.toString() ?? '').isEmpty
+            ? ''
+            : financial['itr_years'].toString(),
+      ),
+      _buildDetailRow(
+        'Turnover Range',
+        (financial['turnover_range']?.toString() ?? '').isEmpty
+            ? ''
+            : financial['turnover_range'].toString(),
+      ),
+      _buildDetailRow(
+        'FY 2021',
+        (financial['fy_2021']?.toString() ?? '').isEmpty
+            ? ''
+            : financial['fy_2021'].toString(),
+      ),
+      _buildDetailRow(
+        'FY 2020',
+        (financial['fy_2020']?.toString() ?? '').isEmpty
+            ? ''
+            : financial['fy_2020'].toString(),
+      ),
+      _buildDetailRow(
+        'FY 2019',
+        (financial['fy_2019']?.toString() ?? '').isEmpty
+            ? ''
+            : financial['fy_2019'].toString(),
+      ),
+      _buildDetailRow(
+        'Govt Scheme Benefit',
+        financial['govt_scheme_benefit'] == true ? 'Yes' : 'No',
+      ),
+      _buildDetailRow(
+        'Scheme 1',
+        (financial['scheme_1']?.toString() ?? '').isEmpty
+            ? ''
+            : financial['scheme_1'].toString(),
+      ),
+      _buildDetailRow(
+        'Scheme 2',
+        (financial['scheme_2']?.toString() ?? '').isEmpty
+            ? ''
+            : financial['scheme_2'].toString(),
+      ),
+      _buildDetailRow(
+        'Scheme 3',
+        (financial['scheme_3']?.toString() ?? '').isEmpty
+            ? ''
+            : financial['scheme_3'].toString(),
       ),
     ];
   }
@@ -175,16 +286,12 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     final declaration = _memberData['declaration'] ?? {};
     return [
       _buildDetailRow(
-        'Sister Concerns Count',
-        declaration['sister_concerns_count']?.toString() ?? 'N/A',
+        'Agreed to Terms',
+        declaration['agree_terms'] == true ? 'Yes' : 'No',
       ),
       _buildDetailRow(
-        'Company Names',
-        (declaration['company_names'] as List?)?.join(', ') ?? 'N/A',
-      ),
-      _buildDetailRow(
-        'Confirmation',
-        declaration['confirmation'] == true ? 'Yes' : 'No',
+        'Submitted At',
+        declaration['submitted_at']?.toString() ?? 'N/A',
       ),
     ];
   }
@@ -442,6 +549,9 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   }
 
   Widget _buildDetailRow(String label, String value) {
+    // Show "Not Provided" for empty strings, "N/A" for null or "N/A"
+    final displayValue = value.isEmpty ? 'Not Provided' : value;
+
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Row(
@@ -461,11 +571,17 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           Expanded(
             flex: 3,
             child: Text(
-              value,
-              style: const TextStyle(
+              displayValue,
+              style: TextStyle(
                 fontSize: 14,
-                color: Color(0xFF202124),
+                color: displayValue == 'Not Provided' || displayValue == 'N/A'
+                    ? Colors.grey[500]
+                    : const Color(0xFF202124),
                 fontWeight: FontWeight.w500,
+                fontStyle:
+                    displayValue == 'Not Provided' || displayValue == 'N/A'
+                    ? FontStyle.italic
+                    : FontStyle.normal,
               ),
             ),
           ),

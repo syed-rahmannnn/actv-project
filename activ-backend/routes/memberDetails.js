@@ -50,8 +50,25 @@ router.get('/:identifier/details', async (req, res) => {
     console.log('Query results:');
     console.log('- personalDetails:', personalDetails ? 'FOUND ✅' : 'NOT FOUND ❌');
     console.log('- businessInfo:', businessInfo ? 'FOUND ✅' : 'NOT FOUND ❌');
+    if (businessInfo) {
+      console.log('  - Organization Name:', businessInfo.organizationName || '(empty)');
+      console.log('  - Doing Business:', businessInfo.doingBusiness);
+      console.log('  - Business Type:', businessInfo.businessType || '(empty)');
+      console.log('  - Number of Employees:', businessInfo.numberOfEmployees || '(empty)');
+      console.log('  - Govt Registrations:', businessInfo.registeredWithGovtOrganization || '(empty)');
+    }
     console.log('- financialInfo:', financialInfo ? 'FOUND ✅' : 'NOT FOUND ❌');
+    if (financialInfo) {
+      console.log('  - PAN:', financialInfo.panNumber || '(empty)');
+      console.log('  - GST:', financialInfo.gstNumber || '(empty)');
+      console.log('  - Turnover Range:', financialInfo.turnoverRange || '(empty)');
+      console.log('  - FY2021:', financialInfo.fy2021 || '(empty)');
+    }
     console.log('- declaration:', declaration ? 'FOUND ✅' : 'NOT FOUND ❌');
+    if (declaration) {
+      console.log('  - Agree to Declaration:', declaration.agreeToDeclaration);
+      console.log('  - Submitted At:', declaration.submittedAt || '(empty)');
+    }
 
     // If no data found for this user
     if (!personalDetails && !businessInfo && !financialInfo && !declaration) {
@@ -64,6 +81,7 @@ router.get('/:identifier/details', async (req, res) => {
 
     // Construct the response
     const memberData = {
+      _id: personalDetails?._id || null,
       personal_and_demographic_details: personalDetails ? {
         full_name: personalDetails.fullName || '',
         date_of_birth: personalDetails.dateOfBirth || '',
@@ -88,38 +106,50 @@ router.get('/:identifier/details', async (req, res) => {
         business_type: businessInfo.businessType || '',
         activities: businessInfo.businessActivities || '',
         commencement_year: businessInfo.businessCommencementYear || '',
-        employee_count: businessInfo.numberOfEmployees || '',
-        chamber_membership: businessInfo.memberOfOtherChamber || false,
-        chamber_details: businessInfo.otherChamber || '',
+        number_of_employees: businessInfo.numberOfEmployees || '',
+        member_of_other_chamber: businessInfo.memberOfOtherChamber || false,
+        other_chamber: businessInfo.otherChamber || '',
         govt_registrations: businessInfo.registeredWithGovtOrganization || [],
-      } : {},
+      } : {
+        doing_business: false,
+        organization_name: '',
+        constitution_type: '',
+        business_type: '',
+        activities: '',
+        commencement_year: '',
+        number_of_employees: '',
+        member_of_other_chamber: false,
+        other_chamber: '',
+        govt_registrations: [],
+      },
       
-      financial_and_compliance: financialInfo ? {
+      financial_information: financialInfo ? {
         pan_number: financialInfo.panNumber || '',
         gst_number: financialInfo.gstNumber || '',
         udyam_number: financialInfo.udyamNumber || '',
-        it_returns_filed: financialInfo.filedITR || false,
+        filed_itr: financialInfo.filedITR || false,
         itr_years: financialInfo.itrYears || '',
         turnover_range: financialInfo.turnoverRange || '',
-        turnover_last_3_years: {
-          fy2021: financialInfo.fy2021 || '',
-          fy2020: financialInfo.fy2020 || '',
-          fy2019: financialInfo.fy2019 || ''
-        },
-        govt_schemes_benefitted: financialInfo.govtSchemeBenefit || false,
-        govt_scheme_list: [
-          financialInfo.scheme1 || '',
-          financialInfo.scheme2 || '',
-          financialInfo.scheme3 || ''
-        ].filter(s => s !== ''),
+        fy_2021: financialInfo.fy2021 || '',
+        fy_2020: financialInfo.fy2020 || '',
+        fy_2019: financialInfo.fy2019 || '',
+        govt_scheme_benefit: financialInfo.govtSchemeBenefit || false,
+        scheme_1: financialInfo.scheme1 || '',
+        scheme_2: financialInfo.scheme2 || '',
+        scheme_3: financialInfo.scheme3 || '',
       } : {},
       
       declaration: declaration ? {
-        sister_concerns_count: declaration.sisterConcerns || 0,
-        company_names: declaration.companyNames || [],
-        confirmation: declaration.agreeToDeclaration || false,
-      } : {}
+        agree_terms: declaration.agreeToDeclaration || false,
+        submitted_at: declaration.submittedAt || null,
+      } : {
+        agree_terms: false,
+        submitted_at: null,
+      }
     };
+
+    console.log('📤 Sending member data response');
+    console.log(JSON.stringify(memberData, null, 2));
 
     res.status(200).json({
       success: true,

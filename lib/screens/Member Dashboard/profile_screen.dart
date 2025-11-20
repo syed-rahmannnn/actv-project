@@ -5,16 +5,23 @@ class AccountScreen extends StatelessWidget {
   final String memberName;
   final String companyName;
   final String profileImageUrl;
+  final String? memberId; // Add memberId to pass to profile screen
 
   const AccountScreen({
     super.key,
     required this.memberName,
     required this.companyName,
     this.profileImageUrl = 'assets/images/profile.png',
+    this.memberId, // Optional memberId
   });
 
   @override
   Widget build(BuildContext context) {
+    print('=== ACCOUNT SCREEN DEBUG ===');
+    print('📛 Member Name: $memberName');
+    print('🆔 Member ID: $memberId');
+    print('🏢 Company Name: $companyName');
+    
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
@@ -52,8 +59,8 @@ class AccountScreen extends StatelessWidget {
                         border: Border.all(color: Colors.white, width: 4),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 20,
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
                         ],
@@ -97,7 +104,7 @@ class AccountScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 10,
                             offset: const Offset(0, 2),
                           ),
@@ -115,6 +122,7 @@ class AccountScreen extends StatelessWidget {
                                   builder: (context) => MyProfileScreen(
                                     memberName: memberName,
                                     profileImageUrl: profileImageUrl,
+                                    memberId: memberId, // Pass memberId to profile screen
                                   ),
                                 ),
                               );

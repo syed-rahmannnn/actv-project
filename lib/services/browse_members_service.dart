@@ -177,6 +177,35 @@ class BrowseMembersService {
     }
   }
 
+  // Check connection status by connection ID
+  static Future<Map<String, dynamic>> getConnectionStatusById(
+    String connectionId,
+  ) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/connection/$connectionId/status'),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        return {
+          'success': false,
+          'data': {'status': null},
+        };
+      }
+    } catch (e) {
+      print('❌ Exception in getConnectionStatusById: $e');
+      return {
+        'success': false,
+        'data': {'status': null},
+      };
+    }
+  }
+
   // Respond to connection request (accept/decline)
   static Future<Map<String, dynamic>> respondToConnection({
     required String connectionId,
@@ -193,18 +222,102 @@ class BrowseMembersService {
           )
           .timeout(const Duration(seconds: 30));
 
+      print('📡 Response status: ${response.statusCode}');
+      print('📦 Response body: ${response.body}');
+
       final data = json.decode(response.body);
 
       if (response.statusCode == 200) {
         print('✅ Connection $action successful');
+        return data;
+      } else if (response.statusCode == 409 || response.statusCode == 400) {
+        // Connection already processed - check if message indicates this
+        final message = data['message'] ?? '';
+        if (message.contains('already')) {
+          print(
+            'ℹ️ Connection already processed: ${data['status'] ?? message}',
+          );
+          return {
+            'success': false,
+            'alreadyProcessed': true,
+            'status': data['status'] ?? 'accepted',
+            'message': data['message'],
+          };
+        }
+        // Other 400 errors
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to respond to connection',
+        };
+      } else {
+        print('❌ Error ${response.statusCode}: ${data['message']}');
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to respond to connection',
+        };
       }
-
-      return data;
     } catch (e) {
       print('❌ Exception in respondToConnection: $e');
       return {
         'success': false,
         'message': 'Failed to respond to connection: $e',
+      };
+    }
+  }
+
+  // Get member by ID
+  static Future<Map<String, dynamic>> getMemberById(String memberId) async {
+    try {
+      print('👤 Fetching member details for: $memberId');
+      print('🌐 API URL: $baseUrl/member/$memberId');
+
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/member/$memberId'),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              print('⏱️ Request timed out after 30 seconds');
+              throw Exception(
+                'Connection timeout - Check network connectivity',
+              );
+            },
+          );
+
+      print('📡 Response status: ${response.statusCode}');
+      print('📦 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print('✅ Member details fetched successfully');
+        if (data['data'] != null) {
+          print('📋 Member name: ${data['data']['fullName']}');
+        }
+        return data;
+      } else if (response.statusCode == 404) {
+        print('❌ Member not found with ID: $memberId');
+        return {'success': false, 'message': 'Member not found'};
+      } else {
+        print('❌ Error ${response.statusCode}: ${response.body}');
+        final errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'message': errorData['message'] ?? 'Failed to fetch member details',
+        };
+      }
+    } on http.ClientException catch (e) {
+      print('❌ Network error - Cannot reach server: $e');
+      return {
+        'success': false,
+        'message': 'Cannot reach server. Check network connection.',
+      };
+    } catch (e) {
+      print('❌ Exception in getMemberById: $e');
+      return {
+        'success': false,
+        'message': 'Failed to fetch member details: $e',
       };
     }
   }

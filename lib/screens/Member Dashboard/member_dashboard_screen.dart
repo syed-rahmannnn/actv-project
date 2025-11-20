@@ -3,9 +3,13 @@ import 'profile_screen.dart';
 import 'browse_members_screen.dart';
 import 'notifications_screen.dart';
 import '../../services/member_service.dart';
+import '../../services/browse_members_service.dart';
 
 class MemberDashboardScreen extends StatefulWidget {
-  const MemberDashboardScreen({super.key});
+  final String?
+  memberId; // Optional memberId - if null, shows logged-in user's dashboard
+
+  const MemberDashboardScreen({super.key, this.memberId});
 
   @override
   State<MemberDashboardScreen> createState() => _MemberDashboardScreenState();
@@ -16,40 +20,71 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
   String companyName = 'Your Company';
   String membershipType = 'Lifetime';
   String memberSince = '2024';
-  String memberId = 'Loading...';
+  String memberEmail = 'Loading...';
+  String? displayMemberId; // Store the actual MongoDB _id
   bool isActive = true;
   bool isLoading = true;
+  bool isViewingOtherMember = false;
 
   @override
   void initState() {
     super.initState();
+    isViewingOtherMember = widget.memberId != null;
     _loadMemberData();
   }
 
   Future<void> _loadMemberData() async {
     print('🚀 === MEMBER DASHBOARD: Loading data ===');
+    print('📋 MemberId parameter: ${widget.memberId}');
+    print('👤 Viewing other member: $isViewingOtherMember');
+
     try {
-      final response = await MemberService.getMemberDetails();
-      print('📦 API Response: $response');
+      Map<String, dynamic>? response;
 
-      if (response != null &&
-          response['success'] == true &&
-          response['data'] != null) {
-        final data = response['data'];
-        final personalDetails = data['personal_and_demographic_details'];
-        final businessInfo = data['business_information'];
-
-        setState(() {
-          memberName = personalDetails['full_name'] ?? 'Member';
-          companyName = businessInfo['organization_name'] ?? 'Your Company';
-          memberId = personalDetails['email'] ?? 'N/A';
-          memberSince =
-              personalDetails['date_of_birth']?.split('-')[2] ?? '2024';
-          isLoading = false;
-        });
-
-        print('✅ Data loaded: $memberName from $companyName');
+      if (widget.memberId != null) {
+        // Load specific member's data using BrowseMembersService
+        print('🔍 Fetching data for member: ${widget.memberId}');
+        response = await BrowseMembersService.getMemberById(widget.memberId!);
+        print('📦 Specific member API Response: $response');
       } else {
+        // Load logged-in user's data using MemberService
+        print('👤 Fetching logged-in user data');
+        response = await MemberService.getMemberDetails();
+        print('📦 Logged-in user API Response: $response');
+      }
+
+      if (response != null && response['success'] == true) {
+        // Handle different response structures
+        final data = response['data'] ?? response['member'];
+
+        if (data != null) {
+          print('🔍 Full data structure: $data');
+          final personalDetails = data['personal_and_demographic_details'];
+          final businessInfo = data['business_information'];
+
+          print('👤 Personal Details: $personalDetails');
+          print('🏢 Business Info: $businessInfo');
+
+          setState(() {
+            memberName = personalDetails?['full_name'] ?? 'Member';
+            // Use organization name if provided, otherwise show empty string
+            companyName = businessInfo?['organization_name'] ?? '';
+            memberEmail = personalDetails?['email'] ?? 'N/A';
+            displayMemberId = data['_id']; // Store MongoDB _id
+            memberSince =
+                personalDetails?['date_of_birth']?.split('-')[2] ?? '2024';
+            isLoading = false;
+          });
+
+          print(
+            '✅ Data loaded: $memberName from $companyName (ID: $displayMemberId)',
+          );
+        } else {
+          print('⚠️ No data found in response');
+          setState(() => isLoading = false);
+        }
+      } else {
+        print('⚠️ Response unsuccessful or null');
         setState(() => isLoading = false);
       }
     } catch (e) {
@@ -108,7 +143,9 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Welcome back, $memberName',
+                                isViewingOtherMember
+                                    ? memberName
+                                    : 'Welcome back, $memberName',
                                 style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
@@ -264,9 +301,9 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              // Member ID
+                              // Member Email
                               Text(
-                                'Member ID: $memberId',
+                                'Email: $memberEmail',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 14,
@@ -346,6 +383,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                                     builder: (context) => AccountScreen(
                                       memberName: memberName,
                                       companyName: companyName,
+                                      memberId: isViewingOtherMember ? displayMemberId : null, // Pass displayMemberId when viewing other member
                                     ),
                                   ),
                                 );
@@ -481,8 +519,8 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
             offset: const Offset(0, -5),
           ),
         ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'location_selection_screen.dart';
 import '../../services/browse_members_service.dart';
+import 'member_dashboard_screen.dart';
 
 class BrowseMembersScreen extends StatefulWidget {
   const BrowseMembersScreen({super.key});
@@ -157,34 +158,13 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
   }
 
   Future<void> _handleViewProfile(String userId, String userName) async {
-    print('👤 Viewing profile for: $userName (ID: $userId)');
+    print('👤 Viewing full dashboard for: $userName (ID: $userId)');
 
-    // Navigate to user profile/dashboard screen
-    // TODO: Replace with your actual profile screen route
+    // Navigate to member's full dashboard screen
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(title: Text('$userName\'s Profile')),
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  userName,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text('User ID: $userId'),
-                const SizedBox(height: 32),
-                const Text('Profile screen will be implemented here'),
-              ],
-            ),
-          ),
-        ),
+        builder: (context) => MemberDashboardScreen(memberId: userId),
       ),
     );
   }
@@ -521,7 +501,7 @@ class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
                     style: TextStyle(fontSize: 13, color: Color(0xFF5F6368)),
                   ),
                   Text(
-                    '$block',
+                    block,
                     style: const TextStyle(
                       fontSize: 13,
                       color: Color(0xFF202124),

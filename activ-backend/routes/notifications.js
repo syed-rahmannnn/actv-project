@@ -42,6 +42,7 @@ router.get('/:userId', async (req, res) => {
     const senderMap = {};
     senders.forEach(sender => {
       senderMap[sender._id.toString()] = {
+        id: sender._id.toString(),
         name: sender.fullName,
         email: sender.email,
         profilePicture: sender.profilePicture
@@ -54,6 +55,7 @@ router.get('/:userId', async (req, res) => {
       type: notification.type,
       title: notification.title,
       message: notification.message,
+      senderId: notification.senderId.toString(),
       sender: senderMap[notification.senderId.toString()],
       connectionId: notification.connectionId,
       isRead: notification.isRead,

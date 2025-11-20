@@ -47,13 +47,60 @@ router.get('/', async (req, res) => {
     console.log('   ✓ profileCompleted = true');
     
     // Get approved members with active membership
-    const members = await MemberDetails.find(query)
+    let members = await MemberDetails.find(query)
       .select('fullName email phoneNumber gender state district block city profileCompleted approvedBy approvedAt membershipType membershipStatus')
       .skip(skip)
       .limit(parseInt(limit))
       .sort({ createdAt: -1 });
 
     console.log(`📊 Database returned: ${members.length} members`);
+
+    // Filter out members who are already connected OR have pending connection requests
+    if (exclude_user_id) {
+      const currentUserId = new mongoose.Types.ObjectId(exclude_user_id);
+      const memberIds = members.map(m => m._id);
+      
+      // Find all connections (accepted OR pending) where current user is involved
+      const existingConnections = await Connection.find({
+        status: { $in: ['accepted', 'pending'] }, // Include both accepted and pending
+        $or: [
+          { senderId: currentUserId, recipientId: { $in: memberIds } },
+          { recipientId: currentUserId, senderId: { $in: memberIds } }
+        ]
+      }).select('senderId recipientId status');
+
+      // Get list of connected/pending member IDs
+      const connectedMemberIds = new Set();
+      const pendingMemberIds = new Set();
+      
+      existingConnections.forEach(conn => {
+        const otherId = conn.senderId.toString() === exclude_user_id 
+          ? conn.recipientId.toString() 
+          : conn.senderId.toString();
+        
+        if (conn.status === 'accepted') {
+          connectedMemberIds.add(otherId);
+        } else if (conn.status === 'pending') {
+          pendingMemberIds.add(otherId);
+        }
+      });
+
+      // Filter out connected and pending members
+      const beforeFilter = members.length;
+      members = members.filter(m => {
+        const memberId = m._id.toString();
+        return !connectedMemberIds.has(memberId) && !pendingMemberIds.has(memberId);
+      });
+      
+      const filteredCount = beforeFilter - members.length;
+      if (filteredCount > 0) {
+        console.log(`🔗 Filtered out ${connectedMemberIds.size} already-connected members`);
+        console.log(`⏳ Filtered out ${pendingMemberIds.size} members with pending requests`);
+        console.log(`📊 Total filtered: ${filteredCount} members`);
+      }
+    }
+
+    console.log(`📊 After filtering connections: ${members.length} members`);
 
     if (members.length === 0) {
       console.log('⚠️  No members found matching criteria!');
@@ -242,6 +289,43 @@ router.get('/connection-status/:senderId/:recipientId', async (req, res) => {
   }
 });
 
+// GET /api/browse-members/connection/:connectionId/status - Get connection status by ID
+router.get('/connection/:connectionId/status', async (req, res) => {
+  try {
+    const { connectionId } = req.params;
+
+    const connection = await Connection.findById(connectionId)
+      .select('status senderId recipientId createdAt updatedAt');
+
+    if (!connection) {
+      return res.status(404).json({
+        success: false,
+        message: 'Connection not found',
+        data: { status: null }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        status: connection.status,
+        senderId: connection.senderId,
+        recipientId: connection.recipientId,
+        createdAt: connection.createdAt,
+        updatedAt: connection.updatedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting connection status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get connection status',
+      error: error.message
+    });
+  }
+});
+
 // PUT /api/browse-members/connection/:connectionId/respond
 router.put('/connection/:connectionId/respond', async (req, res) => {
   try {
@@ -265,9 +349,12 @@ router.put('/connection/:connectionId/respond', async (req, res) => {
     }
 
     if (connection.status !== 'pending') {
-      return res.status(400).json({
+      console.log(`⚠️ Connection already ${connection.status}`);
+      return res.status(409).json({
         success: false,
-        message: `Connection request already ${connection.status}`
+        message: `Connection request already ${connection.status}`,
+        status: connection.status,
+        alreadyProcessed: true
       });
     }
 
@@ -312,6 +399,136 @@ router.put('/connection/:connectionId/respond', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to respond to connection request',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/browse-members/member/:memberId - Get member details by ID
+router.get('/member/:memberId', async (req, res) => {
+  try {
+    const { memberId } = req.params;
+
+    console.log('\n👤 === FETCHING MEMBER DETAILS ===');
+    console.log('Member ID:', memberId);
+
+    const personalDetails = await MemberDetails.findById(memberId)
+      .select('-password')
+      .lean();
+
+    if (!personalDetails) {
+      return res.status(404).json({
+        success: false,
+        message: 'Member not found'
+      });
+    }
+
+    // Get related documents
+    const businessInfo = await MemberBusinessInfo.findOne({ memberId: memberId }).lean();
+    const MemberFinancialInfo = require('../models/MemberFinancialInfo');
+    const MemberDeclaration = require('../models/MemberDeclaration');
+    const financialInfo = await MemberFinancialInfo.findOne({ memberId: memberId }).lean();
+    const declaration = await MemberDeclaration.findOne({ memberId: memberId }).lean();
+
+    console.log('✅ Found member:', personalDetails.fullName);
+    console.log('- businessInfo:', businessInfo ? 'FOUND ✅' : 'NOT FOUND ❌');
+    if (businessInfo) {
+      console.log('  - Organization Name:', businessInfo.organizationName || '(empty)');
+      console.log('  - Doing Business:', businessInfo.doingBusiness);
+      console.log('  - Business Type:', businessInfo.businessType || '(empty)');
+      console.log('  - PAN:', businessInfo.panNumber || '(empty)');
+      console.log('  - GST:', businessInfo.gstNumber || '(empty)');
+    }
+    console.log('- financialInfo:', financialInfo ? 'FOUND ✅' : 'NOT FOUND ❌');
+    if (financialInfo) {
+      console.log('  - Annual Turnover:', financialInfo.annualTurnover || '(empty)');
+      console.log('  - Account Holder:', financialInfo.accountHolderName || '(empty)');
+    }
+    console.log('- declaration:', declaration ? 'FOUND ✅' : 'NOT FOUND ❌');
+    if (declaration) {
+      console.log('  - Agree Terms:', declaration.agreeToTerms);
+      console.log('  - Submitted At:', declaration.submittedAt || '(empty)');
+    }
+
+    // Construct response in same format as /members/:email/details
+    const memberData = {
+      _id: personalDetails._id,
+      personal_and_demographic_details: {
+        full_name: personalDetails.fullName || '',
+        date_of_birth: personalDetails.dateOfBirth || '',
+        gender: personalDetails.gender || '',
+        email: personalDetails.email || '',
+        phone: personalDetails.phoneNumber || '',
+        address: personalDetails.streetName || '',
+        state: personalDetails.state || '',
+        district: personalDetails.district || '',
+        block: personalDetails.block || '',
+        city: personalDetails.city || '',
+        aadhar_number: personalDetails.aadhaarNumber || '',
+        category: personalDetails.socialCategory || '',
+        education: personalDetails.educationalQualification || '',
+        religion: personalDetails.religion || '',
+      },
+      
+      business_information: businessInfo ? {
+        doing_business: businessInfo.doingBusiness || false,
+        organization_name: businessInfo.organizationName || '',
+        constitution_type: businessInfo.constitutionType || '',
+        business_type: businessInfo.businessType || '',
+        activities: businessInfo.businessActivities || '',
+        commencement_year: businessInfo.businessCommencementYear || '',
+        number_of_employees: businessInfo.numberOfEmployees || '',
+        member_of_other_chamber: businessInfo.memberOfOtherChamber || false,
+        other_chamber: businessInfo.otherChamber || '',
+        govt_registrations: businessInfo.registeredWithGovtOrganization || [],
+      } : {
+        doing_business: false,
+        organization_name: '',
+        constitution_type: '',
+        business_type: '',
+        activities: '',
+        commencement_year: '',
+        number_of_employees: '',
+        member_of_other_chamber: false,
+        other_chamber: '',
+        govt_registrations: [],
+      },
+      
+      financial_information: financialInfo ? {
+        pan_number: financialInfo.panNumber || '',
+        gst_number: financialInfo.gstNumber || '',
+        udyam_number: financialInfo.udyamNumber || '',
+        filed_itr: financialInfo.filedITR || false,
+        itr_years: financialInfo.itrYears || '',
+        turnover_range: financialInfo.turnoverRange || '',
+        fy_2021: financialInfo.fy2021 || '',
+        fy_2020: financialInfo.fy2020 || '',
+        fy_2019: financialInfo.fy2019 || '',
+        govt_scheme_benefit: financialInfo.govtSchemeBenefit || false,
+        scheme_1: financialInfo.scheme1 || '',
+        scheme_2: financialInfo.scheme2 || '',
+        scheme_3: financialInfo.scheme3 || '',
+      } : {},
+      
+      declaration: declaration ? {
+        agree_terms: declaration.agreeToTerms || false,
+        submitted_at: declaration.submittedAt || null
+      } : {}
+    };
+
+    console.log('📤 Sending response with data:');
+    console.log(JSON.stringify(memberData, null, 2));
+    
+    res.json({
+      success: true,
+      data: memberData
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching member details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch member details',
       error: error.message
     });
   }
