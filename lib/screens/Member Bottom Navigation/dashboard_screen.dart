@@ -346,6 +346,56 @@ bool _isFullProfileCompleted(Map<String, dynamic> data) {
   return false;
 }
 
+int _calculateProfileCompletion(Map<String, dynamic> data) {
+  int totalFields = 0;
+  int filledFields = 0;
+
+  // Basic registration fields (from step 1 & 2)
+  final basicFields = [
+    data['fullName'] ?? data['member']?['fullName'],
+    data['email'] ?? data['member']?['email'],
+    data['phoneNumber'] ?? data['member']?['phoneNumber'],
+    data['state'] ?? data['member']?['state'],
+    data['district'] ?? data['member']?['district'],
+    data['block'] ?? data['member']?['block'],
+    data['city'] ?? data['member']?['city'],
+  ];
+
+  for (var field in basicFields) {
+    totalFields++;
+    if (field != null && field.toString().trim().isNotEmpty) {
+      filledFields++;
+    }
+  }
+
+  // Profile completion fields (from additional details form)
+  final profileFields = [
+    data['aadhaarNumber'],
+    data['streetName'],
+    data['educationalQualification'],
+    data['religion'],
+    data['socialCategory'],
+    // Business info
+    data['businessName'],
+    data['businessType'],
+    data['businessCategory'],
+    // Financial info
+    data['bankName'],
+    data['accountNumber'],
+    data['ifscCode'],
+  ];
+
+  for (var field in profileFields) {
+    totalFields++;
+    if (field != null && field.toString().trim().isNotEmpty) {
+      filledFields++;
+    }
+  }
+
+  if (totalFields == 0) return 0;
+  return ((filledFields / totalFields) * 100).round();
+}
+
 Widget _buildProgressCard(BuildContext context, Map<String, dynamic> userData) {
   if (_isFullProfileCompleted(userData)) {
     // Show Image 2 state - Profile Status card
@@ -364,6 +414,8 @@ Widget _buildCompletionCard(
   Map<String, dynamic> userData,
 ) {
   final data = userData;
+  final completionPercentage = _calculateProfileCompletion(userData);
+
   return Card(
     elevation: 2,
     margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -381,9 +433,9 @@ Widget _buildCompletionCard(
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  '65% completed',
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                Text(
+                  '$completionPercentage% completed',
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
                 const SizedBox(height: 8),
                 const Text(

@@ -84,8 +84,6 @@ router.get('/:identifier/details', async (req, res) => {
       _id: personalDetails?._id || null,
       personal_and_demographic_details: personalDetails ? {
         full_name: personalDetails.fullName || '',
-        date_of_birth: personalDetails.dateOfBirth || '',
-        gender: personalDetails.gender || '',
         email: personalDetails.email || '',
         phone: personalDetails.phoneNumber || '',
         address: personalDetails.streetName || '',

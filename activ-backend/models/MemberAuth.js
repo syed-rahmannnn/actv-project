@@ -4,16 +4,16 @@ const bcrypt = require('bcryptjs');
 const memberAuthSchema = new mongoose.Schema({
   email: {
     type: String,
-    required: [true, 'Email is required'],
-    unique: true,
     lowercase: true,
     trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+    default: '',
+    sparse: true,
+    match: [/^$|^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
-    minlength: [8, 'Password must be at least 8 characters long']
+    default: '',
+    minlength: [0, 'Password must be at least 8 characters long']
   },
   isActive: {
     type: Boolean,
@@ -39,8 +39,8 @@ const memberAuthSchema = new mongoose.Schema({
 
 // Hash password before saving
 memberAuthSchema.pre('save', async function(next) {
-  // Only hash the password if it has been modified (or is new)
-  if (!this.isModified('password')) return next();
+  // Only hash the password if it has been modified (or is new) and is not empty
+  if (!this.isModified('password') || !this.password || this.password === '') return next();
   
   try {
     // Hash password with cost of 12

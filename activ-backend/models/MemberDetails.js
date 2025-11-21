@@ -3,59 +3,49 @@ const mongoose = require('mongoose');
 const memberDetailsSchema = new mongoose.Schema({
   fullName: {
     type: String,
-    required: [true, 'Full name is required'],
     trim: true,
+    default: '',
     maxlength: [100, 'Full name cannot exceed 100 characters']
   },
   email: {
     type: String,
-    required: [true, 'Email is required'],
-    unique: true,
     lowercase: true,
     trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+    default: '',
+    sparse: true,
+    match: [/^$|^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
   },
   phoneNumber: {
     type: String,
-    required: [true, 'Phone number is required'],
     trim: true,
-    match: [/^[\+]?[1-9][\d]{0,15}$/, 'Please enter a valid phone number']
-  },
-  dateOfBirth: {
-    type: String,
-    required: [true, 'Date of birth is required'],
-    trim: true
-  },
-  gender: {
-    type: String,
-    required: [true, 'Gender is required'],
-    enum: ['Male', 'Female', 'Other']
+    default: '',
+    match: [/^$|^[\+]?[1-9][\d]{0,15}$/, 'Please enter a valid phone number']
   },
   state: {
     type: String,
-    required: [true, 'State is required'],
-    trim: true
+    trim: true,
+    default: ''
   },
   district: {
     type: String,
-    required: [true, 'District is required'],
-    trim: true
+    trim: true,
+    default: ''
   },
   block: {
     type: String,
-    required: [true, 'Block is required'],
-    trim: true
+    trim: true,
+    default: ''
   },
   city: {
     type: String,
-    required: [true, 'City is required'],
-    trim: true
+    trim: true,
+    default: ''
   },
   // Personal & Demographic Details (moved from BusinessInfo)
   aadhaarNumber: {
     type: String,
     trim: true,
-    match: [/^\d{12}$/, 'Aadhaar number must be 12 digits']
+    match: [/^$|^\d{12}$/, 'Aadhaar number must be 12 digits']
   },
   streetName: {
     type: String,
@@ -71,7 +61,8 @@ const memberDetailsSchema = new mongoose.Schema({
   },
   socialCategory: {
     type: String,
-    enum: ['General', 'OBC', 'SC', 'ST', 'EWS', 'Other']
+    enum: ['', 'General', 'OBC', 'SC', 'ST', 'EWS', 'Other', null],
+    default: ''
   },
   profileCompleted: {
     type: Boolean,

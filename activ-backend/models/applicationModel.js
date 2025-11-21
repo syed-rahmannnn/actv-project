@@ -5,10 +5,6 @@ const applicationSchema = new mongoose.Schema({
   fullName: { type: String, required: true },
   email: { type: String, required: true },
   phone: { type: String, required: true },
-  // Optional gender field captured during registration/submission
-  // Accepted values: 'Male', 'Female', 'Other'. Left optional to avoid
-  // breaking existing submissions; UI can fallback gracefully when null.
-  gender: { type: String, enum: ["Male", "Female", "Other"], default: null },
   state: { type: String, required: true },
   district: { type: String, required: true },
   block: { type: String, required: true },

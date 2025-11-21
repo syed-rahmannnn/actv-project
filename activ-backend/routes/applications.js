@@ -44,15 +44,7 @@ module.exports = (mongooseConnection) => {
   // ---------- USER SUBMITS APPLICATION ----------
   router.post("/submit", async (req, res) => {
     try {
-      const { userId, fullName, email, phone, state, district, block, formData, gender } = req.body;
-
-      // DEBUG: Log incoming request body
-      console.log('=== APPLICATION SUBMIT DEBUG ===');
-      console.log('Received gender from body:', gender);
-      console.log('formData.gender:', formData?.gender);
-      console.log('formData.personalDetails?.gender:', formData?.personalDetails?.gender);
-      console.log('formData.personalInfo?.gender:', formData?.personalInfo?.gender);
-      console.log('Full request body:', JSON.stringify(req.body, null, 2));
+      const { userId, fullName, email, phone, state, district, block, formData } = req.body;
 
       // Validate required fields
       if (!userId || !fullName || !email || !phone || !state || !district || !block || !formData) {
@@ -67,33 +59,6 @@ module.exports = (mongooseConnection) => {
       const S = norm(state);
       const D = norm(district);
       const B = norm(block);
-
-      // Normalize gender from body or derive from formData if provided
-      const normalizeGender = (g) => {
-        console.log('normalizeGender input:', g);
-        if (!g || typeof g !== 'string') {
-          console.log('normalizeGender: returning null (no input or not string)');
-          return null;
-        }
-        const v = g.trim().toLowerCase();
-        console.log('normalizeGender lowercase value:', v);
-        if (v === 'm' || v === 'male') return 'Male';
-        if (v === 'f' || v === 'female') return 'Female';
-        if (v === 'o' || v === 'other') return 'Other';
-        // Attempt to map common variants
-        if (v.startsWith('male')) return 'Male';
-        if (v.startsWith('female')) return 'Female';
-        if (v.startsWith('other')) return 'Other';
-        console.log('normalizeGender: no match, returning null');
-        return null;
-      };
-
-      const derivedGender = normalizeGender(
-        gender ??
-        (formData && (formData.gender || formData.personalDetails?.gender || formData.personalInfo?.gender))
-      );
-      
-      console.log('Derived gender after normalization:', derivedGender);
 
       // helpers
       const escapeRx = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -155,7 +120,6 @@ module.exports = (mongooseConnection) => {
         fullName,
         email,
         phone,
-        gender: derivedGender,
         state: S,
         district: D,
         block: B,
@@ -165,9 +129,6 @@ module.exports = (mongooseConnection) => {
         assignedStateAdmin: stateAdmin._id,
         status: "Pending-Block",
       });
-
-      console.log('Created application with gender:', newApp.gender);
-      console.log('Application document:', JSON.stringify(newApp.toObject(), null, 2));
 
       res.status(201).json({ 
         success: true, 

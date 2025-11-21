@@ -14,11 +14,9 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
-  final _dobController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  String _selectedGender = 'Male';
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
@@ -149,7 +147,7 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
 
                     // Full Name Field
                     const Text(
-                      'Full Name*',
+                      'Full Name',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -175,18 +173,12 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                           borderSide: const BorderSide(color: Colors.blue),
                         ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your full name';
-                        }
-                        return null;
-                      },
                     ),
                     const SizedBox(height: 16),
 
                     // Phone Number Field
                     const Text(
-                      'Phone Number*',
+                      'Phone Number',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -213,18 +205,12 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                           borderSide: const BorderSide(color: Colors.blue),
                         ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your phone number';
-                        }
-                        return null;
-                      },
                     ),
                     const SizedBox(height: 16),
 
                     // Email Address Field
                     const Text(
-                      'Email Address*',
+                      'Email Address',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -252,128 +238,13 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                         ),
                       ),
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your email address';
-                        }
-                        if (!value.contains('@')) {
+                        if (value != null &&
+                            value.isNotEmpty &&
+                            !value.contains('@')) {
                           return 'Please enter a valid email address';
                         }
                         return null;
                       },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Date of Birth Field
-                    const Text(
-                      'Date of Birth*',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _dobController,
-                      readOnly: true,
-                      decoration: InputDecoration(
-                        hintText: 'dd-mm-yyyy',
-                        hintStyle: TextStyle(color: Colors.grey[400]),
-                        suffixIcon: const Icon(
-                          Icons.calendar_today,
-                          color: Colors.grey,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(color: Colors.blue),
-                        ),
-                      ),
-                      onTap: () async {
-                        final DateTime? picked = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime(1950),
-                          lastDate: DateTime.now(),
-                        );
-                        if (picked != null) {
-                          setState(() {
-                            _dobController.text =
-                                '${picked.day.toString().padLeft(2, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.year}';
-                          });
-                        }
-                      },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please select your date of birth';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Gender Field
-                    const Text(
-                      'Gender*',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: RadioListTile<String>(
-                            title: const Text('Male'),
-                            value: 'Male',
-                            groupValue: _selectedGender,
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedGender = value!;
-                              });
-                            },
-                            contentPadding: EdgeInsets.zero,
-                            dense: true,
-                          ),
-                        ),
-                        Expanded(
-                          child: RadioListTile<String>(
-                            title: const Text('Female'),
-                            value: 'Female',
-                            groupValue: _selectedGender,
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedGender = value!;
-                              });
-                            },
-                            contentPadding: EdgeInsets.zero,
-                            dense: true,
-                          ),
-                        ),
-                        Expanded(
-                          child: RadioListTile<String>(
-                            title: const Text('Other'),
-                            value: 'Other',
-                            groupValue: _selectedGender,
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedGender = value!;
-                              });
-                            },
-                            contentPadding: EdgeInsets.zero,
-                            dense: true,
-                          ),
-                        ),
-                      ],
                     ),
                     const SizedBox(height: 16),
 
@@ -420,10 +291,9 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                         ),
                       ),
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter a password';
-                        }
-                        if (value.length < 8) {
+                        if (value != null &&
+                            value.isNotEmpty &&
+                            value.length < 8) {
                           return 'Password must be at least 8 characters long';
                         }
                         return null;
@@ -475,10 +345,8 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                         ),
                       ),
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please confirm your password';
-                        }
-                        if (value != _passwordController.text) {
+                        if (_passwordController.text.isNotEmpty &&
+                            value != _passwordController.text) {
                           return 'Passwords do not match';
                         }
                         return null;
@@ -492,24 +360,20 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                       height: 50,
                       child: ElevatedButton(
                         onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            // Navigate to step 2
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => RegistrationStep2Screen(
-                                  personalData: {
-                                    'fullName': _fullNameController.text,
-                                    'phone': _phoneController.text,
-                                    'email': _emailController.text,
-                                    'dob': _dobController.text,
-                                    'gender': _selectedGender,
-                                    'password': _passwordController.text,
-                                  },
-                                ),
+                          // Navigate to step 2
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RegistrationStep2Screen(
+                                personalData: {
+                                  'fullName': _fullNameController.text,
+                                  'phone': _phoneController.text,
+                                  'email': _emailController.text,
+                                  'password': _passwordController.text,
+                                },
                               ),
-                            );
-                          }
+                            ),
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,
@@ -542,7 +406,6 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
     _fullNameController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
-    _dobController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();

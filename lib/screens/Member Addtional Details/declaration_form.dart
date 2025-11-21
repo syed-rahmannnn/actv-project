@@ -523,12 +523,6 @@ class _DeclarationFormState extends State<DeclarationForm> {
         // Use the new simplified approach
         final svc = ApplicationService(widget.baseUrl!, token: widget.token);
 
-        // Try to fetch gender from known user data locations
-        final derivedGender = (widget.userData['gender'] ??
-                widget.userData['member']?['gender'] ??
-                updatedUserData['registrationForm']?['gender'])
-            ?.toString();
-
         final result = await svc.submitApplication(
           userId: userId!,
           fullName: fullName!,
@@ -537,7 +531,6 @@ class _DeclarationFormState extends State<DeclarationForm> {
           state: state!,
           district: district!,
           block: block!,
-          gender: derivedGender,
           formData: {
             "sisterConcerns": sisterConcerns,
             "companyNames": _companyNamesController.text

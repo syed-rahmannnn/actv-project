@@ -25,40 +25,7 @@ class ApplicationService {
     required String district,
     required String block,
     required Map<String, dynamic> formData,
-    String? gender,
   }) async {
-    // Try to derive gender from formData if not explicitly provided
-    final derivedGender =
-        gender ??
-        (() {
-          final pd = formData['personalDetails'];
-          final pi = formData['personalInfo'];
-          final fg = formData['gender'];
-          final v =
-              (pd is Map ? pd['gender'] : null) ??
-              (pi is Map ? pi['gender'] : null) ??
-              fg;
-          if (v is String) {
-            final low = v.trim().toLowerCase();
-            if (low == 'm' || low == 'male') return 'Male';
-            if (low == 'f' || low == 'female') return 'Female';
-            if (low == 'o' || low == 'other') return 'Other';
-          }
-          return null;
-        })();
-
-    // Debug logging
-    print('[SUBMIT DEBUG] Submitting application for $fullName');
-    print('[SUBMIT DEBUG] Provided gender parameter: $gender');
-    print(
-      '[SUBMIT DEBUG] formData.personalDetails.gender: ${formData['personalDetails']?['gender']}',
-    );
-    print(
-      '[SUBMIT DEBUG] formData.personalInfo.gender: ${formData['personalInfo']?['gender']}',
-    );
-    print('[SUBMIT DEBUG] formData.gender: ${formData['gender']}');
-    print('[SUBMIT DEBUG] Derived gender: $derivedGender');
-
     final res = await http.post(
       Uri.parse('$baseUrl/applications/submit'),
       headers: _headers,
@@ -71,7 +38,6 @@ class ApplicationService {
         'district': district.trim(),
         'block': block.trim(),
         'formData': formData,
-        if (derivedGender != null) 'gender': derivedGender,
       }),
     );
     return jsonDecode(res.body) as Map<String, dynamic>;
