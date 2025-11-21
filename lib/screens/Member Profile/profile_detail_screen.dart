@@ -174,7 +174,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
               const SizedBox(height: 30),
 
-              // Personal & Demographic Details Section
+              // Demographic Details Section
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(

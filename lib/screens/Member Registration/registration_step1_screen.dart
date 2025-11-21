@@ -108,6 +108,7 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
               ),
               child: Form(
                 key: _formKey,
+                autovalidateMode: AutovalidateMode.disabled,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -237,14 +238,6 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                           borderSide: const BorderSide(color: Colors.blue),
                         ),
                       ),
-                      validator: (value) {
-                        if (value != null &&
-                            value.isNotEmpty &&
-                            !value.contains('@')) {
-                          return 'Please enter a valid email address';
-                        }
-                        return null;
-                      },
                     ),
                     const SizedBox(height: 16),
 
@@ -290,14 +283,6 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                           borderSide: const BorderSide(color: Colors.blue),
                         ),
                       ),
-                      validator: (value) {
-                        if (value != null &&
-                            value.isNotEmpty &&
-                            value.length < 8) {
-                          return 'Password must be at least 8 characters long';
-                        }
-                        return null;
-                      },
                     ),
                     const SizedBox(height: 16),
 
@@ -344,13 +329,6 @@ class _RegistrationStep1ScreenState extends State<RegistrationStep1Screen> {
                           borderSide: const BorderSide(color: Colors.blue),
                         ),
                       ),
-                      validator: (value) {
-                        if (_passwordController.text.isNotEmpty &&
-                            value != _passwordController.text) {
-                          return 'Passwords do not match';
-                        }
-                        return null;
-                      },
                     ),
                     const SizedBox(height: 30),
 

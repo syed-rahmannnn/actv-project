@@ -29,11 +29,11 @@ const memberBusinessInfoSchema = new mongoose.Schema({
   },
   constitutionType: {
     type: String,
-    enum: ['Proprietorship', 'Partnership', 'Private Limited', 'Public Limited', 'LLP', 'Sole Proprietorship', 'Other']
+    enum: ['OPC','TRUST','SOCIETY']
   },
   businessType: {
     type: String,
-    enum: ['Agriculture', 'Manufacturing', 'Trader', 'Retailer', 'Service Provider', 'Others']
+    enum: ['Manufacturing', 'Trader',  'Service Provider', 'Others']
   },
   businessActivities: {
     type: String,

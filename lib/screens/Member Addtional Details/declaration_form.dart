@@ -425,14 +425,12 @@ class _DeclarationFormState extends State<DeclarationForm> {
   }
 
   Future<void> _submitApplication() async {
-    // Validate required fields
-    if (_sisterConcernsController.text.isEmpty ||
-        _companyNamesController.text.isEmpty ||
-        !_agreeToDeclaration) {
+    // Only validate declaration agreement - fields are optional
+    if (!_agreeToDeclaration) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Please fill in all required fields and agree to the declaration',
+            'Please agree to the declaration to submit your application',
           ),
           backgroundColor: Colors.red,
         ),
@@ -440,18 +438,20 @@ class _DeclarationFormState extends State<DeclarationForm> {
       return;
     }
 
-    // Validate sister concerns is a positive integer
-    final sisterConcerns = int.tryParse(_sisterConcernsController.text);
-    if (sisterConcerns == null || sisterConcerns <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Please enter a valid positive number for sister concerns',
+    // Optional validation: if sister concerns is filled, validate it's a positive integer
+    if (_sisterConcernsController.text.isNotEmpty) {
+      final sisterConcerns = int.tryParse(_sisterConcernsController.text);
+      if (sisterConcerns == null || sisterConcerns <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Please enter a valid positive number for sister concerns',
+            ),
+            backgroundColor: Colors.red,
           ),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
+        );
+        return;
+      }
     }
 
     // Start submitting state
@@ -523,6 +523,10 @@ class _DeclarationFormState extends State<DeclarationForm> {
         // Use the new simplified approach
         final svc = ApplicationService(widget.baseUrl!, token: widget.token);
 
+        // Parse sister concerns as integer or use 0 if empty
+        final sisterConcerns =
+            int.tryParse(_sisterConcernsController.text) ?? 0;
+
         final result = await svc.submitApplication(
           userId: userId!,
           fullName: fullName!,
@@ -582,6 +586,9 @@ class _DeclarationFormState extends State<DeclarationForm> {
         return;
       }
 
+      // Parse sister concerns as integer or use 0 if empty
+      final sisterConcerns = int.tryParse(_sisterConcernsController.text) ?? 0;
+
       // Convert company names into array (split by new lines)
       final companyNames = _companyNamesController.text
           .split('\n')
@@ -612,6 +619,10 @@ class _DeclarationFormState extends State<DeclarationForm> {
         );
       }
 
+      // Parse sister concerns for application submission
+      final sisterConcernsForApp =
+          int.tryParse(_sisterConcernsController.text) ?? 0;
+
       // Now submit the application using ApplicationService with validated data
       final applicationService = ApplicationService(
         ApiService.baseUrl,
@@ -619,7 +630,7 @@ class _DeclarationFormState extends State<DeclarationForm> {
       );
 
       final declarationFormDataMap = {
-        'sisterConcerns': sisterConcerns,
+        'sisterConcerns': sisterConcernsForApp,
         'companyNames': companyNames,
         'showOneFieldPerName': _showOneFieldPerName,
         'agreeToDeclaration': _agreeToDeclaration,

@@ -5,6 +5,7 @@ import 'notification_screen.dart';
 import '../Member Addtional Details/personal_details_form.dart';
 import '../Application Status/application_status_screen.dart';
 import '../../services/member_service.dart';
+import '../../services/api_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -19,11 +20,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String displayName = 'Member';
   String companyName = 'Your Company';
   bool isLoading = true;
+  int profileCompletionPercentage = 0;
+  int filledFieldsCount = 0;
+  int totalFieldsCount = 0;
+  String? profileImageUrl;
 
   @override
   void initState() {
     super.initState();
     _loadMemberData();
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'M';
+    final parts = name.trim().split(' ');
+    if (parts.length == 1) return parts[0][0].toUpperCase();
+    return '${parts[0][0]}${parts[parts.length - 1][0]}'.toUpperCase();
   }
 
   Future<void> _loadMemberData() async {
@@ -75,6 +87,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         print('✅ Dashboard data loaded from API');
         print('✅ Final display name: $displayName');
         print('✅ Final company name: $companyName');
+        
+        // Fetch profile completion percentage
+        _loadProfileCompletion();
       } else {
         setState(() => isLoading = false);
         print('⚠️ Could not fetch fresh data, using login data');
@@ -84,6 +99,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() => isLoading = false);
       print('❌ Error loading dashboard data: $e');
       print('❌ Stack trace: $stackTrace');
+    }
+  }
+
+  Future<void> _loadProfileCompletion() async {
+    try {
+      final memberId = widget.userData['_id'] ?? 
+                      widget.userData['id'] ?? 
+                      widget.userData['member']?['_id'];
+      
+      if (memberId != null) {
+        final result = await ApiService.getProfileCompletion(memberId);
+        if (result['success'] == true && mounted) {
+          setState(() {
+            profileCompletionPercentage = result['percentage'] ?? 0;
+            filledFieldsCount = result['filledFields'] ?? 0;
+            totalFieldsCount = result['totalFields'] ?? 0;
+          });
+          print('✅ Profile completion: $profileCompletionPercentage%');
+        }
+      }
+    } catch (e) {
+      print('❌ Error loading profile completion: $e');
     }
   }
 
@@ -143,10 +180,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             child: Row(
                               children: [
-                                const CircleAvatar(
+                                CircleAvatar(
                                   radius: 25,
-                                  backgroundImage: AssetImage(
-                                    'assets/images/profile.png',
+                                  backgroundColor: Colors.blue.shade700,
+                                  child: Text(
+                                    _getInitials(displayName),
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -216,6 +259,103 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  // 🔹 Build Profile Completion Card
+  Widget _buildCompletionCard(
+    BuildContext context,
+    Map<String, dynamic> userData,
+  ) {
+    // Use backend-fetched percentage, fallback to calculation if not available
+    final completionPercentage = profileCompletionPercentage > 0 
+      ? profileCompletionPercentage 
+      : _calculateProfileCompletion(userData);
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Complete Your Profile',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '$completionPercentage% completed',
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Unlock all features by completing your profile.',
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              PersonalDetailsForm(userData: userData),
+                        ),
+                      );
+                      // Refresh profile completion when returning
+                      if (result == true && mounted) {
+                        _loadProfileCompletion();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
+                    ),
+                    child: const Text(
+                      'Complete Profile',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                'https://img.icons8.com/fluency/96/search.png',
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 80,
+                    height: 80,
+                    color: Colors.grey[300],
+                    child: Icon(Icons.person, size: 40, color: Colors.grey[600]),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -306,190 +446,111 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-}
 
-// Add helpers inside DashboardScreen class
-bool _isTruthy(dynamic v) {
-  return v == true || v == 'true' || v == 1 || v == '1';
-}
-
-bool _isBasicRegistrationCompleted(Map<String, dynamic> data) {
-  // Check if user has completed registration steps 1 and 2
-  // This is indicated by having basic user data like fullName, email, state, district
-  return data['fullName'] != null &&
-      data['email'] != null &&
-      data['state'] != null &&
-      data['district'] != null;
-}
-
-bool _isFullProfileCompleted(Map<String, dynamic> data) {
-  // Debug logging removed for security - no longer printing sensitive data
-  final form = data['registrationForm'];
-
-  if (form is Map<String, dynamic>) {
-    final v = form['profileCompleted'];
-    if (_isTruthy(v)) return true;
+  // Add helpers inside State class
+  bool _isTruthy(dynamic v) {
+    return v == true || v == 'true' || v == 1 || v == '1';
   }
 
-  // Also check if profileCompleted is directly in the data
-  final direct = data['profileCompleted'];
-  if (_isTruthy(direct)) {
-    return true;
+  bool _isBasicRegistrationCompleted(Map<String, dynamic> data) {
+    // Check if user has completed registration steps 1 and 2
+    // This is indicated by having basic user data like fullName, email, state, district
+    return data['fullName'] != null &&
+        data['email'] != null &&
+        data['state'] != null &&
+        data['district'] != null;
   }
 
-  // Check if member object has profileCompleted
-  final member = data['member'];
-  if (member is Map<String, dynamic> && _isTruthy(member['profileCompleted'])) {
-    return true;
+  bool _isFullProfileCompleted(Map<String, dynamic> data) {
+    // Debug logging removed for security - no longer printing sensitive data
+    final form = data['registrationForm'];
+
+    if (form is Map<String, dynamic>) {
+      final v = form['profileCompleted'];
+      if (_isTruthy(v)) return true;
+    }
+
+    // Also check if profileCompleted is directly in the data
+    final direct = data['profileCompleted'];
+    if (_isTruthy(direct)) {
+      return true;
+    }
+
+    // Check if member object has profileCompleted
+    final member = data['member'];
+    if (member is Map<String, dynamic> && _isTruthy(member['profileCompleted'])) {
+      return true;
+    }
+
+    return false;
   }
 
-  return false;
-}
+  int _calculateProfileCompletion(Map<String, dynamic> data) {
+    int totalFields = 0;
+    int filledFields = 0;
 
-int _calculateProfileCompletion(Map<String, dynamic> data) {
-  int totalFields = 0;
-  int filledFields = 0;
+    // Basic registration fields (from step 1 & 2)
+    final basicFields = [
+      data['fullName'] ?? data['member']?['fullName'],
+      data['email'] ?? data['member']?['email'],
+      data['phoneNumber'] ?? data['member']?['phoneNumber'],
+      data['state'] ?? data['member']?['state'],
+      data['district'] ?? data['member']?['district'],
+      data['block'] ?? data['member']?['block'],
+      data['city'] ?? data['member']?['city'],
+    ];
 
-  // Basic registration fields (from step 1 & 2)
-  final basicFields = [
-    data['fullName'] ?? data['member']?['fullName'],
-    data['email'] ?? data['member']?['email'],
-    data['phoneNumber'] ?? data['member']?['phoneNumber'],
-    data['state'] ?? data['member']?['state'],
-    data['district'] ?? data['member']?['district'],
-    data['block'] ?? data['member']?['block'],
-    data['city'] ?? data['member']?['city'],
-  ];
+    for (var field in basicFields) {
+      totalFields++;
+      if (field != null && field.toString().trim().isNotEmpty) {
+        filledFields++;
+      }
+    }
 
-  for (var field in basicFields) {
-    totalFields++;
-    if (field != null && field.toString().trim().isNotEmpty) {
-      filledFields++;
+    // Profile completion fields (from additional details form)
+    final profileFields = [
+      data['aadhaarNumber'],
+      data['streetName'],
+      data['educationalQualification'],
+      data['religion'],
+      data['socialCategory'],
+      // Business info
+      data['businessName'],
+      data['businessType'],
+      data['businessCategory'],
+      // Financial info
+      data['bankName'],
+      data['accountNumber'],
+      data['ifscCode'],
+    ];
+
+    for (var field in profileFields) {
+      totalFields++;
+      if (field != null && field.toString().trim().isNotEmpty) {
+        filledFields++;
+      }
+    }
+
+    if (totalFields == 0) return 0;
+    return ((filledFields / totalFields) * 100).round();
+  }
+
+  Widget _buildProgressCard(BuildContext context, Map<String, dynamic> userData) {
+    if (_isFullProfileCompleted(userData)) {
+      // Show Image 2 state - Profile Status card
+      return _buildStatusCard(context, userData);
+    } else if (_isBasicRegistrationCompleted(userData)) {
+      // Show Image 1 state - Complete Profile card
+      return _buildCompletionCard(context, userData);
+    } else {
+      // Fallback to completion card for incomplete registration
+      return _buildCompletionCard(context, userData);
     }
   }
 
-  // Profile completion fields (from additional details form)
-  final profileFields = [
-    data['aadhaarNumber'],
-    data['streetName'],
-    data['educationalQualification'],
-    data['religion'],
-    data['socialCategory'],
-    // Business info
-    data['businessName'],
-    data['businessType'],
-    data['businessCategory'],
-    // Financial info
-    data['bankName'],
-    data['accountNumber'],
-    data['ifscCode'],
-  ];
-
-  for (var field in profileFields) {
-    totalFields++;
-    if (field != null && field.toString().trim().isNotEmpty) {
-      filledFields++;
-    }
-  }
-
-  if (totalFields == 0) return 0;
-  return ((filledFields / totalFields) * 100).round();
-}
-
-Widget _buildProgressCard(BuildContext context, Map<String, dynamic> userData) {
-  if (_isFullProfileCompleted(userData)) {
-    // Show Image 2 state - Profile Status card
-    return _buildStatusCard(context, userData);
-  } else if (_isBasicRegistrationCompleted(userData)) {
-    // Show Image 1 state - Complete Profile card
-    return _buildCompletionCard(context, userData);
-  } else {
-    // Fallback to completion card for incomplete registration
-    return _buildCompletionCard(context, userData);
-  }
-}
-
-Widget _buildCompletionCard(
-  BuildContext context,
-  Map<String, dynamic> userData,
-) {
-  final data = userData;
-  final completionPercentage = _calculateProfileCompletion(userData);
-
-  return Card(
-    elevation: 2,
-    margin: const EdgeInsets.symmetric(horizontal: 16),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    child: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Complete Your Profile',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '$completionPercentage% completed',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Unlock all features by completing your profile.',
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            PersonalDetailsForm(userData: data),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                  ),
-                  child: const Text(
-                    'Complete Profile',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          SizedBox(
-            height: 72,
-            width: 96,
-            child: Image.asset('assets/images/Box1.png', fit: BoxFit.contain),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-Widget _buildStatusCard(BuildContext context, Map<String, dynamic> userData) {
-  return Card(
-    elevation: 2,
+  Widget _buildStatusCard(BuildContext context, Map<String, dynamic> userData) {
+    return Card(
+      elevation: 2,
     margin: const EdgeInsets.symmetric(horizontal: 16),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     child: Padding(
@@ -554,4 +615,5 @@ Widget _buildStatusCard(BuildContext context, Map<String, dynamic> userData) {
       ),
     ),
   );
+  }
 }

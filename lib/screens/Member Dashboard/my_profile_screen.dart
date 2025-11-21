@@ -384,9 +384,9 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             child: Column(
                               children: [
-                                // Personal & Demographic Details
+                                // Demographic Details
                                 _buildExpandableCard(
-                                  title: 'Personal & Demographic Details',
+                                  title: 'Demographic Details',
                                   isExpanded: _isPersonalExpanded,
                                   onTap: () {
                                     setState(() {

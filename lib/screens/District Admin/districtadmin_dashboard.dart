@@ -935,8 +935,8 @@ class UserDetailsDropdown extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Personal & Demographic Details
-                  _buildSectionHeader('Personal & Demographic Details'),
+                  // Demographic Details
+                  _buildSectionHeader('Demographic Details'),
                   _buildDetailCard([
                     _buildDetailRow('Full Name', s(member['fullName'])),
                     _buildDetailRow('Email', s(member['email'])),

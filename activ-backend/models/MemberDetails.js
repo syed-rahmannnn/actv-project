@@ -41,7 +41,7 @@ const memberDetailsSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
-  // Personal & Demographic Details (moved from BusinessInfo)
+  // Demographic Details (moved from BusinessInfo)
   aadhaarNumber: {
     type: String,
     trim: true,
@@ -61,7 +61,7 @@ const memberDetailsSchema = new mongoose.Schema({
   },
   socialCategory: {
     type: String,
-    enum: ['', 'General', 'OBC', 'SC', 'ST', 'EWS', 'Other', null],
+    enum: ['', 'Christian SC', 'ST', 'Christian ST', 'Other', null],
     default: ''
   },
   profileCompleted: {

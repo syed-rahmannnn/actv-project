@@ -426,6 +426,63 @@ class ApiService {
     }
   }
 
+  // Static method to get profile completion percentage
+  static Future<Map<String, dynamic>> getProfileCompletion(
+    String memberId,
+  ) async {
+    final url = Uri.parse('$baseUrl/members/$memberId/completion');
+    developer.log(
+      'ApiService: getProfileCompletion called',
+      name: 'ApiService',
+    );
+
+    final headers = await _staticHeaders(json: true);
+
+    final resp = await http.get(url, headers: headers).timeout(
+      _requestTimeout(),
+    );
+
+    final body = _jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {
+        'success': true,
+        'percentage': body['data']?['completionPercentage'] ?? 0,
+        'filledFields': body['data']?['filledFields'] ?? 0,
+        'totalFields': body['data']?['totalFields'] ?? 0,
+      };
+    } else {
+      return {
+        'success': false,
+        'percentage': 0,
+      };
+    }
+  }
+
+  // Static method to update member details (used by personal details form)
+  static Future<Map<String, dynamic>> updateMemberDetails(
+    String memberId,
+    Map<String, dynamic> updateData,
+  ) async {
+    final url = Uri.parse('$baseUrl/members/$memberId');
+    developer.log('ApiService: updateMemberDetails called', name: 'ApiService');
+
+    final headers = await _staticHeaders(json: true);
+
+    final resp = await http
+        .put(url, headers: headers, body: jsonEncode(updateData))
+        .timeout(_requestTimeout());
+
+    final body = _jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'success': true, 'data': body['data']};
+    } else {
+      return {
+        'success': false,
+        'message': body['message'] ?? 'Failed to update member details',
+      };
+    }
+  }
+
   // Static method to get all members (used by browse members screen)
   static Future<Map<String, dynamic>> getMembers({
     int page = 1,

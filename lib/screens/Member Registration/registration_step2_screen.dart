@@ -130,6 +130,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
               ),
               child: Form(
                 key: _formKey,
+                autovalidateMode: AutovalidateMode.disabled,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
