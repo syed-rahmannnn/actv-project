@@ -538,6 +538,12 @@ class _LoginScreenState extends State<LoginScreen> {
           print('Found member.memberId: ${member['memberId']}');
         }
 
+        // Ensure member has memberId field for consistency
+        if (member['id'] != null && member['memberId'] == null) {
+          member['memberId'] = member['id'];
+          print('📝 Added memberId from id: ${member['memberId']}');
+        }
+
         await AuthService.saveLoginData(token: token, userData: member);
 
         if (mounted) {

@@ -438,6 +438,11 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
 
   // Handle registration submission
   Future<void> _handleRegistration() async {
+    // Skip form validation - allow registration with any data
+    // if (!_formKey.currentState!.validate()) {
+    //   return;
+    // }
+
     setState(() {
       _isLoading = true;
     });
@@ -445,6 +450,15 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
     try {
       // Create ApiService instance
       final apiService = ApiService();
+
+      // Debug: Check what data we have
+      print('=== REGISTRATION ATTEMPT ===');
+      print('📋 Personal data from step 1: ${widget.personalData}');
+      print('📍 Location data from step 2:');
+      print('   State: ${_selectedState}');
+      print('   District: ${_selectedDistrict}');
+      print('   City: ${_cityController.text}');
+      print('   Block: ${_selectedBlock}');
 
       // Prepare registration payload with optional fields
       final payload = {
@@ -459,6 +473,13 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
         "pincode": widget.personalData['pincode'] ?? '000000',
       };
 
+      print('📦 Sending registration payload (passwords hidden):');
+      final logPayload = Map<String, dynamic>.from(payload);
+      if (logPayload['password'] != null) {
+        logPayload['password'] = '***hidden***';
+      }
+      print(logPayload);
+
       final result = await apiService.register(payload);
       if (!mounted) return;
 
@@ -469,6 +490,27 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
           result['body']['data']['member'] as Map,
         );
         final token = result['token'] as String;
+
+        // Debug: Print registration response
+        print('=== REGISTRATION SUCCESS DEBUG ===');
+        print('🎉 Registration response member: $member');
+        print('🔑 Member keys: ${member.keys.toList()}');
+        if (member['id'] != null) {
+          print('✅ Found member.id: ${member['id']}');
+        }
+        if (member['_id'] != null) {
+          print('✅ Found member._id: ${member['_id']}');
+        }
+        if (member['memberId'] != null) {
+          print('✅ Found member.memberId: ${member['memberId']}');
+        }
+
+        // Ensure member has memberId field for consistency
+        if (member['id'] != null && member['memberId'] == null) {
+          member['memberId'] = member['id'];
+          print('📝 Added memberId from id: ${member['memberId']}');
+        }
+
         await AuthService.saveLoginData(token: token, userData: member);
         if (!mounted) return;
 
@@ -480,21 +522,23 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
           city: _cityController.text.trim(),
         );
 
-        // Combine all data for dashboard display
-        final completeData = {
-          ...widget.personalData,
-          'state': _selectedState?.trim() ?? '',
-          'district': _selectedDistrict?.trim() ?? '',
-          'city': _cityController.text.trim(),
-          'block': _selectedBlock?.trim() ?? '',
-          'member': result['body']['data']['member'],
-          'token': result['token'],
+        // Pass member data directly (not nested) to match login flow
+        // This ensures PersonalDetailsForm can access member.id or member.memberId
+        final userData = {
+          ...member,
+          'state': member['state'] ?? _selectedState?.trim() ?? '',
+          'district': member['district'] ?? _selectedDistrict?.trim() ?? '',
+          'city': member['city'] ?? _cityController.text.trim(),
+          'block': member['block'] ?? _selectedBlock?.trim() ?? '',
         };
+
+        print('📦 Passing userData to Dashboard: $userData');
+        print('🔑 userData keys: ${userData.keys.toList()}');
 
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => DashboardScreen(userData: completeData),
+            builder: (context) => DashboardScreen(userData: userData),
           ),
         );
 
@@ -507,42 +551,21 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
         );
       } else {
         if (!mounted) return;
-        // Even if backend says registration failed, try to proceed if it's just a validation error
+        // Registration failed
         final errorMessage =
             result['body']?['message'] ?? 'Registration failed';
 
-        // If it's a validation error about required fields, ignore it and proceed
-        if (errorMessage.contains('required') ||
-            errorMessage.contains('must be provided')) {
-          // Just show a warning but don't stop the user
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Registration saved with partial information'),
-              backgroundColor: Colors.orange,
-            ),
-          );
+        print('❌ Registration failed: $errorMessage');
+        print('❌ Full response: ${result['body']}');
 
-          // Navigate to dashboard anyway with available data
-          final completeData = {
-            ...widget.personalData,
-            'state': _selectedState?.trim() ?? '',
-            'district': _selectedDistrict?.trim() ?? '',
-            'city': _cityController.text.trim(),
-            'block': _selectedBlock?.trim() ?? '',
-          };
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DashboardScreen(userData: completeData),
-            ),
-          );
-        } else {
-          // Show actual error for other types of failures
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-          );
-        }
+        // Show error message - DO NOT navigate to dashboard without proper member ID
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Registration failed: $errorMessage'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {

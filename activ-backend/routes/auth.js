@@ -91,6 +91,9 @@ router.post('/login', async (req, res) => {
 // Register new member
 router.post('/register', async (req, res) => {
   try {
+    console.log('📥 Registration request received');
+    console.log('📋 Request body:', JSON.stringify(req.body, null, 2));
+
     const {
       fullName,
       phoneNumber,
@@ -104,6 +107,17 @@ router.post('/register', async (req, res) => {
       profilePicture,
       memberType
     } = req.body;
+
+    // Log what we received
+    console.log('📝 Extracted fields:');
+    console.log('   fullName:', fullName || '(empty)');
+    console.log('   email:', email || '(empty)');
+    console.log('   phoneNumber:', phoneNumber || '(empty)');
+    console.log('   password:', password ? '***' : '(empty)');
+    console.log('   state:', state || '(empty)');
+    console.log('   district:', district || '(empty)');
+    console.log('   city:', city || '(empty)');
+    console.log('   block:', block || '(empty)');
 
     // Check if member already exists (only if email is provided)
     if (email && email.trim() !== '') {
@@ -121,9 +135,17 @@ router.post('/register', async (req, res) => {
       ? email.toLowerCase() 
       : `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}@temp.local`;
 
+    // Generate a temporary fullName if not provided
+    const finalFullName = (fullName && fullName.trim() !== '')
+      ? fullName
+      : `Member_${Date.now()}`;
+
+    console.log('✅ Using email:', finalEmail);
+    console.log('✅ Using fullName:', finalFullName);
+
     // Create member details with optional fields
     const memberDetails = new MemberDetails({
-      fullName: fullName || '',
+      fullName: finalFullName,
       email: finalEmail,
       phoneNumber: phoneNumber || '',
       state: state || '',
@@ -133,6 +155,7 @@ router.post('/register', async (req, res) => {
     });
 
     await memberDetails.save({ validateBeforeSave: false });
+    console.log('✅ Member saved with ID:', memberDetails._id);
 
     // Create member auth only if password is provided
     if (password && password.trim() !== '') {
@@ -141,6 +164,9 @@ router.post('/register', async (req, res) => {
         password
       });
       await memberAuth.save({ validateBeforeSave: false });
+      console.log('✅ Member auth created');
+    } else {
+      console.log('⚠️ No password provided, skipping auth creation');
     }
 
     // Generate JWT token
@@ -161,6 +187,7 @@ router.post('/register', async (req, res) => {
         token: token,
         member: {
           id: memberDetails._id,
+          memberId: memberDetails._id, // Add memberId for frontend clarity
           fullName: memberDetails.fullName,
           email: memberDetails.email,
           phoneNumber: memberDetails.phoneNumber,

@@ -89,12 +89,38 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
   Timer? _debounceTimer;
   bool _isSaving = false;
   bool _hasAttemptedSave = false; // Track if we've tried to save at least once
+  bool _isFormLocked = false; // Lock form after successful save
 
   @override
   void initState() {
     super.initState();
+    _checkIfFormIsLocked();
     _populateFields();
     _setupAutoSaveListeners();
+  }
+
+  Future<void> _checkIfFormIsLocked() async {
+    // Check if personal details are already saved in backend
+    try {
+      final memberData = await _loadMemberFromBackend();
+      if (memberData != null) {
+        final registrationForm = memberData['registrationForm'] as Map<String, dynamic>?;
+        
+        // If key fields are filled, consider form as locked
+        final hasAadhaar = registrationForm?['aadhaarNumber']?.toString().trim().isNotEmpty ?? false;
+        final hasStreet = registrationForm?['streetName']?.toString().trim().isNotEmpty ?? false;
+        final hasEducation = registrationForm?['educationalQualification']?.toString().trim().isNotEmpty ?? false;
+        
+        if (hasAadhaar || hasStreet || hasEducation) {
+          setState(() {
+            _isFormLocked = true;
+          });
+          print('🔒 Personal details form is locked (already saved)');
+        }
+      }
+    } catch (e) {
+      print('❌ Error checking form lock status: $e');
+    }
   }
 
   void _setupAutoSaveListeners() {
@@ -134,22 +160,43 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
     setState(() => _isSaving = true);
 
     try {
-      // Try to get member ID from multiple sources
+      // Try to get member ID from multiple sources - check ALL possible locations
       String? memberId = widget.userData['memberId'] ??
+          widget.userData['member']?['memberId'] ??
           widget.userData['member']?['_id'] ??
           widget.userData['member']?['id'] ??
           widget.userData['_id'] ??
           widget.userData['id'];
 
-      // If still no member ID, try loading from backend
+      // If still no member ID, try loading from backend using email
       if (memberId == null) {
         final email = widget.userData['email'] ?? widget.userData['member']?['email'];
         if (email != null && email.toString().trim().isNotEmpty) {
-          final res = await ApiService.getMemberByEmail(email);
-          if (res['success'] == true && res['data'] != null) {
-            final member = res['data'] as Map<String, dynamic>;
-            memberId = member['memberId'] ?? member['id'] ?? member['_id'];
+          print('🔍 Auto-save: Fetching member ID from backend using email: $email');
+          try {
+            final res = await ApiService.getMemberByEmail(email);
+            print('📡 Auto-save backend response success: ${res['success']}');
+            
+            if (res['success'] == true && res['data'] != null) {
+              final member = res['data'] as Map<String, dynamic>;
+              print('👤 Member data keys from backend: ${member.keys.toList()}');
+              memberId = member['memberId'] ?? member['id'] ?? member['_id'];
+              print('🆔 Extracted member ID: $memberId');
+              
+              // Cache member ID for future saves
+              if (memberId != null && mounted) {
+                widget.userData['memberId'] = memberId;
+                print('✅ Auto-save: Cached member ID: $memberId');
+              }
+            } else {
+              print('❌ Auto-save: Backend failed: ${res['error']}');
+            }
+          } catch (e) {
+            print('❌ Auto-save: Exception: $e');
           }
+        } else {
+          print('❌ Auto-save: No email in userData');
+          print('📦 userData email field: ${widget.userData['email']}');
         }
       }
 
@@ -157,7 +204,10 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
         // Silent fail - no error message to avoid annoying users
         // This happens when user accesses form directly without login/registration
         _hasAttemptedSave = true; // Mark that we attempted
-        print('Auto-save skipped: Member ID not found');
+        print('❌ Auto-save skipped: Member ID not found');
+        print('UserData keys: ${widget.userData.keys.toList()}');
+        print('UserData email: ${widget.userData['email']}');
+        print('Member object: ${widget.userData["member"]}');
         return;
       }
 
@@ -300,18 +350,64 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
     );
 
     try {
-      // Get member ID from backend
-      final backendData = await _loadMemberFromBackend();
-      final memberId =
-          backendData?['memberId'] ??
+      // Try ALL possible locations for member ID
+      String? memberId = 
+          widget.userData['memberId'] ??
           widget.userData['_id'] ??
           widget.userData['id'] ??
+          widget.userData['member']?['memberId'] ??
           widget.userData['member']?['_id'] ??
           widget.userData['member']?['id'];
+      
+      print('🔍 Save Personal Details: Searching for member ID...');
+      print('📧 Email in userData: ${widget.userData['email']}');
+      
+      // If not found, try to get from backend using email
+      if (memberId == null) {
+        final email = widget.userData['email'];
+        if (email != null && email.toString().trim().isNotEmpty) {
+          print('🌐 Fetching member ID from backend using email: $email');
+          try {
+            final res = await ApiService.getMemberByEmail(email);
+            print('📡 Backend response: $res');
+            
+            if (res['success'] == true && res['data'] != null) {
+              final member = res['data'] as Map<String, dynamic>;
+              memberId = member['memberId'] ?? member['id'] ?? member['_id'];
+              print('✅ Found member ID from backend: $memberId');
+              
+              // Cache it for future use
+              if (memberId != null && mounted) {
+                widget.userData['memberId'] = memberId;
+                print('✅ Cached member ID: $memberId');
+              }
+            } else {
+              print('❌ Backend lookup failed: ${res['error']}');
+            }
+          } catch (e) {
+            print('❌ Error fetching member by email: $e');
+          }
+        } else {
+          print('❌ No email available for backend lookup');
+        }
+      } else {
+        print('✅ Found member ID in userData: $memberId');
+      }
 
       if (memberId == null) {
-        throw Exception('Member ID not found');
+        // Close loading dialog
+        if (mounted && Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
+        
+        // Silent fail - don't show error to user
+        print('❌ Save Personal Details: Member ID not found');
+        print('Available userData keys: ${widget.userData.keys.toList()}');
+        print('Member object: ${widget.userData["member"]}');
+        return;
       }
+      
+      print('💾 Saving Personal Details with member ID: $memberId');
 
       // Prepare update payload with all personal details
       final updateData = {
@@ -354,13 +450,19 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
         widget.userData['block'] = _blockController.text;
         widget.userData['city'] = _cityController.text;
 
+        // Lock the form after successful save
+        setState(() {
+          _isFormLocked = true;
+        });
+        print('🔒 Personal details form locked after save');
+
         // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Personal details saved successfully'),
+              content: Text('Personal details saved successfully. Form is now locked.'),
               backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
+              duration: Duration(seconds: 3),
             ),
           );
         }
@@ -588,32 +690,57 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
                                 },
                               ),
                               const SizedBox(height: 8),
-                              SizedBox(
-                                width: double.infinity,
-                                height: 48,
-                                child: ElevatedButton(
-                                  onPressed: _updatePersonalDetails,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color.fromARGB(
-                                      255,
-                                      6,
-                                      139,
-                                      227,
+                              if (!_isFormLocked) // Only show Save button if form is not locked
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 48,
+                                  child: ElevatedButton(
+                                    onPressed: _updatePersonalDetails,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color.fromARGB(
+                                        255,
+                                        6,
+                                        139,
+                                        227,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
                                     ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Save Personal Details',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
+                                    child: const Text(
+                                      'Save Personal Details',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
+                              if (_isFormLocked) // Show locked message
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green[50],
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.green[200]!),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.lock, color: Colors.green[700], size: 20),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Personal details saved and locked',
+                                          style: TextStyle(
+                                            color: Colors.green[700],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                             ],
                           );
                         },
@@ -621,14 +748,14 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
                     ]),
                     const SizedBox(height: 20),
 
-                    // Demographic Details Section
+                    // Demographic Details Section (Always Editable)
                     _buildSectionCard('Demographic Details', [
-                      _buildTextField(
+                      _buildEditableTextField(
                         'Religion',
                         _religionController,
                         'Enter religion',
                       ),
-                      _buildDropdownField(
+                      _buildEditableDropdownField(
                         'Social Category',
                         _selectedSocialCategory,
                         _socialCategories,
@@ -730,10 +857,11 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
         TextFormField(
           controller: controller,
           obscureText: obscureText,
+          enabled: !_isFormLocked, // Disable field if form is locked
           decoration: InputDecoration(
             hintText: placeholder,
             filled: true,
-            fillColor: Colors.grey[50],
+            fillColor: _isFormLocked ? Colors.grey[200] : Colors.grey[50],
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: Colors.grey[300]!),
@@ -783,6 +911,55 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
+          enabled: !_isFormLocked, // Disable field if form is locked
+          decoration: InputDecoration(
+            hintText: placeholder,
+            filled: true,
+            fillColor: _isFormLocked ? Colors.grey[200] : Colors.grey[50],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.blue),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  // Editable text field (ignores form lock - for Demographic Details)
+  Widget _buildEditableTextField(
+    String label,
+    TextEditingController controller,
+    String placeholder,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          enabled: true, // Always enabled
           decoration: InputDecoration(
             hintText: placeholder,
             filled: true,
@@ -810,7 +987,8 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
     );
   }
 
-  Widget _buildDropdownField(
+  // Editable dropdown field (ignores form lock - for Demographic Details)
+  Widget _buildEditableDropdownField(
     String label,
     String? selectedValue,
     List<String> options,
@@ -832,7 +1010,7 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.grey[50],
+            color: Colors.grey[50], // Always white background
             border: Border.all(color: Colors.grey[300]!),
             borderRadius: BorderRadius.circular(8),
           ),
@@ -850,7 +1028,7 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
                   child: Text(option),
                 );
               }).toList(),
-              onChanged: (String? newValue) {
+              onChanged: (String? newValue) { // Always enabled
                 setState(() {
                   _selectedSocialCategory = newValue;
                 });

@@ -118,7 +118,9 @@ class ApiService {
   // Register user with proper backend route
   Future<Map<String, dynamic>> register(Map<String, dynamic> payload) async {
     final url = Uri.parse('$baseUrl/auth/register'); // auth.js register route
-    // Logging removed for security - no longer exposing sensitive registration data
+    // Debug: Log the backend URL being used
+    print('🌐 Registration API URL: $url');
+    print('🔧 Base URL: $baseUrl');
 
     final resp = await http.post(
       url,
