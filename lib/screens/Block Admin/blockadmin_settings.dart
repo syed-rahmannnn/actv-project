@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/application_service.dart';
+import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -89,6 +90,9 @@ class BlockAdminSettingsPage extends StatefulWidget {
   final String? blockName;
   final String? blockEmail;
   final bool? isActive;
+  // When provided, these counts take precedence and keep Settings in sync
+  // with the Dashboard tab.
+  final Map<String, int>? statsOverride;
 
   const BlockAdminSettingsPage({
     super.key,
@@ -98,6 +102,7 @@ class BlockAdminSettingsPage extends StatefulWidget {
     this.blockName,
     this.blockEmail,
     this.isActive,
+    this.statsOverride,
   });
 
   @override
@@ -123,8 +128,16 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
   @override
   void initState() {
     super.initState();
-
-    if (widget.apiBaseUrl != null && widget.token != null) {
+    // If dashboard passed the counts, use them directly
+    if (widget.statsOverride != null) {
+      _stats = {
+        'total': widget.statsOverride!['total'] ?? 0,
+        'pending': widget.statsOverride!['pending'] ?? 0,
+        'approved': widget.statsOverride!['approved'] ?? 0,
+        'rejected': widget.statsOverride!['rejected'] ?? 0,
+      };
+      _loading = false;
+    } else if (widget.apiBaseUrl != null && widget.token != null) {
       _svc = ApplicationService(widget.apiBaseUrl!, token: widget.token!);
       adminId = widget.blockAdminId ?? '';
       adminEmail = widget.blockEmail ?? '';
@@ -149,43 +162,19 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
     setState(() => _loading = true);
 
     try {
-      // Reuses the same stats endpoint as dashboard (true numbers).
-      final data = await _svc.getBlockStats(adminId);
-
-      // Check if all stats are zero and add hardcoded fallback for testing
-      if (data.isEmpty || data.values.every((count) => count == 0)) {
-        final hardcodedStats = {
-          'total': 25,
-          'pending': 8,
-          'approved': 12,
-          'rejected': 5,
-        };
-
-        if (!mounted) return;
-        setState(() {
-          _stats = hardcodedStats;
-          _loading = false;
-        });
-        return;
-      }
+      // Compute counts client-side to match Approvals/Dashboard logic
+      final apps = await ApiService.getBlockAdminApplications(adminId);
+      final stats = _deriveStatsFromList(apps);
 
       if (!mounted) return;
       setState(() {
-        _stats = data;
+        _stats = stats;
         _loading = false;
       });
     } catch (e) {
-      // Use hardcoded stats as fallback when there's an error
-      final hardcodedStats = {
-        'total': 25,
-        'pending': 8,
-        'approved': 12,
-        'rejected': 5,
-      };
-
       if (mounted) {
         setState(() {
-          _stats = hardcodedStats;
+          _stats = {'total': 0, 'pending': 0, 'approved': 0, 'rejected': 0};
           _loading = false;
         });
       }
@@ -422,25 +411,18 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
     try {
       Map<String, int> stats = {};
 
-      // Load stats based on admin role
-      switch (adminRole.toLowerCase()) {
-        case 'block':
-          stats = await _svc.getBlockStats(adminId);
-          break;
-        case 'district':
-          stats = await _svc.getDistrictStats(adminId);
-          break;
-        default:
-          stats = {'total': 0, 'pending': 0, 'approved': 0, 'rejected': 0};
-      }
-
-      // TEMPORARY DEBUG: Test with hardcoded stats if API returns empty/zero stats
-      if (stats.isEmpty ||
-          (stats['total'] == 0 &&
-              stats['pending'] == 0 &&
-              stats['approved'] == 0 &&
-              stats['rejected'] == 0)) {
-        stats = {'total': 25, 'pending': 8, 'approved': 12, 'rejected': 5};
+      // Prefer dashboard-provided counts if available
+      if (widget.statsOverride != null) {
+        stats = {
+          'total': widget.statsOverride!['total'] ?? 0,
+          'pending': widget.statsOverride!['pending'] ?? 0,
+          'approved': widget.statsOverride!['approved'] ?? 0,
+          'rejected': widget.statsOverride!['rejected'] ?? 0,
+        };
+      } else {
+        // Otherwise compute from the current block admin applications
+        final apps = await ApiService.getBlockAdminApplications(adminId);
+        stats = _deriveStatsFromList(apps);
       }
 
       // Validate stats structure
@@ -642,7 +624,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Icon(Icons.location_on, size: 18, color: Colors.grey[600]),
@@ -664,14 +646,13 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
                 Row(
                   children: [
                     const Text(
-                      'Active Status:',
+                      'Active Status: ',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFF374151),
                       ),
                     ),
-                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -737,12 +718,25 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
                     color: Color(0xFF0F172A),
                   ),
                 ),
+                const SizedBox(height: 16),
+                // Section heading for stats
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 4.0),
+                  child: Text(
+                    'Administration Count',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2563EB),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 _buildStatRow(
                   'Total Members:',
                   _stats['total'] ?? 0,
-                  Icons.person_outline,
-                  const Color(0xFF0F172A),
+                  Icons.people,
+                  const Color(0xFF2563EB),
                 ),
                 const SizedBox(height: 10),
                 _buildStatRow(
@@ -770,10 +764,35 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
     );
   }
 
+  // Helper to compute tri-state counts identically to Approvals/Dashboard
+  Map<String, int> _deriveStatsFromList(List<dynamic> all) {
+    final pending = all.where((app) {
+      final s = (app['status'] ?? '').toString().toLowerCase();
+      return s == 'pending' ||
+          s == 'submitted' ||
+          s == 'pending-block' ||
+          s.isEmpty;
+    }).length;
+    final approved = all.where((app) {
+      final s = (app['status'] ?? '').toString().toLowerCase();
+      return s == 'approved';
+    }).length;
+    final rejected = all.where((app) {
+      final s = (app['status'] ?? '').toString().toLowerCase();
+      return s == 'rejected';
+    }).length;
+    return {
+      'total': all.length,
+      'pending': pending,
+      'approved': approved,
+      'rejected': rejected,
+    };
+  }
+
   Widget _buildStatRow(String label, int value, IconData icon, Color color) {
     return Row(
       children: [
-        Icon(icon, color: const Color(0xFF6B7280), size: 20),
+        Icon(icon, color: color, size: 20),
         const SizedBox(width: 10),
         Expanded(
           child: Text(

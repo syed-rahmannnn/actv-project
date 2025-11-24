@@ -278,7 +278,14 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              Expanded(child: _buildBody()),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: _fetchApplicationStatus,
+                  color: const Color(0xFF2196F3),
+                  backgroundColor: Colors.white,
+                  child: _buildBody(),
+                ),
+              ),
             ],
           ),
         ),

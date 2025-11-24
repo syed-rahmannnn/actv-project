@@ -142,7 +142,6 @@ class BlockAdminDashboard extends StatefulWidget {
 }
 
 class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
-  late final ApplicationService _svc;
   bool _isLoading = true;
   int _tab = 0;
 
@@ -157,43 +156,43 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
   @override
   void initState() {
     super.initState();
-    _svc = ApplicationService(
-      baseUrl: widget.apiBaseUrl,
-      token: widget.authToken ?? widget.token!,
-    );
     _load();
   }
 
   Future<void> _load() async {
     setState(() => _isLoading = true);
     try {
-      // Use the same API call as the approvals page for consistency
+      // Fetch applications once and derive counts locally to match Approvals tab
       final allApplications = await ApiService.getBlockAdminApplications(
         widget.blockAdminId,
       );
 
-      // Filter pending applications (same logic as approvals page)
+      // Derive tri-state buckets using the same rules as BlockAdminApprovalPage
       final pendingApps = allApplications.where((app) {
         final status = (app['status'] ?? '').toString().toLowerCase();
         return status == 'pending-block' ||
             status == 'submitted' ||
-            status == 'pending';
+            status == 'pending' ||
+            status.isEmpty;
       }).toList();
 
-      // Get stats using the existing getBlockStats method which works correctly
-      final stats = await _svc.getBlockStats(widget.blockAdminId);
+      final approvedApps = allApplications.where((app) {
+        final status = (app['status'] ?? '').toString().toLowerCase();
+        return status == 'approved';
+      }).toList();
+
+      final rejectedApps = allApplications.where((app) {
+        final status = (app['status'] ?? '').toString().toLowerCase();
+        return status == 'rejected';
+      }).toList();
 
       if (!mounted) return;
       setState(() {
         _stats = {
-          'pending':
-              pendingApps.length, // Use the actual pending count from API
-          'approved': stats['approved'] ?? 0,
-          'rejected': stats['rejected'] ?? 0,
-          'total':
-              pendingApps.length +
-              (stats['approved'] ?? 0) +
-              (stats['rejected'] ?? 0),
+          'pending': pendingApps.length,
+          'approved': approvedApps.length,
+          'rejected': rejectedApps.length,
+          'total': allApplications.length,
         };
         _pending = pendingApps;
         _isLoading = false;
@@ -276,6 +275,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
           blockName: widget.blockName,
           blockEmail: widget.adminEmail ?? widget.blockEmail!,
           isActive: true,
+          statsOverride: _stats,
         );
       default:
         return const SizedBox();
