@@ -4,7 +4,7 @@ import 'browse_members_screen.dart';
 import 'notification_screen.dart';
 import '../Member Addtional Details/personal_details_form.dart';
 import '../Application Status/application_status_screen.dart';
-import '../business_information_form.dart';
+import 'package:activ/screens/Member Addtional Details/create_business_profile.dart';
 import '../../services/member_service.dart';
 import '../../services/api_service.dart';
 
@@ -88,7 +88,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         print('✅ Dashboard data loaded from API');
         print('✅ Final display name: $displayName');
         print('✅ Final company name: $companyName');
-        
+
         // Fetch profile completion percentage
         _loadProfileCompletion();
       } else {
@@ -105,10 +105,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadProfileCompletion() async {
     try {
-      final memberId = widget.userData['_id'] ?? 
-                      widget.userData['id'] ?? 
-                      widget.userData['member']?['_id'];
-      
+      final memberId =
+          widget.userData['_id'] ??
+          widget.userData['id'] ??
+          widget.userData['member']?['_id'];
+
       if (memberId != null) {
         final result = await ApiService.getProfileCompletion(memberId);
         if (result['success'] == true && mounted) {
@@ -274,9 +275,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Map<String, dynamic> userData,
   ) {
     // Use backend-fetched percentage, fallback to calculation if not available
-    final completionPercentage = profileCompletionPercentage > 0 
-      ? profileCompletionPercentage 
-      : _calculateProfileCompletion(userData);
+    final completionPercentage = profileCompletionPercentage > 0
+        ? profileCompletionPercentage
+        : _calculateProfileCompletion(userData);
 
     return Card(
       elevation: 2,
@@ -354,7 +355,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     width: 80,
                     height: 80,
                     color: Colors.grey[300],
-                    child: Icon(Icons.person, size: 40, color: Colors.grey[600]),
+                    child: Icon(
+                      Icons.person,
+                      size: 40,
+                      color: Colors.grey[600],
+                    ),
                   );
                 },
               ),
@@ -417,7 +422,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (context) =>
-                              BusinessInformationForm(userData: userData),
+                              CreateBusinessProfile(userData: userData),
                         ),
                       );
                     },
@@ -456,7 +461,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     width: 80,
                     height: 80,
                     color: Colors.grey[300],
-                    child: Icon(Icons.business, size: 40, color: Colors.grey[600]),
+                    child: Icon(
+                      Icons.business,
+                      size: 40,
+                      color: Colors.grey[600],
+                    ),
                   );
                 },
               ),
@@ -586,7 +595,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // Check if member object has profileCompleted
     final member = data['member'];
-    if (member is Map<String, dynamic> && _isTruthy(member['profileCompleted'])) {
+    if (member is Map<String, dynamic> &&
+        _isTruthy(member['profileCompleted'])) {
       return true;
     }
 
@@ -643,7 +653,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return ((filledFields / totalFields) * 100).round();
   }
 
-  Widget _buildProgressCard(BuildContext context, Map<String, dynamic> userData) {
+  Widget _buildProgressCard(
+    BuildContext context,
+    Map<String, dynamic> userData,
+  ) {
     if (_isFullProfileCompleted(userData)) {
       // Show Image 2 state - Profile Status card
       return _buildStatusCard(context, userData);
@@ -659,69 +672,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildStatusCard(BuildContext context, Map<String, dynamic> userData) {
     return Card(
       elevation: 2,
-    margin: const EdgeInsets.symmetric(horizontal: 16),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    child: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Profile Status',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Profile Status',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                   ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3CD),
-                    borderRadius: BorderRadius.circular(20),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3CD),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      'In review',
+                      style: TextStyle(color: Color(0xFF856404), fontSize: 12),
+                    ),
                   ),
-                  child: const Text(
-                    'In review',
-                    style: TextStyle(color: Color(0xFF856404), fontSize: 12),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Your profile is under review. Tap to see status updates',
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
                   ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Your profile is under review. Tap to see status updates',
-                  style: TextStyle(fontSize: 12, color: Colors.black54),
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ApplicationStatusScreen(),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0D6EFD),
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(120, 40),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ApplicationStatusScreen(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0D6EFD),
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(120, 40),
+                    ),
+                    child: const Text('View Status'),
                   ),
-                  child: const Text('View Status'),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          SizedBox(
-            height: 72,
-            width: 96,
-            child: Image.asset('assets/images/Box2.png', fit: BoxFit.contain),
-          ),
-        ],
+            const SizedBox(width: 12),
+            SizedBox(
+              height: 72,
+              width: 96,
+              child: Image.asset('assets/images/Box2.png', fit: BoxFit.contain),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
   }
 }
