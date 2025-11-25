@@ -60,23 +60,23 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
     }
   }
 
-  // ---- status partitions ----
+  // ---- status partitions (use normalized status from backend) ----
   bool _isPending(Map a) {
-    final status = (a['status'] ?? '').toString().toLowerCase();
-    // Only treat exact 'pending-block' and 'submitted' as pending
-    return status == 'pending-block' || status == 'submitted';
+    final status = (a['status'] ?? '').toString().trim().toLowerCase();
+    return status.isEmpty ||
+        status == 'pending' ||
+        status == 'submitted' ||
+        status == 'pending-block';
   }
 
   bool _isApproved(Map a) {
-    final status = (a['status'] ?? '').toString();
-    return status == 'Approved' ||
-        status == 'Pending-District' ||
-        status == 'Pending-State';
+    final status = (a['status'] ?? '').toString().trim().toLowerCase();
+    return status == 'approved';
   }
 
   bool _isRejected(Map a) {
-    final status = (a['status'] ?? '').toString();
-    return status == 'Rejected' || status.toLowerCase().contains('rejected');
+    final status = (a['status'] ?? '').toString().trim().toLowerCase();
+    return status == 'rejected';
   }
 
   List<Map<String, dynamic>> get _filtered {
@@ -122,9 +122,9 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
       );
       if (ok) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Approved & forwarded to District')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Approved')));
         }
         await _load();
       }
@@ -414,21 +414,19 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
     final String gender = normalizeGender(rawGender);
 
     // Normalize and style status pill like approvals/dashboard
-    final status = (app['status'] ?? '').toString().trim().toLowerCase();
     final bool approved = _isApproved(app);
     final bool rejected = _isRejected(app);
-    final bool displayAsPending = status.isEmpty || status == 'pending';
-    final bool displayAsApproved = status == 'approved';
-    final String statusText = status.isEmpty
-        ? 'Pending'
-        : (displayAsApproved
-              ? 'Approved'
-              : (status == 'rejected' ? 'Rejected' : status));
+    final bool pending = _isPending(app);
+
+    // Normalize to tri-state for chip display
+    final String statusText = approved
+        ? 'Approved'
+        : (rejected ? 'Rejected' : 'Pending');
 
     return GestureDetector(
       onTap: () => _openDetails(app),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
+        margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -445,66 +443,27 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // header row with avatar + name + status chip
+            // Top row: avatar, name + phone, status pill at right (match approvals page)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const CircleAvatar(
                   radius: 22,
                   backgroundColor: Color(0xFFE5E7EB),
-                  child: Icon(Icons.person, color: Color(0xFF9CA3AF)),
+                  child: Icon(Icons.person, color: Color(0xFF6B7280)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              fullName,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: displayAsPending
-                                  ? const Color(0xFFFEF3C7)
-                                  : displayAsApproved
-                                  ? const Color(0xFFDCFCE7)
-                                  : const Color(0xFFFFECEC),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: displayAsPending
-                                    ? const Color(0xFFF59E0B)
-                                    : displayAsApproved
-                                    ? const Color(0xFF16A34A)
-                                    : const Color(0xFFFF5C5C),
-                              ),
-                            ),
-                            child: Text(
-                              statusText,
-                              style: TextStyle(
-                                color: displayAsPending
-                                    ? const Color(0xFFF59E0B)
-                                    : displayAsApproved
-                                    ? const Color(0xFF16A34A)
-                                    : const Color(0xFFFF5C5C),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ),
-                        ],
+                      Text(
+                        fullName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0F172A),
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -514,108 +473,130 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
                           color: Color(0xFF6B7280),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      // Block (left) and Applied on date (right)
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.location_on,
-                            size: 16,
-                            color: Color(0xFF6B7280),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Block: $block',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF374151),
-                            ),
-                          ),
-                          const Spacer(),
-                          const Icon(
-                            Icons.calendar_today,
-                            size: 14,
-                            color: Color(0xFF6B7280),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Applied: $appliedDate',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF374151),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // Second line: Email (left) and Gender (right)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.email,
-                                size: 16,
-                                color: Color(0xFF6B7280),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  'Email: $email',
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: Color(0xFF374151),
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.person,
-                                size: 16,
-                                color: Color(0xFF6B7280),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Gender: $gender',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFF374151),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      if (approved)
-                        Text(
-                          _getApprovalText(app),
-                          style: const TextStyle(
-                            color: Color(0xFF16A34A),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      if (rejected)
-                        Text(
-                          _getRejectionText(app),
-                          style: const TextStyle(
-                            color: Color(0xFFFF5C5C),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
                     ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: pending
+                        ? const Color(0xFFFEF3C7)
+                        : (approved
+                              ? const Color(0xFFDCFCE7)
+                              : const Color(0xFFFEE2E2)),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: pending
+                          ? const Color(0xFFF59E0B)
+                          : (approved
+                                ? const Color(0xFF16A34A)
+                                : const Color(0xFFFF5C5C)),
+                    ),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      color: pending
+                          ? const Color(0xFFF59E0B)
+                          : (approved
+                                ? const Color(0xFF16A34A)
+                                : const Color(0xFFFF5C5C)),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
             ),
+
+            const SizedBox(height: 10),
+
+            // Block (left) and Applied on date (right)
+            Row(
+              children: [
+                const Icon(
+                  Icons.location_on,
+                  size: 16,
+                  color: Color(0xFF6B7280),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Block: $block',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+                const Spacer(),
+                const Icon(
+                  Icons.calendar_today,
+                  size: 14,
+                  color: Color(0xFF6B7280),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Applied: $appliedDate',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // Second line: Email (left) and Gender (right)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.email, size: 16, color: Color(0xFF6B7280)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Email: $email',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF374151),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.person,
+                      size: 16,
+                      color: Color(0xFF6B7280),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Gender: $gender',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF374151),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Status description only (no colored text), match approvals page
+            if (!pending)
+              Text(
+                approved ? _getApprovalText(app) : _getRejectionText(app),
+                style: const TextStyle(color: Color(0xFF6B7280), fontSize: 13),
+              ),
           ],
         ),
       ),
@@ -623,69 +604,51 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
   }
 
   String _getApprovalText(Map<String, dynamic> app) {
-    // Get reviewedBy information from the backend
+    // Match the approval page text: prefer meta-driven location labels
     final reviewedBy = app['reviewedBy'];
     if (reviewedBy != null && reviewedBy is Map<String, dynamic>) {
-      // Check for block admin approval
+      // Block admin
       final blockAdmin = reviewedBy['blockAdmin'];
       if (blockAdmin != null && blockAdmin is Map<String, dynamic>) {
-        final adminName = blockAdmin['fullName']?.toString() ?? 'Block Admin';
-        return 'Approved by: $adminName';
+        final blockName =
+            blockAdmin['meta']?['blockName']?.toString() ?? widget.blockName;
+        return 'Approved by $blockName Block Admin';
       }
 
-      // Check for district admin approval
+      // District admin
       final districtAdmin = reviewedBy['districtAdmin'];
       if (districtAdmin != null && districtAdmin is Map<String, dynamic>) {
-        final adminName =
-            districtAdmin['fullName']?.toString() ?? 'District Admin';
-
-        return 'Approved by: $adminName';
+        final districtName =
+            districtAdmin['meta']?['districtName']?.toString() ?? 'District';
+        return 'Approved by $districtName District Admin';
       }
 
-      // Check for state admin approval
+      // State admin
       final stateAdmin = reviewedBy['stateAdmin'];
       if (stateAdmin != null && stateAdmin is Map<String, dynamic>) {
-        final adminName = stateAdmin['fullName']?.toString() ?? 'State Admin';
-
-        return 'Approved by: $adminName';
+        final stateName =
+            stateAdmin['meta']?['stateName']?.toString() ?? 'State';
+        return 'Approved by $stateName State Admin';
       }
     }
 
-    // Fallback to generic text if approval info is not available
-    return 'Approved by: Block Admin';
+    // Fallback
+    return 'Approved by ${widget.blockName} Block Admin';
   }
 
   String _getRejectionText(Map<String, dynamic> app) {
-    // Get reviewedBy information from the backend
+    // Match the approval page text
     final reviewedBy = app['reviewedBy'];
     if (reviewedBy != null && reviewedBy is Map<String, dynamic>) {
-      // Check for block admin rejection
       final blockAdmin = reviewedBy['blockAdmin'];
       if (blockAdmin != null && blockAdmin is Map<String, dynamic>) {
-        final adminName = blockAdmin['fullName']?.toString() ?? 'Block Admin';
-
-        return 'Rejected by: $adminName';
-      }
-
-      // Check for district admin rejection
-      final districtAdmin = reviewedBy['districtAdmin'];
-      if (districtAdmin != null && districtAdmin is Map<String, dynamic>) {
-        final adminName =
-            districtAdmin['fullName']?.toString() ?? 'District Admin';
-
-        return 'Rejected by: $adminName';
-      }
-
-      // Check for state admin rejection
-      final stateAdmin = reviewedBy['stateAdmin'];
-      if (stateAdmin != null && stateAdmin is Map<String, dynamic>) {
-        final adminName = stateAdmin['fullName']?.toString() ?? 'State Admin';
-
-        return 'Rejected by: $adminName';
+        final blockName =
+            blockAdmin['meta']?['blockName']?.toString() ?? widget.blockName;
+        return 'Rejected by $blockName Block Admin';
       }
     }
 
-    // Fallback to generic text if rejection info is not available
-    return 'Rejected by: District Admin';
+    // Fallback
+    return 'Rejected by ${widget.blockName} Block Admin';
   }
 }

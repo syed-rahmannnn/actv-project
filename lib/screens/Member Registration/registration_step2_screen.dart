@@ -130,6 +130,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
               ),
               child: Form(
                 key: _formKey,
+                autovalidateMode: AutovalidateMode.disabled,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -169,7 +170,7 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
 
                     // State Field
                     const Text(
-                      'State*',
+                      'State',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -214,18 +215,12 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                               null; // Reset block when state changes
                         });
                       },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please select a state';
-                        }
-                        return null;
-                      },
                     ),
                     const SizedBox(height: 16),
 
                     // District Field
                     const Text(
-                      'District*',
+                      'District',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -274,18 +269,12 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                               null; // Reset block when district changes
                         });
                       },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please select a district';
-                        }
-                        return null;
-                      },
                     ),
                     const SizedBox(height: 16),
 
                     // City Field
                     const Text(
-                      'City*',
+                      'City',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -311,18 +300,12 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                           borderSide: const BorderSide(color: Colors.blue),
                         ),
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter city name';
-                        }
-                        return null;
-                      },
                     ),
                     const SizedBox(height: 16),
 
                     // Block Field
                     const Text(
-                      'Block*',
+                      'Block',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -371,12 +354,6 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
                         setState(() {
                           _selectedBlock = newValue;
                         });
-                      },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please select a block';
-                        }
-                        return null;
                       },
                     ),
                     const SizedBox(height: 16),
@@ -461,39 +438,47 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
 
   // Handle registration submission
   Future<void> _handleRegistration() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    // Skip form validation - allow registration with any data
+    // if (!_formKey.currentState!.validate()) {
+    //   return;
+    // }
 
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Use DOB exactly in DD-MM-YYYY format
-      final dobString = widget.personalData['dob'] as String;
-      final dobParts = dobString.split('-');
-      final dateOfBirthDDMMYYYY =
-          '${dobParts[0].padLeft(2, '0')}-${dobParts[1].padLeft(2, '0')}-${dobParts[2]}';
-
       // Create ApiService instance
       final apiService = ApiService();
 
-      // Prepare registration payload
+      // Debug: Check what data we have
+      print('=== REGISTRATION ATTEMPT ===');
+      print('📋 Personal data from step 1: ${widget.personalData}');
+      print('📍 Location data from step 2:');
+      print('   State: ${_selectedState}');
+      print('   District: ${_selectedDistrict}');
+      print('   City: ${_cityController.text}');
+      print('   Block: ${_selectedBlock}');
+
+      // Prepare registration payload with optional fields
       final payload = {
-        "fullName": widget.personalData['fullName'],
-        "email": widget.personalData['email'],
-        "phoneNumber": widget.personalData['phone'],
-        // Store DOB as DD-MM-YYYY string
-        "dateOfBirth": dateOfBirthDDMMYYYY,
-        "gender": widget.personalData['gender'],
-        "password": widget.personalData['password'],
-        "block": _selectedBlock!.trim(),
+        "fullName": widget.personalData['fullName'] ?? '',
+        "email": widget.personalData['email'] ?? '',
+        "phoneNumber": widget.personalData['phone'] ?? '',
+        "password": widget.personalData['password'] ?? '',
+        "block": _selectedBlock?.trim() ?? '',
         "city": _cityController.text.trim(),
-        "district": _selectedDistrict!.trim(),
-        "state": _selectedState!.trim(),
+        "district": _selectedDistrict?.trim() ?? '',
+        "state": _selectedState?.trim() ?? '',
         "pincode": widget.personalData['pincode'] ?? '000000',
       };
+
+      print('📦 Sending registration payload (passwords hidden):');
+      final logPayload = Map<String, dynamic>.from(payload);
+      if (logPayload['password'] != null) {
+        logPayload['password'] = '***hidden***';
+      }
+      print(logPayload);
 
       final result = await apiService.register(payload);
       if (!mounted) return;
@@ -505,32 +490,55 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
           result['body']['data']['member'] as Map,
         );
         final token = result['token'] as String;
+
+        // Debug: Print registration response
+        print('=== REGISTRATION SUCCESS DEBUG ===');
+        print('🎉 Registration response member: $member');
+        print('🔑 Member keys: ${member.keys.toList()}');
+        if (member['id'] != null) {
+          print('✅ Found member.id: ${member['id']}');
+        }
+        if (member['_id'] != null) {
+          print('✅ Found member._id: ${member['_id']}');
+        }
+        if (member['memberId'] != null) {
+          print('✅ Found member.memberId: ${member['memberId']}');
+        }
+
+        // Ensure member has memberId field for consistency
+        if (member['id'] != null && member['memberId'] == null) {
+          member['memberId'] = member['id'];
+          print('📝 Added memberId from id: ${member['memberId']}');
+        }
+
         await AuthService.saveLoginData(token: token, userData: member);
         if (!mounted) return;
 
         // Store location data in UserProfileProvider for later use
         context.read<UserProfileProvider>().updateLocation(
-          state: _selectedState!.trim(),
-          district: _selectedDistrict!.trim(),
-          block: _selectedBlock!.trim(),
+          state: _selectedState?.trim() ?? '',
+          district: _selectedDistrict?.trim() ?? '',
+          block: _selectedBlock?.trim() ?? '',
           city: _cityController.text.trim(),
         );
 
-        // Combine all data for dashboard display
-        final completeData = {
-          ...widget.personalData,
-          'state': _selectedState!.trim(),
-          'district': _selectedDistrict!.trim(),
-          'city': _cityController.text.trim(),
-          'block': _selectedBlock!.trim(),
-          'member': result['body']['data']['member'],
-          'token': result['token'],
+        // Pass member data directly (not nested) to match login flow
+        // This ensures PersonalDetailsForm can access member.id or member.memberId
+        final userData = {
+          ...member,
+          'state': member['state'] ?? _selectedState?.trim() ?? '',
+          'district': member['district'] ?? _selectedDistrict?.trim() ?? '',
+          'city': member['city'] ?? _cityController.text.trim(),
+          'block': member['block'] ?? _selectedBlock?.trim() ?? '',
         };
+
+        print('📦 Passing userData to Dashboard: $userData');
+        print('🔑 userData keys: ${userData.keys.toList()}');
 
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => DashboardScreen(userData: completeData),
+            builder: (context) => DashboardScreen(userData: userData),
           ),
         );
 
@@ -546,8 +554,17 @@ class _RegistrationStep2ScreenState extends State<RegistrationStep2Screen> {
         // Registration failed
         final errorMessage =
             result['body']?['message'] ?? 'Registration failed';
+
+        print('❌ Registration failed: $errorMessage');
+        print('❌ Full response: ${result['body']}');
+
+        // Show error message - DO NOT navigate to dashboard without proper member ID
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Registration failed: $errorMessage'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     } catch (e) {

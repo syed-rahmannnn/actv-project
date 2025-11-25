@@ -440,6 +440,10 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
   }
 
   Widget _buildApplicationCard(Map<String, dynamic> app) {
+    // Debug: Print entire app object to see structure
+    debugPrint('[DA_CARD_BUILD] Building card for app: ${app['_id']}');
+    debugPrint('[DA_CARD_KEYS] App keys: ${app.keys.toList()}');
+
     final status = app['status'] ?? '';
     final isPending = status.toString().toLowerCase().contains(
       'pending-district',
@@ -451,14 +455,68 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
     final phone = (app['phone'] ?? 'N/A').toString();
     final email = (app['email'] ?? app['memberEmail'] ?? 'N/A').toString();
     final block = (app['block'] ?? 'N/A').toString();
-    // Resolve gender from top-level or nested personalInfo, default to NA
+
+    // Gender extraction logic matching Block Admin implementation
+    final form = app['formData'] != null
+        ? Map<String, dynamic>.from(app['formData'])
+        : <String, dynamic>{};
+
+    String normalizeGender(dynamic g) {
+      if (g == null) return 'Not Specified';
+      final v = g.toString().trim();
+      if (v.isEmpty) return 'Not Specified';
+      final lc = v.toLowerCase();
+      if (lc == 'm' || lc == 'male' || lc.startsWith('male')) {
+        return 'Male';
+      }
+      if (lc == 'f' || lc == 'female' || lc.startsWith('female')) {
+        return 'Female';
+      }
+      if (lc == 'o' || lc == 'other' || lc.startsWith('other')) {
+        return 'Other';
+      }
+      return v; // show as-is if unknown
+    }
+
     final Map<String, dynamic>? personalInfo =
-        app['personalInfo'] as Map<String, dynamic>?;
-    final gender =
-        (app['gender'] ??
-                (personalInfo != null ? personalInfo['gender'] : null) ??
-                'NA')
-            .toString();
+        form['personalInfo'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(form['personalInfo'])
+        : null;
+    final Map<String, dynamic>? personalDetails =
+        form['personalDetails'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(form['personalDetails'])
+        : null;
+    
+    // Also check if personalDetails exists directly in app (not in formData)
+    final Map<String, dynamic>? appPersonalDetails =
+        app['personalDetails'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(app['personalDetails'])
+        : null;
+    
+    final dynamic rawGender =
+        app['gender'] ??
+        form['gender'] ??
+        personalInfo?['gender'] ??
+        personalDetails?['gender'] ??
+        appPersonalDetails?['gender'];
+
+    // Debug logging to see what data we have
+    debugPrint(
+      '[DA_GENDER_DEBUG] App ${app['_id']}: rawGender=$rawGender, '
+      'app.gender=${app['gender']}, form.gender=${form['gender']}, '
+      'personalInfo.gender=${personalInfo?['gender']}, '
+      'personalDetails.gender=${personalDetails?['gender']}, '
+      'appPersonalDetails.gender=${appPersonalDetails?['gender']}, '
+      'formData keys=${app['formData']?.keys.toList()}, '
+      'personalDetails keys=${personalDetails?.keys.toList()}, '
+      'app keys=${app.keys.toList()}',
+    );
+
+    final String gender = normalizeGender(rawGender);
+    debugPrint(
+      '[DA_GENDER_DEBUG] App ${app['_id']}: normalized gender=$gender',
+    );
+
     final appliedAt = app['blockApprovedAt'] ?? app['createdAt'];
     String appliedOnStr = 'N/A';
     try {
@@ -683,19 +741,71 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
     );
   }
 
-  void _openProfileSheet(Map<String, dynamic> app) {
-    // Open details instantly without blocking network prefetch.
-    showModalBottomSheet(
+  void _openProfileSheet(Map<String, dynamic> app) async {
+    // Same behavior as block admin: try full profile by email, else fallback
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => UserDetailsDropdown(
-        app: Map<String, dynamic>.from(app),
-        onApprove: () => _approve(app['_id'].toString()),
-        onReject: () => _showRejectDialog(app['_id'].toString()),
-        showActions: false,
-      ),
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
     );
+
+    try {
+      final email = app["email"] ?? app["memberEmail"];
+      if (email != null) {
+        final memberRes = await ApiService.getMemberByEmail(email);
+        if (memberRes['success'] == true && memberRes['data'] != null) {
+          final memberId =
+              memberRes['data']['id'] ??
+              memberRes['data']['memberId'] ??
+              memberRes['data']['_id'];
+          if (memberId != null) {
+            final profileRes = await ApiService.getMemberProfile(
+              memberId.toString(),
+            );
+            if (mounted) Navigator.pop(context);
+            if (profileRes['success'] == true && profileRes['data'] != null) {
+              if (mounted) {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => UserDetailsDropdown(
+                    memberProfile: Map<String, dynamic>.from(
+                      profileRes['data'],
+                    ),
+                    showActions: false,
+                    onApprove: () => _approve(app['_id'].toString()),
+                    onReject: () => _showRejectDialog(app['_id'].toString()),
+                  ),
+                );
+                return;
+              }
+            }
+          }
+        }
+      }
+      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => UserDetailsDropdown(
+            app: Map<String, dynamic>.from(app),
+            showActions: false,
+            onApprove: () => _approve(app['_id'].toString()),
+            onReject: () => _showRejectDialog(app['_id'].toString()),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
+      }
+    }
   }
 
   Color _getStatusColor(String status) {

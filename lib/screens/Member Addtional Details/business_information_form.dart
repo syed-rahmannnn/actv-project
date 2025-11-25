@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'financial_compliance_form.dart';
 import '../../services/api_service.dart';
@@ -24,15 +25,7 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
   String? _selectedYear;
   bool? _memberOfOtherChamber;
 
-  final List<String> _constitutionTypes = [
-    'Proprietorship',
-    'Partnership',
-    'Private Limited',
-    'Public Limited',
-    'LLP',
-    'Sole Proprietorship',
-    'Other',
-  ];
+  final List<String> _constitutionTypes = ['OPC', 'TRUST', 'SOCIETY'];
 
   final List<String> _years = List.generate(
     50,
@@ -40,10 +33,8 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
   );
 
   final List<String> _businessTypes = [
-    'Agriculture',
     'Manufacturing',
     'Trader',
-    'Retailer',
     'Service Provider',
     'Others',
   ];
@@ -59,10 +50,82 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
   Set<String> _selectedBusinessTypes = {};
   Set<String> _selectedGovtOrganizations = {};
 
+  // Auto-save debounce timer
+  Timer? _debounceTimer;
+  bool _isSaving = false;
+
   @override
   void initState() {
     super.initState();
     _populateFields();
+    _setupAutoSaveListeners();
+  }
+
+  void _setupAutoSaveListeners() {
+    final controllers = [
+      _organizationNameController,
+      _businessActivitiesController,
+      _employeesController,
+      _otherChamberController,
+    ];
+
+    for (var controller in controllers) {
+      controller.addListener(_onFieldChanged);
+    }
+  }
+
+  void _onFieldChanged() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(seconds: 2), _autoSaveData);
+  }
+
+  Future<void> _autoSaveData() async {
+    if (_isSaving) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      String? memberId = widget.userData['memberId'] ??
+          widget.userData['member']?['_id'] ??
+          widget.userData['member']?['id'] ??
+          widget.userData['_id'] ??
+          widget.userData['id'];
+
+      // If no member ID, try loading from backend
+      if (memberId == null) {
+        final email = widget.userData['email'] ?? widget.userData['member']?['email'];
+        if (email != null && email.toString().trim().isNotEmpty) {
+          final res = await ApiService.getMemberByEmail(email);
+          if (res['success'] == true && res['data'] != null) {
+            final member = res['data'] as Map<String, dynamic>;
+            memberId = member['memberId'] ?? member['id'] ?? member['_id'];
+          }
+        }
+      }
+
+      if (memberId == null) return;
+
+      final businessData = {
+        'doingBusiness': _doingBusiness,
+        'organizationName': _organizationNameController.text.trim(),
+        'constitutionType': _selectedConstitution,
+        'businessTypes': _selectedBusinessTypes.toList(),
+        'businessActivities': _businessActivitiesController.text.trim(),
+        'businessCommencementYear': _selectedYear,
+        'numberOfEmployees': _employeesController.text.trim(),
+        'memberOfOtherChamber': _memberOfOtherChamber,
+        'otherChamber': _otherChamberController.text.trim(),
+        'govtOrganizations': _selectedGovtOrganizations.toList(),
+      };
+
+      await ApiService.saveBusinessInfo(memberId, businessData);
+    } catch (e) {
+      // Silent fail
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   void _populateFields() {
@@ -94,6 +157,7 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _organizationNameController.dispose();
     _businessActivitiesController.dispose();
     _employeesController.dispose();
@@ -103,17 +167,23 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE6F0FF),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Header
-              Container(
-                width: double.infinity,
-                color: Colors.blue,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+    return WillPopScope(
+      onWillPop: () async {
+        _debounceTimer?.cancel();
+        await _autoSaveData();
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFE6F0FF),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                // Header
+                Container(
+                  width: double.infinity,
+                  color: Colors.blue,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                 child: const Center(
                   child: Text(
                     'ACTIV',
@@ -364,6 +434,7 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
           ),
         ),
       ),
+      ),
     );
   }
 
@@ -393,7 +464,10 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
                   Radio<bool>(
                     value: option == 'Yes' ? true : false,
                     groupValue: selectedValue,
-                    onChanged: onChanged,
+                    onChanged: (value) {
+                      onChanged(value);
+                      _onFieldChanged(); // Trigger auto-save
+                    },
                     activeColor: Colors.blue,
                   ),
                   Text(option),
@@ -503,6 +577,7 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
                     _selectedYear = newValue;
                   }
                 });
+                _onFieldChanged(); // Trigger auto-save
               },
             ),
           ),
@@ -547,6 +622,7 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
                         selectedValues.remove(option);
                       }
                     });
+                    _onFieldChanged(); // Trigger auto-save
                   },
                   activeColor: Colors.blue,
                 ),
@@ -562,36 +638,8 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
 
   Future<void> _proceedToNext() async {
     // Validate required fields
-    if (_doingBusiness == null ||
-        _memberOfOtherChamber == null ||
-        (_memberOfOtherChamber == true &&
-            _otherChamberController.text.isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill in all required fields'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Validate business-specific fields only if doing business is "Yes"
-    if (_doingBusiness == true) {
-      if (_organizationNameController.text.isEmpty ||
-          _selectedConstitution == null ||
-          _selectedBusinessTypes.isEmpty ||
-          _businessActivitiesController.text.isEmpty ||
-          _selectedYear == null ||
-          _employeesController.text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please fill in all business-related fields'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-    }
+    // No validation - all fields are optional
+    // Users can proceed even with empty fields
 
     // Save form data to userData
     final updatedUserData = Map<String, dynamic>.from(widget.userData);

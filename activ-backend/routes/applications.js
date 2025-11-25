@@ -44,7 +44,7 @@ module.exports = (mongooseConnection) => {
   // ---------- USER SUBMITS APPLICATION ----------
   router.post("/submit", async (req, res) => {
     try {
-      const { userId, fullName, email, phone, state, district, block, formData, gender } = req.body;
+      const { userId, fullName, email, phone, state, district, block, formData } = req.body;
 
       // Validate required fields
       if (!userId || !fullName || !email || !phone || !state || !district || !block || !formData) {
@@ -59,25 +59,6 @@ module.exports = (mongooseConnection) => {
       const S = norm(state);
       const D = norm(district);
       const B = norm(block);
-
-      // Normalize gender from body or derive from formData if provided
-      const normalizeGender = (g) => {
-        if (!g || typeof g !== 'string') return null;
-        const v = g.trim().toLowerCase();
-        if (v === 'm' || v === 'male') return 'Male';
-        if (v === 'f' || v === 'female') return 'Female';
-        if (v === 'o' || v === 'other') return 'Other';
-        // Attempt to map common variants
-        if (v.startsWith('male')) return 'Male';
-        if (v.startsWith('female')) return 'Female';
-        if (v.startsWith('other')) return 'Other';
-        return null;
-      };
-
-      const derivedGender = normalizeGender(
-        gender ??
-        (formData && (formData.gender || formData.personalDetails?.gender || formData.personalInfo?.gender))
-      );
 
       // helpers
       const escapeRx = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -139,7 +120,6 @@ module.exports = (mongooseConnection) => {
         fullName,
         email,
         phone,
-        gender: derivedGender,
         state: S,
         district: D,
         block: B,
@@ -324,19 +304,26 @@ module.exports = (mongooseConnection) => {
       const enhancedApps = await Promise.all(apps.map(async (app) => {
         const appObj = app.toObject();
         
-        // Enrich with member gender if application doesn't have it
-        if (!appObj.gender && appObj.email) {
+        console.log(`[ENRICHMENT DEBUG] Processing app ${appObj._id}, current gender:`, appObj.gender);
+        
+        // If gender is missing, try to fetch from MemberDetails
+        if (!appObj.gender) {
           try {
             const memberDetails = await MemberDetails.findOne({ 
-              email: appObj.email.toLowerCase().trim() 
-            }, 'gender').lean();
+              email: app.email.toLowerCase().trim() 
+            }, 'gender');
             
             if (memberDetails && memberDetails.gender) {
+              console.log(`[ENRICHMENT DEBUG] Found gender in MemberDetails for ${app.email}:`, memberDetails.gender);
               appObj.gender = memberDetails.gender;
+            } else {
+              console.log(`[ENRICHMENT DEBUG] No gender found in MemberDetails for ${app.email}`);
             }
           } catch (memberError) {
-            console.error("Error fetching member gender for app:", app._id, memberError);
+            console.error(`[ENRICHMENT DEBUG] Error fetching gender from MemberDetails for ${app.email}:`, memberError);
           }
+        } else {
+          console.log(`[ENRICHMENT DEBUG] App ${appObj._id} already has gender:`, appObj.gender);
         }
         
         // For approved applications, get member approval details
@@ -431,6 +418,35 @@ module.exports = (mongooseConnection) => {
           }
         }
         
+        // Block-level status normalization (do NOT reflect district/state pending here)
+        // Simple logic:
+        // - If block admin rejected => "Rejected"
+        // - If block admin approved (forwarded) => "Approved"
+        // - If not yet reviewed by block admin => "Pending"
+        try {
+          const rb = appObj.reviewedBy || {};
+          const hasBlockReview = !!rb.blockAdmin;
+          const originalStatus = String(app.status || '');
+          
+          if (!hasBlockReview) {
+            // Not reviewed by block admin yet
+            appObj.status = 'Pending';
+          } else {
+            // Block admin has reviewed
+            // Check if rejected at block level (status is Rejected AND no higher-level reviews)
+            if (originalStatus === 'Rejected' && !rb.districtAdmin && !rb.stateAdmin) {
+              appObj.status = 'Rejected';
+            } else {
+              // Block approved (may be Pending-District, Pending-State, or Approved)
+              appObj.status = 'Approved';
+            }
+          }
+        } catch (e) {
+          console.error('Status normalization error:', e);
+          // Fallback: keep original or default to Pending
+          appObj.status = 'Pending';
+        }
+
         console.log('Final enhanced app for ID:', appObj._id, 'reviewedBy:', JSON.stringify(appObj.reviewedBy, null, 2));
         return appObj;
       }));
@@ -492,6 +508,28 @@ module.exports = (mongooseConnection) => {
       // Enhance applications similarly to the block admin route with reviewedBy and member info
       const enhancedApps = await Promise.all(apps.map(async (app) => {
         const appObj = app.toObject();
+
+        console.log(`[DISTRICT ENRICHMENT DEBUG] Processing app ${appObj._id}, current gender:`, appObj.gender);
+        
+        // If gender is missing, try to fetch from MemberDetails
+        if (!appObj.gender) {
+          try {
+            const memberDetails = await MemberDetails.findOne({ 
+              email: app.email.toLowerCase().trim() 
+            }, 'gender');
+            
+            if (memberDetails && memberDetails.gender) {
+              console.log(`[DISTRICT ENRICHMENT DEBUG] Found gender in MemberDetails for ${app.email}:`, memberDetails.gender);
+              appObj.gender = memberDetails.gender;
+            } else {
+              console.log(`[DISTRICT ENRICHMENT DEBUG] No gender found in MemberDetails for ${app.email}`);
+            }
+          } catch (memberError) {
+            console.error(`[DISTRICT ENRICHMENT DEBUG] Error fetching gender from MemberDetails for ${app.email}:`, memberError);
+          }
+        } else {
+          console.log(`[DISTRICT ENRICHMENT DEBUG] App ${appObj._id} already has gender:`, appObj.gender);
+        }
 
         // ReviewedBy safety checks are handled in the GET /:appId route, but we add basic references here
         // (Keep lightweight to avoid extra DB calls unless necessary)
@@ -566,6 +604,28 @@ module.exports = (mongooseConnection) => {
       // Enhance applications similarly to the district admin route with member info
       const enhancedApps = await Promise.all(apps.map(async (app) => {
         const appObj = app.toObject();
+
+        console.log(`[STATE ENRICHMENT DEBUG] Processing app ${appObj._id}, current gender:`, appObj.gender);
+        
+        // If gender is missing, try to fetch from MemberDetails
+        if (!appObj.gender) {
+          try {
+            const memberDetails = await MemberDetails.findOne({ 
+              email: app.email.toLowerCase().trim() 
+            }, 'gender');
+            
+            if (memberDetails && memberDetails.gender) {
+              console.log(`[STATE ENRICHMENT DEBUG] Found gender in MemberDetails for ${app.email}:`, memberDetails.gender);
+              appObj.gender = memberDetails.gender;
+            } else {
+              console.log(`[STATE ENRICHMENT DEBUG] No gender found in MemberDetails for ${app.email}`);
+            }
+          } catch (memberError) {
+            console.error(`[STATE ENRICHMENT DEBUG] Error fetching gender from MemberDetails for ${app.email}:`, memberError);
+          }
+        } else {
+          console.log(`[STATE ENRICHMENT DEBUG] App ${appObj._id} already has gender:`, appObj.gender);
+        }
 
         // Attach simple member approval info if present
         try {

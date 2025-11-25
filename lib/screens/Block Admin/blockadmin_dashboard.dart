@@ -167,13 +167,10 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
         widget.blockAdminId,
       );
 
-      // Derive tri-state buckets using the same rules as BlockAdminApprovalPage
+      // Filter pending applications (backend already normalizes status)
       final pendingApps = allApplications.where((app) {
         final status = (app['status'] ?? '').toString().toLowerCase();
-        return status == 'pending-block' ||
-            status == 'submitted' ||
-            status == 'pending' ||
-            status.isEmpty;
+        return status == 'submitted' || status == 'pending' || status.isEmpty;
       }).toList();
 
       final approvedApps = allApplications.where((app) {
@@ -217,7 +214,15 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _tab,
-        onTap: (i) => setState(() => _tab = i),
+        onTap: (i) {
+          // If navigating back to dashboard (tab 0) from any other tab, refresh the data
+          if (i == 0 && _tab != 0) {
+            _load();
+          }
+          setState(() {
+            _tab = i;
+          });
+        },
         selectedItemColor: const Color(0xFF1E88FF),
         unselectedItemColor: const Color(0xFF6B7280),
         backgroundColor: Colors.white,
@@ -299,8 +304,9 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
               _statCard(
                 title: 'Total Members',
                 value: _stats['total'] ?? 0,
-                subtitle: 'block level',
+                subtitle: 'Block level',
                 icon: Icons.people,
+                iconColor: const Color(0xFF3B82F6),
                 chipText: 'All',
                 chipColor: const Color(0xFF3B82F6),
               ),
@@ -309,6 +315,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
                 value: _stats['pending'] ?? 0,
                 subtitle: 'Awaiting approval',
                 icon: Icons.access_time,
+                iconColor: const Color(0xFFF59E0B),
                 chipText: 'Pending',
                 chipColor: const Color(0xFFF59E0B),
               ),
@@ -317,6 +324,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
                 value: _stats['approved'] ?? 0,
                 subtitle: 'Successfully approved',
                 icon: Icons.check_circle,
+                iconColor: const Color(0xFF10B981),
                 chipText: 'approved',
                 chipColor: const Color(0xFF10B981),
               ),
@@ -325,6 +333,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
                 value: _stats['rejected'] ?? 0,
                 subtitle: 'Request denied',
                 icon: Icons.cancel,
+                iconColor: const Color(0xFFEF4444),
                 chipText: 'Rejected',
                 chipColor: const Color(0xFFEF4444),
               ),
@@ -427,6 +436,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
     required int value,
     required String subtitle,
     required IconData icon,
+    Color? iconColor,
     String? chipText,
     Color? chipColor,
   }) {
@@ -450,7 +460,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
         children: [
           Row(
             children: [
-              Icon(icon, color: const Color(0xFF6B7280)),
+              Icon(icon, color: iconColor ?? const Color(0xFF6B7280)),
               const Spacer(),
               if (chipText != null)
                 Container(
@@ -563,11 +573,13 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
         personalDetails?['gender'];
     final String gender = normalizeGender(rawGender);
 
-    // Compute status for styling and label
+    // Simple tri-state status from backend (already normalized)
     final normalizedStatus = status.trim().toLowerCase();
     final bool displayAsPending =
-        normalizedStatus.isEmpty || normalizedStatus == 'pending';
-    final String statusLabel = normalizedStatus.isEmpty
+        normalizedStatus.isEmpty ||
+        normalizedStatus == 'pending' ||
+        normalizedStatus == 'submitted';
+    final String statusLabel = displayAsPending
         ? 'Pending'
         : (normalizedStatus == 'approved'
               ? 'Approved'
@@ -821,7 +833,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✅ Approved & forwarded to District'),
+              content: Text('✅ Approved'),
               backgroundColor: Color(0xFF16A34A),
             ),
           );
@@ -1083,12 +1095,15 @@ class UserDetailsDropdown extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Personal & Demographic Details
-                  _buildSectionHeader('Personal & Demographic Details'),
+                  // Demographic Details
+                  _buildSectionHeader('Demographic Details'),
                   _buildDetailCard([
                     _buildDetailRow('Name', s(member['fullName'])),
                     _buildDetailRow('Email', s(member['email'])),
-                    _buildDetailRow('Phone', s(member['phone'])),
+                    _buildDetailRow(
+                      'Phone',
+                      s(member['phone'] ?? member['phoneNumber']),
+                    ),
                     _buildDetailRow(
                       'Date of Birth',
                       s(_formatDate(member['dateOfBirth'])),
@@ -1249,14 +1264,6 @@ class UserDetailsDropdown extends StatelessWidget {
                               'Scheme 3',
                               s(financialInfo['scheme3']),
                             ),
-                            _buildDetailRow(
-                              'IFSC Code',
-                              s(financialInfo['ifscCode']),
-                            ),
-                            _buildDetailRow(
-                              'Bank Branch',
-                              s(financialInfo['bankBranch']),
-                            ),
                           ],
                         ),
                       ),
@@ -1306,18 +1313,7 @@ class UserDetailsDropdown extends StatelessWidget {
                               s(_formatDate(declaration['submissionDate'])),
                             ),
                             _buildDetailRow('Status', s(declaration['status'])),
-                            _buildDetailRow(
-                              'Review Notes',
-                              s(declaration['reviewNotes']),
-                            ),
-                            _buildDetailRow(
-                              'Reviewed By',
-                              s(declaration['reviewedBy']),
-                            ),
-                            _buildDetailRow(
-                              'Reviewed At',
-                              s(_formatDate(declaration['reviewedAt'])),
-                            ),
+                            // Removed admin review audit fields from UI for admin pages
                           ],
                         ),
                       ),

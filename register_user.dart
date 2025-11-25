@@ -78,9 +78,9 @@ Future<void> main() async {
     'email': email,
     'phone': phone, // note: application expects `phone`
     'gender': gender, // top-level gender used by backend
-    'state': 'Tamil Nadu',
-    'district': 'Salem',
-    'block': 'Attur',
+    'state': 'Andhra Pradesh',
+    'district': 'Y.S.R. Kadapa',
+    'block': 'Kadapa',
     'formData': {
       'agreeToDeclaration': true,
       'timestamp': DateTime.now().toIso8601String(),

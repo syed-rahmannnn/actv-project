@@ -69,8 +69,6 @@ router.post('/login', async (req, res) => {
           fullName: member.fullName,
           email: member.email,
           phoneNumber: member.phoneNumber,
-          dateOfBirth: member.dateOfBirth,
-          gender: member.gender,
           state: member.state,
           district: member.district,
           block: member.block,
@@ -93,12 +91,13 @@ router.post('/login', async (req, res) => {
 // Register new member
 router.post('/register', async (req, res) => {
   try {
+    console.log('📥 Registration request received');
+    console.log('📋 Request body:', JSON.stringify(req.body, null, 2));
+
     const {
       fullName,
       phoneNumber,
       email,
-      dateOfBirth,
-      gender,
       password,
       block,
       city,
@@ -109,45 +108,66 @@ router.post('/register', async (req, res) => {
       memberType
     } = req.body;
 
-    // Validate required fields
-    if (!fullName || !phoneNumber || !email || !dateOfBirth || !gender || !password || !city || !block || !district || !state) {
-      return res.status(400).json({
-        success: false,
-        message: 'All required fields must be provided'
-      });
+    // Log what we received
+    console.log('📝 Extracted fields:');
+    console.log('   fullName:', fullName || '(empty)');
+    console.log('   email:', email || '(empty)');
+    console.log('   phoneNumber:', phoneNumber || '(empty)');
+    console.log('   password:', password ? '***' : '(empty)');
+    console.log('   state:', state || '(empty)');
+    console.log('   district:', district || '(empty)');
+    console.log('   city:', city || '(empty)');
+    console.log('   block:', block || '(empty)');
+
+    // Check if member already exists (only if email is provided)
+    if (email && email.trim() !== '') {
+      const existingMember = await MemberDetails.findOne({ email: email.toLowerCase() });
+      if (existingMember) {
+        return res.status(409).json({
+          success: false,
+          message: 'Member with this email already exists'
+        });
+      }
     }
 
-    // Check if member already exists
-    const existingMember = await MemberDetails.findOne({ email: email.toLowerCase() });
-    if (existingMember) {
-      return res.status(409).json({
-        success: false,
-        message: 'Member with this email already exists'
-      });
-    }
+    // Generate a unique email if not provided to avoid conflicts
+    const finalEmail = (email && email.trim() !== '') 
+      ? email.toLowerCase() 
+      : `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}@temp.local`;
 
-    // Create member details
+    // Generate a temporary fullName if not provided
+    const finalFullName = (fullName && fullName.trim() !== '')
+      ? fullName
+      : `Member_${Date.now()}`;
+
+    console.log('✅ Using email:', finalEmail);
+    console.log('✅ Using fullName:', finalFullName);
+
+    // Create member details with optional fields
     const memberDetails = new MemberDetails({
-      fullName,
-      email: email.toLowerCase(),
-      phoneNumber,
-      dateOfBirth,
-      gender,
-      state,
-      district,
-      block,
-      city
+      fullName: finalFullName,
+      email: finalEmail,
+      phoneNumber: phoneNumber || '',
+      state: state || '',
+      district: district || '',
+      block: block || '',
+      city: city || ''
     });
 
-    await memberDetails.save();
+    await memberDetails.save({ validateBeforeSave: false });
+    console.log('✅ Member saved with ID:', memberDetails._id);
 
-    // Create member auth
-    const memberAuth = new MemberAuth({
-      email: email.toLowerCase(),
-      password
-    });
-
-    await memberAuth.save();
+    // Create member auth only if password is provided
+    if (password && password.trim() !== '') {
+      const memberAuth = new MemberAuth({
+        email: finalEmail,
+        password
+      });
+      await memberAuth.save({ validateBeforeSave: false });
+      console.log('✅ Member auth created');
+    } else {
+      console.log('⚠️ No password provided, skipping auth creation');
+    }
 
     // Generate JWT token
     // JWT secret logging removed for security
@@ -167,11 +187,10 @@ router.post('/register', async (req, res) => {
         token: token,
         member: {
           id: memberDetails._id,
+          memberId: memberDetails._id, // Add memberId for frontend clarity
           fullName: memberDetails.fullName,
           email: memberDetails.email,
           phoneNumber: memberDetails.phoneNumber,
-          dateOfBirth: memberDetails.dateOfBirth,
-          gender: memberDetails.gender,
           state: memberDetails.state,
           district: memberDetails.district,
           block: memberDetails.block,
@@ -214,8 +233,6 @@ router.get('/member/:memberId', async (req, res) => {
           fullName: member.fullName,
           email: member.email,
           phoneNumber: member.phoneNumber,
-          dateOfBirth: member.dateOfBirth,
-          gender: member.gender,
           state: member.state,
           district: member.district,
           block: member.block,
@@ -257,8 +274,6 @@ router.get('/member-by-email/:email', async (req, res) => {
           fullName: member.fullName,
           email: member.email,
           phoneNumber: member.phoneNumber,
-          dateOfBirth: member.dateOfBirth,
-          gender: member.gender,
           state: member.state,
           district: member.district,
           block: member.block,

@@ -826,14 +826,16 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
 
 // UserDetailsDropdown widget - copied from Block Admin with District-specific adaptations
 class UserDetailsDropdown extends StatelessWidget {
-  final dynamic app;
+  final Map<String, dynamic>? app;
+  final Map<String, dynamic>? memberProfile;
   final VoidCallback onApprove;
   final VoidCallback onReject;
   final bool showActions;
 
   const UserDetailsDropdown({
     super.key,
-    required this.app,
+    this.app,
+    this.memberProfile,
     required this.onApprove,
     required this.onReject,
     this.showActions = true,
@@ -841,20 +843,48 @@ class UserDetailsDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Helper functions
-    String s(dynamic value) => value?.toString() ?? 'N/A';
-    String b(bool? value) =>
-        value == true ? 'Yes' : (value == false ? 'No' : 'N/A');
-    String listToString(List<dynamic>? list) {
-      if (list == null || list.isEmpty) return 'N/A';
-      return list.join(', ');
+    // Use memberProfile if available, otherwise fall back to app data
+    final Map<String, dynamic> profileData;
+    final Map<String, dynamic> member;
+    final Map<String, dynamic> businessInfo;
+    final Map<String, dynamic> financialInfo;
+    final Map<String, dynamic> declaration;
+
+    if (memberProfile != null) {
+      // Use the full profile structure like profile_detail_screen.dart
+      profileData = memberProfile!;
+      member = profileData['member'] ?? {};
+      businessInfo = profileData['businessInfo'] ?? {};
+      financialInfo = profileData['financialInfo'] ?? {};
+      declaration = profileData['declaration'] ?? {};
+    } else {
+      // Fall back to the old app structure
+      profileData = app ?? {};
+      member = profileData;
+      final form = profileData['formData'] != null
+          ? Map<String, dynamic>.from(profileData['formData'])
+          : <String, dynamic>{};
+      businessInfo = form['businessInfo'] != null
+          ? Map<String, dynamic>.from(form['businessInfo'])
+          : <String, dynamic>{};
+      financialInfo = form['financialInfo'] != null
+          ? Map<String, dynamic>.from(form['financialInfo'])
+          : <String, dynamic>{};
+      declaration = form['declaration'] != null
+          ? Map<String, dynamic>.from(form['declaration'])
+          : <String, dynamic>{};
     }
 
-    // Extract data sections
-    final personalInfo = app['personalInfo'] ?? {};
-    final businessInfo = app['businessInfo'] ?? {};
-    final financialInfo = app['financialInfo'] ?? {};
-    final declaration = app['declaration'] ?? {};
+    // Helper functions
+    String s(dynamic value) =>
+        (value == null || (value is String && value.isEmpty))
+        ? '—'
+        : value.toString();
+    String b(bool? value) => value == null ? '—' : (value ? 'Yes' : 'No');
+    String listToString(List<dynamic>? list) {
+      if (list == null || list.isEmpty) return '—';
+      return list.join(', ');
+    }
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
@@ -905,31 +935,38 @@ class UserDetailsDropdown extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Personal & Demographic Details
-                  _buildSectionHeader('Personal & Demographic Details'),
+                  // Demographic Details
+                  _buildSectionHeader('Demographic Details'),
                   _buildDetailCard([
-                    _buildDetailRow('Full Name', s(app['fullName'])),
-                    _buildDetailRow('Email', s(app['email'])),
-                    _buildDetailRow('Phone', s(app['phone'])),
-                    _buildDetailRow('State', s(app['state'])),
-                    _buildDetailRow('District', s(app['district'])),
-                    _buildDetailRow('Block', s(app['block'])),
-                    _buildDetailRow('Gender', s(personalInfo['gender'])),
+                    _buildDetailRow('Full Name', s(member['fullName'])),
+                    _buildDetailRow('Email', s(member['email'])),
+                    _buildDetailRow(
+                      'Phone',
+                      s(member['phone'] ?? member['phoneNumber']),
+                    ),
                     _buildDetailRow(
                       'Date of Birth',
-                      s(_formatDate(personalInfo['dateOfBirth'])),
+                      s(_formatDate(member['dateOfBirth'])),
                     ),
-                    _buildDetailRow('Category', s(personalInfo['category'])),
-                    _buildDetailRow('Religion', s(personalInfo['religion'])),
+                    _buildDetailRow('State', s(member['state'])),
+                    _buildDetailRow('District', s(member['district'])),
+                    _buildDetailRow('Block', s(member['block'])),
+                    _buildDetailRow('City', s(member['city'])),
+                    _buildDetailRow('Street Name', s(member['streetName'])),
                     _buildDetailRow(
-                      'Marital Status',
-                      s(personalInfo['maritalStatus']),
+                      'Educational Qualification',
+                      s(member['educationalQualification']),
                     ),
-                    _buildDetailRow('Education', s(personalInfo['education'])),
+                    _buildDetailRow('Religion', s(member['religion'])),
                     _buildDetailRow(
-                      'Occupation',
-                      s(personalInfo['occupation']),
+                      'Social Category',
+                      s(member['socialCategory']),
                     ),
+                    _buildDetailRow(
+                      'Aadhaar Number',
+                      s(member['aadhaarNumber']),
+                    ),
+                    _buildDetailRow('Gender', s(member['gender'])),
                   ]),
 
                   const SizedBox(height: 16),
@@ -950,32 +987,49 @@ class UserDetailsDropdown extends StatelessWidget {
                         child: Column(
                           children: [
                             _buildDetailRow(
-                              'Business Name',
-                              s(businessInfo['businessName']),
+                              'Doing Business',
+                              b(businessInfo['doingBusiness'] as bool?),
+                            ),
+                            _buildDetailRow(
+                              'Organization Name',
+                              s(businessInfo['organizationName']),
+                            ),
+                            _buildDetailRow(
+                              'Constitution Type',
+                              s(businessInfo['constitutionType']),
                             ),
                             _buildDetailRow(
                               'Business Type',
                               s(businessInfo['businessType']),
                             ),
                             _buildDetailRow(
-                              'Business Address',
-                              s(businessInfo['businessAddress']),
+                              'Business Activities',
+                              s(businessInfo['businessActivities']),
                             ),
                             _buildDetailRow(
-                              'Years in Business',
-                              s(businessInfo['yearsInBusiness']),
+                              'Business Commencement Year',
+                              s(businessInfo['businessCommencementYear']),
                             ),
                             _buildDetailRow(
                               'Number of Employees',
                               s(businessInfo['numberOfEmployees']),
                             ),
                             _buildDetailRow(
-                              'Business Registration',
-                              s(businessInfo['businessRegistration']),
+                              'Member of Other Chamber',
+                              b(businessInfo['memberOfOtherChamber'] as bool?),
                             ),
+                            if (businessInfo['memberOfOtherChamber'] == true)
+                              _buildDetailRow(
+                                'Other Chamber Name',
+                                s(businessInfo['otherChamber']),
+                              ),
                             _buildDetailRow(
-                              'Registration Number',
-                              s(businessInfo['registrationNumber']),
+                              'Registered with Govt Organizations',
+                              listToString(
+                                (businessInfo['registeredWithGovtOrganization']
+                                        as List?)
+                                    ?.cast<dynamic>(),
+                              ),
                             ),
                           ],
                         ),
@@ -1001,10 +1055,6 @@ class UserDetailsDropdown extends StatelessWidget {
                             _buildDetailRow(
                               'PAN Number',
                               s(financialInfo['panNumber']),
-                            ),
-                            _buildDetailRow(
-                              'Aadhaar Number',
-                              s(financialInfo['aadhaarNumber']),
                             ),
                             _buildDetailRow(
                               'GST Number',
@@ -1053,14 +1103,6 @@ class UserDetailsDropdown extends StatelessWidget {
                             _buildDetailRow(
                               'Scheme 3',
                               s(financialInfo['scheme3']),
-                            ),
-                            _buildDetailRow(
-                              'IFSC Code',
-                              s(financialInfo['ifscCode']),
-                            ),
-                            _buildDetailRow(
-                              'Bank Branch',
-                              s(financialInfo['bankBranch']),
                             ),
                           ],
                         ),
@@ -1111,18 +1153,7 @@ class UserDetailsDropdown extends StatelessWidget {
                               s(_formatDate(declaration['submissionDate'])),
                             ),
                             _buildDetailRow('Status', s(declaration['status'])),
-                            _buildDetailRow(
-                              'Review Notes',
-                              s(declaration['reviewNotes']),
-                            ),
-                            _buildDetailRow(
-                              'Reviewed By',
-                              s(declaration['reviewedBy']),
-                            ),
-                            _buildDetailRow(
-                              'Reviewed At',
-                              s(_formatDate(declaration['reviewedAt'])),
-                            ),
+                            // Removed admin review audit fields from UI for admin pages
                           ],
                         ),
                       ),
@@ -1138,71 +1169,71 @@ class UserDetailsDropdown extends StatelessWidget {
           // Action buttons
           if (showActions)
             Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withAlpha((0.1 * 255).toInt()),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      onApprove();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF16A34A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+              padding: const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha((0.1 * 255).toInt()),
+                    blurRadius: 10,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        onApprove();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF16A34A),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
                       ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Approve',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
+                      child: const Text(
+                        'Approve',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      onReject();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF5C5C),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        onReject();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF5C5C),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
                       ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Reject',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
+                      child: const Text(
+                        'Reject',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );

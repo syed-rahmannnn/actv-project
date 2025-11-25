@@ -334,20 +334,71 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
     );
   }
 
-  void _openProfileSheet(Map<String, dynamic> app) {
-    final map = Map<String, dynamic>.from(app);
-    final String appId = (map['_id'] ?? '').toString();
-    showModalBottomSheet(
+  void _openProfileSheet(Map<String, dynamic> app) async {
+    // Same behavior as block admin: try full profile by email, else fallback
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => UserDetailsDropdown(
-        app: map,
-        onApprove: () => _approve(appId),
-        onReject: () => _showRejectDialog(appId),
-        showActions: false,
-      ),
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
     );
+
+    try {
+      final email = app["email"] ?? app["memberEmail"];
+      if (email != null) {
+        final memberRes = await ApiService.getMemberByEmail(email);
+        if (memberRes['success'] == true && memberRes['data'] != null) {
+          final memberId =
+              memberRes['data']['id'] ??
+              memberRes['data']['memberId'] ??
+              memberRes['data']['_id'];
+          if (memberId != null) {
+            final profileRes = await ApiService.getMemberProfile(
+              memberId.toString(),
+            );
+            if (mounted) Navigator.pop(context);
+            if (profileRes['success'] == true && profileRes['data'] != null) {
+              if (mounted) {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => UserDetailsDropdown(
+                    memberProfile: Map<String, dynamic>.from(
+                      profileRes['data'],
+                    ),
+                    showActions: false,
+                    onApprove: () => _approve(app['_id'].toString()),
+                    onReject: () => _showRejectDialog(app['_id'].toString()),
+                  ),
+                );
+                return;
+              }
+            }
+          }
+        }
+      }
+      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => UserDetailsDropdown(
+            app: Map<String, dynamic>.from(app),
+            showActions: false,
+            onApprove: () => _approve(app['_id'].toString()),
+            onReject: () => _showRejectDialog(app['_id'].toString()),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
+      }
+    }
   }
 
   Color _getStatusColor(String status) {
@@ -581,13 +632,53 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
     final phone = (app['phone'] ?? 'N/A').toString();
     final email = (app['email'] ?? app['memberEmail'] ?? 'N/A').toString();
     final block = (app['block'] ?? 'N/A').toString();
+
+    // Gender extraction logic matching Block Admin implementation
+    final form = app['formData'] != null
+        ? Map<String, dynamic>.from(app['formData'])
+        : <String, dynamic>{};
+
+    String normalizeGender(dynamic g) {
+      if (g == null) return 'Not Specified';
+      final v = g.toString().trim();
+      if (v.isEmpty) return 'Not Specified';
+      final lc = v.toLowerCase();
+      if (lc == 'm' || lc == 'male' || lc.startsWith('male')) {
+        return 'Male';
+      }
+      if (lc == 'f' || lc == 'female' || lc.startsWith('female')) {
+        return 'Female';
+      }
+      if (lc == 'o' || lc == 'other' || lc.startsWith('other')) {
+        return 'Other';
+      }
+      return v; // show as-is if unknown
+    }
+
     final Map<String, dynamic>? personalInfo =
-        app['personalInfo'] as Map<String, dynamic>?;
-    final gender =
-        (app['gender'] ??
-                (personalInfo != null ? personalInfo['gender'] : null) ??
-                'NA')
-            .toString();
+        form['personalInfo'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(form['personalInfo'])
+        : null;
+    final Map<String, dynamic>? personalDetails =
+        form['personalDetails'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(form['personalDetails'])
+        : null;
+
+    // Also check if personalDetails exists directly in app (not in formData)
+    final Map<String, dynamic>? appPersonalDetails =
+        app['personalDetails'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(app['personalDetails'])
+        : null;
+
+    final dynamic rawGender =
+        app['gender'] ??
+        form['gender'] ??
+        personalInfo?['gender'] ??
+        personalDetails?['gender'] ??
+        appPersonalDetails?['gender'];
+
+    final String gender = normalizeGender(rawGender);
+
     final appliedAt = app['districtApprovedAt'] ?? app['createdAt'];
     String appliedOnStr = 'N/A';
     try {

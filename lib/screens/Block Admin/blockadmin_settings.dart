@@ -576,109 +576,114 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 32,
-            backgroundColor: const Color(0xFF1E88FF),
-            child: Text(
-              displayAdminName.isNotEmpty
-                  ? displayAdminName[0].toUpperCase()
-                  : 'A',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  displayAdminName.isNotEmpty ? displayAdminName : 'Admin',
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 32,
+                backgroundColor: const Color(0xFF1E88FF),
+                child: Text(
+                  displayAdminName.isNotEmpty
+                      ? displayAdminName[0].toUpperCase()
+                      : 'A',
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Row(
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.email, size: 18, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        displayAdminEmail.isNotEmpty
-                            ? displayAdminEmail
-                            : 'No email found',
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 14,
-                        ),
+                    Text(
+                      displayAdminName.isNotEmpty ? displayAdminName : 'Admin',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F172A),
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.email, size: 18, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            displayAdminEmail.isNotEmpty
+                                ? displayAdminEmail
+                                : 'No email found',
+                            style: const TextStyle(
+                              color: Color(0xFF6B7280),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Icon(Icons.location_on, size: 18, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        displayDistrictName.isNotEmpty
-                            ? displayDistrictName
-                            : 'Location not available',
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Icon(Icons.location_on, size: 18, color: Colors.grey[600]),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  displayDistrictName.isNotEmpty
+                      ? '$displayDistrictName District'
+                      : 'Location not available',
+                  style: const TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 14,
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Text(
-                      'Active Status: ',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF374151),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: active
-                            ? const Color(0xFFDCFCE7)
-                            : const Color(0xFFFEE2E2),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        active ? 'Active' : 'Inactive',
-                        style: TextStyle(
-                          color: active
-                              ? const Color(0xFF16A34A)
-                              : const Color(0xFFDC2626),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Text(
+                'Active Status: ',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF374151),
                 ),
-              ],
-            ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: active
+                      ? const Color(0xFFDCFCE7)
+                      : const Color(0xFFFEE2E2),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  active ? 'Active' : 'Inactive',
+                  style: TextStyle(
+                    color: active
+                        ? const Color(0xFF16A34A)
+                        : const Color(0xFFDC2626),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -710,11 +715,11 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  overviewTitle,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                const Text(
+                  'Administration Count',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                     color: Color(0xFF0F172A),
                   ),
                 ),
@@ -806,10 +811,10 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
         ),
         Text(
           '$value',
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: color,
+            color: Color(0xFF0F172A),
           ),
         ),
       ],
@@ -867,34 +872,62 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () async {
-          // Capture navigator and messenger before async gaps
-          final navigator = Navigator.of(context);
-          final messenger = ScaffoldMessenger.of(context);
-          // Show loading indicator
-          showDialog(
+          // Show confirmation dialog
+          final shouldLogout = await showDialog<bool>(
             context: context,
-            barrierDismissible: false,
-            builder: (context) =>
-                const Center(child: CircularProgressIndicator()),
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Logout'),
+                content: const Text('Are you sure you want to logout?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text(
+                      'Logout',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+                ],
+              );
+            },
           );
 
-          try {
-            // Clear session and token
-            await AuthService.logout();
+          // If user confirmed logout
+          if (shouldLogout == true) {
             if (!mounted) return;
-            // Navigate to login screen and clear all routes
-            navigator.pop(); // Close loading dialog
-            navigator.pushNamedAndRemoveUntil('/login', (route) => false);
-          } catch (e) {
-            // Handle logout error
-            if (!mounted) return;
-            navigator.pop(); // Close loading dialog
-            messenger.showSnackBar(
-              SnackBar(
-                content: Text('Logout failed: ${e.toString()}'),
-                backgroundColor: Colors.red,
-              ),
+            // Capture navigator and messenger before async gaps
+            final navigator = Navigator.of(context);
+            final messenger = ScaffoldMessenger.of(context);
+            // Show loading indicator
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) =>
+                  const Center(child: CircularProgressIndicator()),
             );
+
+            try {
+              // Clear session and token
+              await AuthService.logout();
+              if (!mounted) return;
+              // Navigate to login screen and clear all routes
+              navigator.pop(); // Close loading dialog
+              navigator.pushNamedAndRemoveUntil('/login', (route) => false);
+            } catch (e) {
+              // Handle logout error
+              if (!mounted) return;
+              navigator.pop(); // Close loading dialog
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text('Logout failed: ${e.toString()}'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           }
         },
         style: ElevatedButton.styleFrom(

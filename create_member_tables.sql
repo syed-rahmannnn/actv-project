@@ -3,8 +3,6 @@ CREATE TABLE "public"."MemberRegistration" (
     "id" TEXT NOT NULL,
     "fullName" TEXT NOT NULL,
     "phoneNumber" TEXT NOT NULL,
-    "dateOfBirth" TIMESTAMP(3) NOT NULL,
-    "gender" "public"."Gender" NOT NULL,
     "profilePicture" TEXT,
     "address" TEXT NOT NULL,
     "city" TEXT NOT NULL,

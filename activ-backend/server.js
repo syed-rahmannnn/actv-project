@@ -14,8 +14,12 @@ if (process.env.NODE_ENV === 'production') {
 const authRoutes = require('./routes/auth');
 const memberRoutes = require('./routes/members');
 const profileRoutes = require('./routes/profile');
+const memberDetailsRoutes = require('./routes/memberDetails');
 const adminAuthRouteFactory = require('./routes/adminAuth');
 const applicationsRouteFactory = require('./routes/applications');
+const webhookRoutes = require('./routes/webhook');
+const browseMembersRoutes = require('./routes/browseMembers');
+const notificationsRoutes = require('./routes/notifications');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,6 +45,7 @@ const allowedOrigins = [
   'http://localhost:5000', 
   'http://127.0.0.1:5000',
   'http://192.168.29.130:3000',
+  'http://10.201.103.174:3000',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'https://actv-project.onrender.com',
@@ -65,6 +70,16 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Log ALL incoming requests for debugging
+app.use((req, res, next) => {
+  console.log('\n>>> INCOMING REQUEST <<<');
+  console.log(`Method: ${req.method}`);
+  console.log(`Path: ${req.url}`);
+  console.log(`Time: ${new Date().toISOString()}`);
+  console.log(`Headers:`, req.headers);
+  next();
+});
+
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/membersdb')
 .then(() => {
@@ -78,9 +93,13 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/membersdb
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/members', memberRoutes);
+app.use('/api/members', memberDetailsRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/admin', adminAuthRouteFactory(mongoose.connection));
 app.use('/api/applications', applicationsRouteFactory(mongoose.connection));
+app.use('/api/webhook', webhookRoutes); // Webhook route for payment notifications
+app.use('/api/browse-members', browseMembersRoutes); // Browse members and connections
+app.use('/api/notifications', notificationsRoutes); // Notifications
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

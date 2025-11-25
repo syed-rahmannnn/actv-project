@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/application_status_service.dart';
 import '../Member Bottom Navigation/dashboard_screen.dart';
 import '../../services/auth_service.dart';
+import '../Payment/payment_screen.dart';
 
 // Stage model for dynamic UI rendering
 class ApplicationStage {
@@ -954,54 +955,6 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
-          // Success message
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8F5E8),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.check_circle,
-                  color: const Color(0xFF4CAF50),
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Congratulations! 🎉',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF2E7D32),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Your application has been approved by all authorities. You can now proceed with the payment registration.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: const Color(0xFF2E7D32),
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
           // Payment Registration Button
           ElevatedButton(
             onPressed: () {
@@ -1044,50 +997,54 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
+          titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
           title: Row(
             children: [
               Icon(Icons.payment, color: const Color(0xFF4CAF50)),
               const SizedBox(width: 8),
-              Text('Payment Registration'),
+              Expanded(child: Text('Payment Registration')),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'You are about to proceed with the payment registration process.',
-                style: TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3E5F5),
-                  borderRadius: BorderRadius.circular(8),
+          contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'You are about to proceed with the payment registration process.',
+                  style: TextStyle(fontSize: 16),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Next Steps:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF7B1FA2),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3E5F5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Next Steps:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF7B1FA2),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '• Complete payment process\n• Receive membership confirmation\n• Access member benefits',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: const Color(0xFF7B1FA2),
+                      const SizedBox(height: 4),
+                      Text(
+                        '• Complete payment process\n• Receive membership confirmation\n• Access member benefits',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: const Color(0xFF7B1FA2),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -1099,12 +1056,11 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Payment registration initiated! 🎉'),
-                    backgroundColor: const Color(0xFF4CAF50),
-                    behavior: SnackBarBehavior.floating,
+                // Navigate to payment screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PaymentScreen(),
                   ),
                 );
               },

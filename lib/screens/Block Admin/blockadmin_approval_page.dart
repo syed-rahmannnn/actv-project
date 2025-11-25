@@ -97,22 +97,26 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
     }
   }
 
-  // Helpers - backend normalizes to tri-state: Pending, Approved, Rejected
+  // Helpers - backend already normalizes status to Pending/Approved/Rejected
   List<Map<String, dynamic>> get _pending => _all.where((a) {
-    final statusLower = (a['status'] ?? '').toString().toLowerCase();
-    return statusLower.isEmpty ||
-        statusLower == 'submitted' ||
-        statusLower == 'pending';
+    final status = (a['status'] ?? '').toString();
+    final statusLower = status.toLowerCase();
+
+    // Applications that are pending (not yet reviewed by block admin)
+    return statusLower == 'submitted' ||
+        statusLower == 'pending' ||
+        statusLower.isEmpty;
   }).toList();
 
   List<Map<String, dynamic>> get _approved => _all.where((a) {
-    final statusLower = (a['status'] ?? '').toString().toLowerCase();
-    return statusLower == 'approved';
+    final status = (a['status'] ?? '').toString();
+    // Applications that have been approved by block admin
+    return status.toLowerCase() == 'approved';
   }).toList();
 
   List<Map<String, dynamic>> get _rejected => _all.where((a) {
-    final statusLower = (a['status'] ?? '').toString().toLowerCase();
-    return statusLower == 'rejected';
+    final status = (a['status'] ?? '').toString();
+    return status.toLowerCase() == 'rejected';
   }).toList();
 
   List<Map<String, dynamic>> get _listForTab {
@@ -603,9 +607,22 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
         form['gender'] ??
         personalInfo?['gender'] ??
         personalDetails?['gender'];
-    final String gender = normalizeGender(rawGender);
 
-    // Context-aware status detection based on current tab
+    // Debug logging
+    debugPrint(
+      '[FRONTEND DEBUG] App ${app['_id']}: rawGender=$rawGender, '
+      'app.gender=${app['gender']}, form.gender=${form['gender']}, '
+      'personalInfo.gender=${personalInfo?['gender']}, '
+      'personalDetails.gender=${personalDetails?['gender']}',
+    );
+
+    final String gender = normalizeGender(rawGender);
+    debugPrint('[FRONTEND DEBUG] App ${app['_id']}: normalized gender=$gender');
+
+    // Simple tri-state status detection from backend
+    // Backend already normalizes to: Pending, Approved, or Rejected
+    final statusLower = status.toLowerCase();
+
     bool displayAsPending, displayAsApproved;
     String statusText;
 
@@ -615,7 +632,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
       displayAsApproved = false;
       statusText = 'Pending';
     } else if (_tab == ApprovalCategory.approved) {
-      // In approved tab, always show 'Approved' for block admin decisions
+      // In approved tab, show as approved
       displayAsPending = false;
       displayAsApproved = true;
       statusText = 'Approved';
@@ -625,8 +642,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
       displayAsApproved = false;
       statusText = 'Rejected';
     } else {
-      // In "All" tab, use normalized tri-state from backend
-      final statusLower = status.toLowerCase();
+      // In "All" tab, use actual status from backend (already normalized)
       final isApproved = statusLower == 'approved';
       final isRejected = statusLower == 'rejected';
       final isPending = !isApproved && !isRejected;
@@ -936,70 +952,46 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
       // Check for block admin approval
       final blockAdmin = reviewedBy['blockAdmin'];
       if (blockAdmin != null && blockAdmin is Map<String, dynamic>) {
-        final adminName = blockAdmin['fullName']?.toString() ?? 'Block Admin';
         final blockName =
             blockAdmin['meta']?['blockName']?.toString() ?? widget.blockName;
-        return 'Approved by $adminName, $blockName Admin';
+        return 'Approved by $blockName Block Admin';
       }
 
       // Check for district admin approval
       final districtAdmin = reviewedBy['districtAdmin'];
       if (districtAdmin != null && districtAdmin is Map<String, dynamic>) {
-        final adminName =
-            districtAdmin['fullName']?.toString() ?? 'District Admin';
         final districtName =
             districtAdmin['meta']?['districtName']?.toString() ?? 'District';
-        return 'Approved by $adminName, $districtName Admin';
+        return 'Approved by $districtName District Admin';
       }
 
       // Check for state admin approval
       final stateAdmin = reviewedBy['stateAdmin'];
       if (stateAdmin != null && stateAdmin is Map<String, dynamic>) {
-        final adminName = stateAdmin['fullName']?.toString() ?? 'State Admin';
         final stateName =
             stateAdmin['meta']?['stateName']?.toString() ?? 'State';
-        return 'Approved by $adminName, $stateName Admin';
+        return 'Approved by $stateName State Admin';
       }
     }
 
     // Fallback to generic text if approval info is not available
-    return 'Approved by ${widget.blockName}';
+    return 'Approved by ${widget.blockName} Block Admin';
   }
 
   String _getRejectionText(Map<String, dynamic> app) {
-    // Get reviewedBy information from the backend
+    // In Block Admin page, only Block-level rejections are relevant.
+    // If rejected here, it won't be forwarded to District/State.
     final reviewedBy = app['reviewedBy'];
     if (reviewedBy != null && reviewedBy is Map<String, dynamic>) {
-      // Check for block admin rejection
       final blockAdmin = reviewedBy['blockAdmin'];
       if (blockAdmin != null && blockAdmin is Map<String, dynamic>) {
-        final adminName = blockAdmin['fullName']?.toString() ?? 'Block Admin';
         final blockName =
             blockAdmin['meta']?['blockName']?.toString() ?? widget.blockName;
-        return 'Rejected by $adminName, $blockName Admin';
-      }
-
-      // Check for district admin rejection
-      final districtAdmin = reviewedBy['districtAdmin'];
-      if (districtAdmin != null && districtAdmin is Map<String, dynamic>) {
-        final adminName =
-            districtAdmin['fullName']?.toString() ?? 'District Admin';
-        final districtName =
-            districtAdmin['meta']?['districtName']?.toString() ?? 'District';
-        return 'Rejected by $adminName, $districtName Admin';
-      }
-
-      // Check for state admin rejection
-      final stateAdmin = reviewedBy['stateAdmin'];
-      if (stateAdmin != null && stateAdmin is Map<String, dynamic>) {
-        final adminName = stateAdmin['fullName']?.toString() ?? 'State Admin';
-        final stateName =
-            stateAdmin['meta']?['stateName']?.toString() ?? 'State';
-        return 'Rejected by $adminName, $stateName Admin';
+        return 'Rejected by $blockName Block Admin';
       }
     }
 
-    // Fallback to generic text if rejection info is not available
-    return 'Rejected by ${widget.blockName}';
+    // Fallback to generic text if no reviewer info is present
+    return 'Rejected by ${widget.blockName} Block Admin';
   }
 }

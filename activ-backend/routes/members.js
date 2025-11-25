@@ -71,13 +71,55 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// GET profile completion percentage: /api/members/:id/completion
+router.get('/:id/completion', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const doc = await MemberDetails.findById(id).lean();
+    if (!doc) return res.status(404).json({ success: false, message: 'Member not found' });
+
+    // Define all trackable fields
+    const fields = [
+      'fullName', 'email', 'phoneNumber', 'state', 'district', 'block', 'city',
+      'aadhaarNumber', 'streetName', 'educationalQualification', 'religion', 'socialCategory'
+    ];
+
+    let totalFields = fields.length;
+    let filledFields = 0;
+
+    fields.forEach(field => {
+      const value = doc[field];
+      if (value !== null && value !== undefined && value !== '') {
+        filledFields++;
+      }
+    });
+
+    const completionPercentage = totalFields > 0 
+      ? Math.round((filledFields / totalFields) * 100) 
+      : 0;
+
+    return res.json({ 
+      success: true, 
+      data: {
+        completionPercentage,
+        filledFields,
+        totalFields
+      }
+    });
+  } catch (err) {
+    console.error('GET /api/members/:id/completion err', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // PUT update by id (create if not exists)
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body || {};
+    
     // whitelist allowed fields to avoid accidental overwrite
-    const allowed = ['fullName','email','phoneNumber','dateOfBirth','gender','state','district','block','city','profileCompleted',
+    const allowed = ['fullName','email','phoneNumber','state','district','block','city','profileCompleted',
       // demographic fields moved here
       'aadhaarNumber','streetName','educationalQualification','religion','socialCategory'
     ];
@@ -86,7 +128,18 @@ router.put('/:id', async (req, res) => {
       if (updates[k] !== undefined) payload[k] = updates[k];
     });
 
-    const doc = await MemberDetails.findByIdAndUpdate(id, payload, { new: true, upsert: true, runValidators: true });
+    // Update MemberDetails
+    const doc = await MemberDetails.findByIdAndUpdate(id, payload, { new: true, upsert: true, runValidators: false });
+    
+    // Handle password update separately in MemberAuth
+    if (updates.password && updates.password.trim() !== '') {
+      const memberAuth = await MemberAuth.findOne({ memberId: id });
+      if (memberAuth) {
+        memberAuth.password = updates.password.trim();
+        await memberAuth.save(); // This will trigger the pre-save hook to hash the password
+      }
+    }
+    
     return res.json({ success: true, data: doc });
   } catch (err) {
     console.error('PUT /api/members/:id err', err);

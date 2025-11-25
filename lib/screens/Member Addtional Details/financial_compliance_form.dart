@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'declaration_form.dart';
 import 'package:activ/services/api_service.dart';
@@ -30,6 +31,10 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
   bool? _govtSchemeBenefit;
   String? _selectedTurnoverRange;
 
+  // Auto-save debounce timer
+  Timer? _debounceTimer;
+  bool _isSaving = false;
+
   final List<String> _turnoverRanges = [
     'Less than 25 Lakhs',
     '25 Lakhs - 50 Lakhs',
@@ -43,6 +48,85 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
   void initState() {
     super.initState();
     _populateFields();
+    _setupAutoSaveListeners();
+  }
+
+  void _setupAutoSaveListeners() {
+    final controllers = [
+      _panController,
+      _gstController,
+      _udyamController,
+      _itrYearsController,
+      _turnoverController,
+      _fy2021Controller,
+      _fy2020Controller,
+      _fy2019Controller,
+      _scheme1Controller,
+      _scheme2Controller,
+      _scheme3Controller,
+    ];
+
+    for (var controller in controllers) {
+      controller.addListener(_onFieldChanged);
+    }
+  }
+
+  void _onFieldChanged() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(seconds: 2), _autoSaveData);
+  }
+
+  Future<void> _autoSaveData() async {
+    if (_isSaving) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      String? memberId = widget.userData['memberId'] ??
+          widget.userData['member']?['_id'] ??
+          widget.userData['member']?['id'] ??
+          widget.userData['_id'] ??
+          widget.userData['id'];
+
+      // If no member ID, try loading from backend
+      if (memberId == null) {
+        final email = widget.userData['email'] ?? widget.userData['member']?['email'];
+        if (email != null && email.toString().trim().isNotEmpty) {
+          final res = await ApiService.getMemberByEmail(email);
+          if (res['success'] == true && res['data'] != null) {
+            final member = res['data'] as Map<String, dynamic>;
+            memberId = member['memberId'] ?? member['id'] ?? member['_id'];
+          }
+        }
+      }
+
+      if (memberId == null) return;
+
+      final financialData = {
+        'panNumber': _panController.text.trim(),
+        'gstNumber': _gstController.text.trim(),
+        'udyamNumber': _udyamController.text.trim(),
+        'filedITR': _filedITR,
+        'itrYears': _itrYearsController.text.trim(),
+        'turnoverRange': _selectedTurnoverRange,
+        'turnover': _turnoverController.text.trim(),
+        'fy2021': _fy2021Controller.text.trim(),
+        'fy2020': _fy2020Controller.text.trim(),
+        'fy2019': _fy2019Controller.text.trim(),
+        'govtSchemeBenefit': _govtSchemeBenefit,
+        'scheme1': _scheme1Controller.text.trim(),
+        'scheme2': _scheme2Controller.text.trim(),
+        'scheme3': _scheme3Controller.text.trim(),
+      };
+
+      await ApiService.saveFinancialInfo(memberId, financialData);
+    } catch (e) {
+      // Silent fail
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   bool _isValidPan(String input) {
@@ -79,6 +163,7 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _panController.dispose();
     _gstController.dispose();
     _udyamController.dispose();
@@ -95,17 +180,23 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFE6F0FF),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Header
-              Container(
-                width: double.infinity,
-                color: Colors.blue,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+    return WillPopScope(
+      onWillPop: () async {
+        _debounceTimer?.cancel();
+        await _autoSaveData();
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFE6F0FF),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                // Header
+                Container(
+                  width: double.infinity,
+                  color: Colors.blue,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                 child: const Center(
                   child: Text(
                     'ACTIV',
@@ -386,6 +477,7 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
           ),
         ),
       ),
+      ),
     );
   }
 
@@ -480,6 +572,7 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
                 setState(() {
                   _selectedTurnoverRange = newValue;
                 });
+                _onFieldChanged(); // Trigger auto-save
               },
             ),
           ),
@@ -515,7 +608,10 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
                   Radio<bool>(
                     value: option == 'Yes' ? true : false,
                     groupValue: selectedValue,
-                    onChanged: onChanged,
+                    onChanged: (value) {
+                      onChanged(value);
+                      _onFieldChanged(); // Trigger auto-save
+                    },
                     activeColor: Colors.blue,
                   ),
                   Text(option),
@@ -542,32 +638,12 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
   }
 
   Future<void> _proceedToNext() async {
-    // Validate required fields
-    if (_panController.text.isEmpty ||
-        _gstController.text.isEmpty ||
-        _filedITR == null ||
-        (_filedITR == true && _itrYearsController.text.isEmpty) ||
-        _selectedTurnoverRange == null ||
-        _fy2021Controller.text.isEmpty ||
-        _fy2020Controller.text.isEmpty ||
-        _fy2019Controller.text.isEmpty ||
-        _govtSchemeBenefit == null ||
-        (_govtSchemeBenefit == true &&
-            (_scheme1Controller.text.isEmpty ||
-                _scheme2Controller.text.isEmpty ||
-                _scheme3Controller.text.isEmpty))) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill in all required fields'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
+    // No validation - all fields are optional
+    // Users can proceed even with empty fields
 
-    // PAN/GST format validation to avoid backend 500 (validation error)
+    // Optional PAN/GST format validation only if fields are filled
     final pan = _panController.text.trim().toUpperCase();
-    if (!_isValidPan(pan)) {
+    if (pan.isNotEmpty && !_isValidPan(pan)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Invalid PAN format. Example: ABCDE1234F'),
@@ -578,7 +654,7 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
     }
 
     final gst = _gstController.text.trim().toUpperCase();
-    if (!_isValidGst(gst)) {
+    if (gst.isNotEmpty && !_isValidGst(gst)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -590,63 +666,67 @@ class _FinancialComplianceFormState extends State<FinancialComplianceForm> {
       return;
     }
 
-    // Save financial info to backend
+    // Save financial info to backend (optional, don't block navigation)
     try {
-      final memberId = widget.userData['memberId'];
-      if (memberId == null) {
-        throw Exception('Member ID not found');
-      }
-      // Sanitize dependent fields
-      final sanitizedItrYears = _filedITR == true
-          ? _itrYearsController.text.trim()
-          : '';
-      final scheme1 = _govtSchemeBenefit == true
-          ? _scheme1Controller.text.trim()
-          : '';
-      final scheme2 = _govtSchemeBenefit == true
-          ? _scheme2Controller.text.trim()
-          : '';
-      final scheme3 = _govtSchemeBenefit == true
-          ? _scheme3Controller.text.trim()
-          : '';
+      final memberId =
+          widget.userData['memberId'] ??
+          widget.userData['_id'] ??
+          widget.userData['id'] ??
+          widget.userData['member']?['_id'] ??
+          widget.userData['member']?['id'];
 
-      final financialData = {
-        'panNumber': pan,
-        'gstNumber': gst,
-        'udyamNumber': _udyamController.text.trim(),
-        'filedITR': _filedITR,
-        'itrYears': sanitizedItrYears,
-        'turnoverRange': _selectedTurnoverRange,
-        'fy2021': _fy2021Controller.text.trim(),
-        'fy2020': _fy2020Controller.text.trim(),
-        'fy2019': _fy2019Controller.text.trim(),
-        'govtSchemeBenefit': _govtSchemeBenefit,
-        'scheme1': scheme1,
-        'scheme2': scheme2,
-        'scheme3': scheme3,
-      };
+      if (memberId != null) {
+        // Sanitize dependent fields
+        final sanitizedItrYears = _filedITR == true
+            ? _itrYearsController.text.trim()
+            : '';
+        final scheme1 = _govtSchemeBenefit == true
+            ? _scheme1Controller.text.trim()
+            : '';
+        final scheme2 = _govtSchemeBenefit == true
+            ? _scheme2Controller.text.trim()
+            : '';
+        final scheme3 = _govtSchemeBenefit == true
+            ? _scheme3Controller.text.trim()
+            : '';
 
-      final result = await ApiService.saveFinancialInfo(
-        memberId,
-        financialData,
-      );
-      if (result['success'] != true) {
-        throw Exception(
-          result['body']?['message'] ?? 'Failed to save financial info',
+        final financialData = {
+          'panNumber': pan,
+          'gstNumber': gst,
+          'udyamNumber': _udyamController.text.trim(),
+          'filedITR': _filedITR,
+          'itrYears': sanitizedItrYears,
+          'turnoverRange': _selectedTurnoverRange,
+          'fy2021': _fy2021Controller.text.trim(),
+          'fy2020': _fy2020Controller.text.trim(),
+          'fy2019': _fy2019Controller.text.trim(),
+          'govtSchemeBenefit': _govtSchemeBenefit,
+          'scheme1': scheme1,
+          'scheme2': scheme2,
+          'scheme3': scheme3,
+        };
+
+        final result = await ApiService.saveFinancialInfo(
+          memberId,
+          financialData,
         );
+        if (result['success'] != true) {
+          throw Exception(
+            result['body']?['message'] ?? 'Failed to save financial info',
+          );
+        }
+      } else {
+        // No member ID available, just continue without saving to backend
+        print('No member ID found, skipping backend save');
       }
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to save financial info: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
+      // Don't block navigation on save failure
+      if (mounted) {
+        print('Failed to save financial info: $e');
+      }
     }
 
-    // Save form data to userData
+    // Save form data to userData - always proceed with navigation
     final updatedUserData = Map<String, dynamic>.from(widget.userData);
     if (updatedUserData['registrationForm'] == null) {
       updatedUserData['registrationForm'] = {};
