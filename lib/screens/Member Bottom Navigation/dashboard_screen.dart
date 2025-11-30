@@ -4,7 +4,7 @@ import 'browse_members_screen.dart';
 import 'notification_screen.dart';
 import '../Member Addtional Details/personal_details_form.dart';
 import '../Application Status/application_status_screen.dart';
-import 'package:activ/screens/Member Addtional Details/create_business_profile.dart';
+import '../Bussiness account/business_profile_screen.dart';
 import '../../services/member_service.dart';
 import '../../services/api_service.dart';
 
@@ -308,6 +308,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: () async {
+                      print(
+                        '🟢 COMPLETE PROFILE BUTTON CLICKED - Navigating to PersonalDetailsForm',
+                      );
                       final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -418,11 +421,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: () {
+                      print(
+                        '🔵 CREATE ACCOUNT BUTTON CLICKED - Navigating to BusinessProfileScreen',
+                      );
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) =>
-                              CreateBusinessProfile(userData: userData),
+                              BusinessProfileScreen(userData: userData),
                         ),
                       );
                     },
@@ -509,7 +515,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => BrowseMembersScreen(),
+                      builder: (context) => const BrowseMembersScreen(),
                     ),
                   );
                 },
@@ -522,7 +528,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => NotificationScreen(),
+                      builder: (context) => const NotificationScreen(),
                     ),
                   );
                 },

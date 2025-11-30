@@ -1,107 +1,39 @@
 import 'package:flutter/material.dart';
-import '../../services/api_service.dart';
 
 class BrowseMembersScreen extends StatefulWidget {
   const BrowseMembersScreen({super.key});
 
   @override
-  BrowseMembersScreenState createState() => BrowseMembersScreenState();
+  State<BrowseMembersScreen> createState() => _BrowseMembersScreenState();
 }
 
-class BrowseMembersScreenState extends State<BrowseMembersScreen> {
-  List<Map<String, dynamic>> members = [];
-  List<Map<String, dynamic>> filteredMembers = [];
-  TextEditingController searchController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchMembers();
-    searchController.addListener(_onSearchChanged);
-  }
-
-  /// Fetch members from API
-  Future<void> _fetchMembers() async {
-    final response = await ApiService.getMembers();
-    if (response['success']) {
-      if (mounted) {
-        setState(() {
-          members = List<Map<String, dynamic>>.from(response['data'] ?? []);
-          filteredMembers = members;
-        });
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Failed to load members')));
-      }
-    }
-  }
-
-  /// Search filter
-  void _onSearchChanged() {
-    final query = searchController.text.toLowerCase();
-    setState(() {
-      filteredMembers = members.where((member) {
-        final name = (member['name'] ?? '').toString().toLowerCase();
-        final location = (member['location'] ?? '').toString().toLowerCase();
-        return name.contains(query) || location.contains(query);
-      }).toList();
-    });
-  }
-
+class _BrowseMembersScreenState extends State<BrowseMembersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Browse Members')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              controller: searchController,
-              decoration: InputDecoration(
-                hintText: 'Search members...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
+      backgroundColor: const Color(0xFFE6F0FF),
+      appBar: AppBar(
+        title: const Text('Browse Members'),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.group_outlined, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Browse members coming soon',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
               ),
             ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: filteredMembers.length,
-              itemBuilder: (context, index) {
-                final member = filteredMembers[index];
-                final name = member['name'] ?? 'No Name';
-                final location = member['location'] ?? 'No Location';
-                return ListTile(
-                  title: Text(name),
-                  subtitle: Text(location),
-                  trailing: ElevatedButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Connect feature coming soon!'),
-                        ),
-                      );
-                    },
-                    child: const Text('Connect'),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    searchController.dispose();
-    super.dispose();
   }
 }

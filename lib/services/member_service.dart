@@ -58,10 +58,10 @@ class MemberService {
       print('📧 User email from session: $email');
       print('🌐 API URL: $baseUrl/members/$encodedEmail/details');
 
-      // Try with longer timeout and retry logic
-      for (int attempt = 1; attempt <= 3; attempt++) {
+      // Try with faster timeout and retry logic
+      for (int attempt = 1; attempt <= 2; attempt++) {
         try {
-          print('🔄 Attempt $attempt of 3...');
+          print('🔄 Attempt $attempt of 2...');
 
           final response = await http
               .get(
@@ -69,10 +69,10 @@ class MemberService {
                 headers: {'Content-Type': 'application/json'},
               )
               .timeout(
-                const Duration(seconds: 30),
+                const Duration(seconds: 5),
                 onTimeout: () {
                   print('⏱️ Request timeout on attempt $attempt');
-                  throw TimeoutException('Request timed out after 30 seconds');
+                  throw TimeoutException('Request timed out after 5 seconds');
                 },
               );
 
@@ -99,18 +99,18 @@ class MemberService {
             }
 
             // Retry on 5xx errors
-            if (attempt < 3) {
-              print('⏳ Waiting 2 seconds before retry...');
-              await Future.delayed(const Duration(seconds: 2));
+            if (attempt < 2) {
+              print('⏳ Waiting 1 second before retry...');
+              await Future.delayed(const Duration(seconds: 1));
               continue;
             }
             return null;
           }
         } on TimeoutException catch (e) {
           print('⏱️ Timeout on attempt $attempt: $e');
-          if (attempt < 3) {
-            print('⏳ Waiting 2 seconds before retry...');
-            await Future.delayed(const Duration(seconds: 2));
+          if (attempt < 2) {
+            print('⏳ Waiting 1 second before retry...');
+            await Future.delayed(const Duration(seconds: 1));
             continue;
           }
           print('❌ All retry attempts failed due to timeout');
@@ -125,8 +125,8 @@ class MemberService {
           };
         } catch (e) {
           print('❌ Network/other error on attempt $attempt: $e');
-          if (attempt < 3) {
-            await Future.delayed(const Duration(seconds: 2));
+          if (attempt < 2) {
+            await Future.delayed(const Duration(seconds: 1));
             continue;
           }
           return {

@@ -83,12 +83,16 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
 
   String? _selectedSocialCategory;
 
-  final List<String> _socialCategories = ['Christian SC', 'ST', 'Christian ST', 'Other'];
+  final List<String> _socialCategories = [
+    'Christian SC',
+    'ST',
+    'Christian ST',
+    'Other',
+  ];
 
   // Auto-save debounce timer
   Timer? _debounceTimer;
   bool _isSaving = false;
-  bool _hasAttemptedSave = false; // Track if we've tried to save at least once
   bool _isFormLocked = false; // Lock form after successful save
 
   @override
@@ -104,13 +108,23 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
     try {
       final memberData = await _loadMemberFromBackend();
       if (memberData != null) {
-        final registrationForm = memberData['registrationForm'] as Map<String, dynamic>?;
-        
+        final registrationForm =
+            memberData['registrationForm'] as Map<String, dynamic>?;
+
         // If key fields are filled, consider form as locked
-        final hasAadhaar = registrationForm?['aadhaarNumber']?.toString().trim().isNotEmpty ?? false;
-        final hasStreet = registrationForm?['streetName']?.toString().trim().isNotEmpty ?? false;
-        final hasEducation = registrationForm?['educationalQualification']?.toString().trim().isNotEmpty ?? false;
-        
+        final hasAadhaar =
+            registrationForm?['aadhaarNumber']?.toString().trim().isNotEmpty ??
+            false;
+        final hasStreet =
+            registrationForm?['streetName']?.toString().trim().isNotEmpty ??
+            false;
+        final hasEducation =
+            registrationForm?['educationalQualification']
+                ?.toString()
+                .trim()
+                .isNotEmpty ??
+            false;
+
         if (hasAadhaar || hasStreet || hasEducation) {
           setState(() {
             _isFormLocked = true;
@@ -161,7 +175,8 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
 
     try {
       // Try to get member ID from multiple sources - check ALL possible locations
-      String? memberId = widget.userData['memberId'] ??
+      String? memberId =
+          widget.userData['memberId'] ??
           widget.userData['member']?['memberId'] ??
           widget.userData['member']?['_id'] ??
           widget.userData['member']?['id'] ??
@@ -170,19 +185,24 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
 
       // If still no member ID, try loading from backend using email
       if (memberId == null) {
-        final email = widget.userData['email'] ?? widget.userData['member']?['email'];
+        final email =
+            widget.userData['email'] ?? widget.userData['member']?['email'];
         if (email != null && email.toString().trim().isNotEmpty) {
-          print('🔍 Auto-save: Fetching member ID from backend using email: $email');
+          print(
+            '🔍 Auto-save: Fetching member ID from backend using email: $email',
+          );
           try {
             final res = await ApiService.getMemberByEmail(email);
             print('📡 Auto-save backend response success: ${res['success']}');
-            
+
             if (res['success'] == true && res['data'] != null) {
               final member = res['data'] as Map<String, dynamic>;
-              print('👤 Member data keys from backend: ${member.keys.toList()}');
+              print(
+                '👤 Member data keys from backend: ${member.keys.toList()}',
+              );
               memberId = member['memberId'] ?? member['id'] ?? member['_id'];
               print('🆔 Extracted member ID: $memberId');
-              
+
               // Cache member ID for future saves
               if (memberId != null && mounted) {
                 widget.userData['memberId'] = memberId;
@@ -203,15 +223,12 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
       if (memberId == null) {
         // Silent fail - no error message to avoid annoying users
         // This happens when user accesses form directly without login/registration
-        _hasAttemptedSave = true; // Mark that we attempted
         print('❌ Auto-save skipped: Member ID not found');
         print('UserData keys: ${widget.userData.keys.toList()}');
         print('UserData email: ${widget.userData['email']}');
         print('Member object: ${widget.userData["member"]}');
         return;
       }
-
-      _hasAttemptedSave = true; // Mark that we attempted to save
 
       // Prepare data
       final updateData = {
@@ -231,7 +248,7 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
 
       // Save to backend
       await ApiService.updateMemberDetails(memberId, updateData);
-      
+
       // Update userData with member ID for future saves
       if (mounted) {
         widget.userData['memberId'] = memberId;
@@ -351,17 +368,17 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
 
     try {
       // Try ALL possible locations for member ID
-      String? memberId = 
+      String? memberId =
           widget.userData['memberId'] ??
           widget.userData['_id'] ??
           widget.userData['id'] ??
           widget.userData['member']?['memberId'] ??
           widget.userData['member']?['_id'] ??
           widget.userData['member']?['id'];
-      
+
       print('🔍 Save Personal Details: Searching for member ID...');
       print('📧 Email in userData: ${widget.userData['email']}');
-      
+
       // If not found, try to get from backend using email
       if (memberId == null) {
         final email = widget.userData['email'];
@@ -370,12 +387,12 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
           try {
             final res = await ApiService.getMemberByEmail(email);
             print('📡 Backend response: $res');
-            
+
             if (res['success'] == true && res['data'] != null) {
               final member = res['data'] as Map<String, dynamic>;
               memberId = member['memberId'] ?? member['id'] ?? member['_id'];
               print('✅ Found member ID from backend: $memberId');
-              
+
               // Cache it for future use
               if (memberId != null && mounted) {
                 widget.userData['memberId'] = memberId;
@@ -399,14 +416,14 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
         if (mounted && Navigator.canPop(context)) {
           Navigator.pop(context);
         }
-        
+
         // Silent fail - don't show error to user
         print('❌ Save Personal Details: Member ID not found');
         print('Available userData keys: ${widget.userData.keys.toList()}');
         print('Member object: ${widget.userData["member"]}');
         return;
       }
-      
+
       print('💾 Saving Personal Details with member ID: $memberId');
 
       // Prepare update payload with all personal details
@@ -460,7 +477,9 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Personal details saved successfully. Form is now locked.'),
+              content: Text(
+                'Personal details saved successfully. Form is now locked.',
+              ),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
             ),
@@ -507,12 +526,14 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        // Save data before allowing back navigation
-        _debounceTimer?.cancel(); // Cancel any pending debounce
-        await _autoSaveData(); // Force immediate save
-        return true; // Allow navigation
+    return PopScope(
+      canPop: true,
+      onPopInvoked: (bool didPop) async {
+        if (didPop) {
+          // Save data after successful back navigation
+          _debounceTimer?.cancel(); // Cancel any pending debounce
+          await _autoSaveData(); // Force immediate save
+        }
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFE6F0FF),
@@ -534,270 +555,281 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                  ),
                 ),
-              ),
 
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    // Title and Progress
-                    const Text(
-                      'Additional Details Form',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      // Title and Progress
+                      const Text(
+                        'Additional Details Form',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Member Registration',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Member Registration',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 20),
 
-                    // Progress Indicator
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(4, (index) {
-                        bool isActive = index == 0;
-                        return Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: isActive
-                                    ? Colors.blue
-                                    : Colors.grey[300],
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '${index + 1}',
-                                  style: TextStyle(
-                                    color: isActive
-                                        ? Colors.white
-                                        : Colors.grey[600],
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            if (index < 3)
+                      // Progress Indicator
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(4, (index) {
+                          bool isActive = index == 0;
+                          return Row(
+                            children: [
                               Container(
                                 width: 40,
-                                height: 2,
-                                color: Colors.grey[300],
-                              ),
-                          ],
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Step 1 of 4',
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
-                        ),
-                        if (_isSaving) ...[
-                          const SizedBox(width: 12),
-                          const SizedBox(
-                            width: 12,
-                            height: 12,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.blue,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Text(
-                            'Saving...',
-                            style: TextStyle(fontSize: 12, color: Colors.blue),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 30),
-
-                    // Personal Details Section
-                    _buildSectionCard('Personal details', [
-                      FutureBuilder<Map<String, dynamic>?>(
-                        future: _loadMemberFromBackend(),
-                        builder: (context, snapshot) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildTextField(
-                                'Name',
-                                _nameController,
-                                'Enter your full name',
-                              ),
-                              _buildTextField(
-                                'Block',
-                                _blockController,
-                                'Enter block',
-                              ),
-                              _buildTextField(
-                                'State',
-                                _stateController,
-                                'Enter state',
-                              ),
-                              _buildTextField(
-                                'District',
-                                _districtController,
-                                'Enter district',
-                              ),
-                              _buildTextField(
-                                'City',
-                                _cityController,
-                                'Enter city',
-                              ),
-                              _buildTextField(
-                                'Phone Number',
-                                _phoneController,
-                                'Enter phone number',
-                              ),
-                              _buildTextField(
-                                'Email ID',
-                                _emailController,
-                                'Enter email',
-                              ),
-                              _buildPasswordField(
-                                'Password',
-                                _passwordController,
-                                'Enter new password (optional)',
-                                _obscurePassword,
-                                () {
-                                  setState(() {
-                                    _obscurePassword = !_obscurePassword;
-                                  });
-                                },
-                              ),
-                              _buildPasswordField(
-                                'Confirm Password',
-                                _confirmPasswordController,
-                                'Confirm new password',
-                                _obscureConfirmPassword,
-                                () {
-                                  setState(() {
-                                    _obscureConfirmPassword =
-                                        !_obscureConfirmPassword;
-                                  });
-                                },
-                              ),
-                              const SizedBox(height: 8),
-                              if (!_isFormLocked) // Only show Save button if form is not locked
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 48,
-                                  child: ElevatedButton(
-                                    onPressed: _updatePersonalDetails,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color.fromARGB(
-                                        255,
-                                        6,
-                                        139,
-                                        227,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      'Save Personal Details',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: isActive
+                                      ? Colors.blue
+                                      : Colors.grey[300],
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '${index + 1}',
+                                    style: TextStyle(
+                                      color: isActive
+                                          ? Colors.white
+                                          : Colors.grey[600],
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ),
-                              if (_isFormLocked) // Show locked message
+                              ),
+                              if (index < 3)
                                 Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green[50],
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: Colors.green[200]!),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.lock, color: Colors.green[700], size: 20),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          'Personal details saved and locked',
-                                          style: TextStyle(
-                                            color: Colors.green[700],
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                  width: 40,
+                                  height: 2,
+                                  color: Colors.grey[300],
                                 ),
                             ],
                           );
-                        },
+                        }),
                       ),
-                    ]),
-                    const SizedBox(height: 20),
-
-                    // Demographic Details Section (Always Editable)
-                    _buildSectionCard('Demographic Details', [
-                      _buildEditableTextField(
-                        'Religion',
-                        _religionController,
-                        'Enter religion',
-                      ),
-                      _buildEditableDropdownField(
-                        'Social Category',
-                        _selectedSocialCategory,
-                        _socialCategories,
-                        'Select category',
-                      ),
-                    ]),
-                    const SizedBox(height: 30),
-
-                    // Next Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _proceedToNext,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromRGBO(
-                            33,
-                            150,
-                            243,
-                            1,
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'Step 1 of 4',
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                          if (_isSaving) ...[
+                            const SizedBox(width: 12),
+                            const SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.blue,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Saving...',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 30),
+
+                      // Personal Details Section
+                      _buildSectionCard('Personal details', [
+                        FutureBuilder<Map<String, dynamic>?>(
+                          future: _loadMemberFromBackend(),
+                          builder: (context, snapshot) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildTextField(
+                                  'Name',
+                                  _nameController,
+                                  'Enter your full name',
+                                ),
+                                _buildTextField(
+                                  'Block',
+                                  _blockController,
+                                  'Enter block',
+                                ),
+                                _buildTextField(
+                                  'State',
+                                  _stateController,
+                                  'Enter state',
+                                ),
+                                _buildTextField(
+                                  'District',
+                                  _districtController,
+                                  'Enter district',
+                                ),
+                                _buildTextField(
+                                  'City',
+                                  _cityController,
+                                  'Enter city',
+                                ),
+                                _buildTextField(
+                                  'Phone Number',
+                                  _phoneController,
+                                  'Enter phone number',
+                                ),
+                                _buildTextField(
+                                  'Email ID',
+                                  _emailController,
+                                  'Enter email',
+                                ),
+                                _buildPasswordField(
+                                  'Password',
+                                  _passwordController,
+                                  'Enter new password (optional)',
+                                  _obscurePassword,
+                                  () {
+                                    setState(() {
+                                      _obscurePassword = !_obscurePassword;
+                                    });
+                                  },
+                                ),
+                                _buildPasswordField(
+                                  'Confirm Password',
+                                  _confirmPasswordController,
+                                  'Confirm new password',
+                                  _obscureConfirmPassword,
+                                  () {
+                                    setState(() {
+                                      _obscureConfirmPassword =
+                                          !_obscureConfirmPassword;
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: 8),
+                                if (!_isFormLocked) // Only show Save button if form is not locked
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 48,
+                                    child: ElevatedButton(
+                                      onPressed: _updatePersonalDetails,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color.fromARGB(
+                                          255,
+                                          6,
+                                          139,
+                                          227,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Save Personal Details',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                if (_isFormLocked) // Show locked message
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green[50],
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: Colors.green[200]!,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.lock,
+                                          color: Colors.green[700],
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'Personal details saved and locked',
+                                            style: TextStyle(
+                                              color: Colors.green[700],
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
+                      ]),
+                      const SizedBox(height: 20),
+
+                      // Demographic Details Section (Always Editable)
+                      _buildSectionCard('Demographic Details', [
+                        _buildEditableTextField(
+                          'Religion',
+                          _religionController,
+                          'Enter religion',
+                        ),
+                        _buildEditableDropdownField(
+                          'Social Category',
+                          _selectedSocialCategory,
+                          _socialCategories,
+                          'Select category',
+                        ),
+                      ]),
+                      const SizedBox(height: 30),
+
+                      // Next Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _proceedToNext,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color.fromRGBO(
+                              33,
+                              150,
+                              243,
+                              1,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Next >',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                        child: const Text(
-                          'Next >',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -1028,7 +1060,8 @@ class _PersonalDetailsFormState extends State<PersonalDetailsForm> {
                   child: Text(option),
                 );
               }).toList(),
-              onChanged: (String? newValue) { // Always enabled
+              onChanged: (String? newValue) {
+                // Always enabled
                 setState(() {
                   _selectedSocialCategory = newValue;
                 });
