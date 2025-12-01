@@ -82,21 +82,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.all(16.0),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Settings',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                onPressed: () => Navigator.pop(context),
+              ),
+              const Text(
+                'Settings',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 4),
-          Text(
-            'Manage your account preferences',
-            style: TextStyle(fontSize: 14, color: Colors.black54),
+          const SizedBox(height: 4),
+          const Padding(
+            padding: EdgeInsets.only(left: 48.0),
+            child: Text(
+              'Manage your account preferences',
+              style: TextStyle(fontSize: 14, color: Colors.black54),
+            ),
           ),
         ],
       ),

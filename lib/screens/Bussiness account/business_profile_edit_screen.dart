@@ -26,13 +26,6 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
     'Manufacturing',
     'Trader',
     'Service Provider',
-    'Retail',
-    'Technology',
-    'Healthcare',
-    'Education',
-    'Finance',
-    'Food & Beverage',
-    'Real Estate',
     'Others',
   ];
 
@@ -178,342 +171,314 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                           ),
                         ],
                       ),
-                      child: Column(
-                        children: [
-                          // Upload Business Logo
-                          Center(
-                            child: GestureDetector(
-                              onTap: _pickBusinessLogo,
-                              child: Container(
-                                width: 120,
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF5F7FA),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Colors.grey.shade300,
-                                    width: 2,
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Upload Business Logo
+                            Center(
+                              child: GestureDetector(
+                                onTap: _pickBusinessLogo,
+                                child: Container(
+                                  width: 120,
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF5F7FA),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                      width: 2,
+                                    ),
                                   ),
-                                ),
-                                child: _businessLogo != null
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(14),
-                                        child: Image.file(
-                                          _businessLogo!,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      )
-                                    : Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.add_photo_alternate_outlined,
-                                            size: 40,
-                                            color: Colors.grey.shade400,
+                                  child: _businessLogo != null
+                                      ? ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
                                           ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            'Upload Logo',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey.shade600,
+                                          child: Image.file(
+                                            _businessLogo!,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        )
+                                      : Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons
+                                                  .add_photo_alternate_outlined,
+                                              size: 40,
+                                              color: Colors.grey.shade400,
                                             ),
-                                          ),
-                                        ],
-                                      ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'Upload Logo',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 24),
+                            const SizedBox(height: 24),
 
-                          // WHITE CARD with ALL FORM FIELDS
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
+                            // Business Name
+                            const Text(
+                              'Business Name',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                            child: Form(
-                              key: _formKey,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Business Name
-                                  const Text(
-                                    'Business Name',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _businessNameController,
+                              decoration: InputDecoration(
+                                hintText: 'Enter business name',
+                                filled: true,
+                                fillColor: const Color(0xFFF5F7FA),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
                                   ),
-                                  const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: _businessNameController,
-                                    decoration: InputDecoration(
-                                      hintText: 'Enter business name',
-                                      filled: true,
-                                      fillColor: const Color(0xFFF5F7FA),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
-                                          color: Colors.grey.shade300,
-                                        ),
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 14,
-                                          ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
 
-                                  // Description
-                                  const Text(
-                                    'Description',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            // Description
+                            const Text(
+                              'Description',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _descriptionController,
+                              maxLines: 4,
+                              decoration: InputDecoration(
+                                hintText: 'Describe your business...',
+                                filled: true,
+                                fillColor: const Color(0xFFF5F7FA),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
                                   ),
-                                  const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: _descriptionController,
-                                    maxLines: 4,
-                                    decoration: InputDecoration(
-                                      hintText: 'Describe your business...',
-                                      filled: true,
-                                      fillColor: const Color(0xFFF5F7FA),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
-                                          color: Colors.grey.shade300,
-                                        ),
-                                      ),
-                                      contentPadding: const EdgeInsets.all(16),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
+                                ),
+                                contentPadding: const EdgeInsets.all(16),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
 
-                                  // Business Type
-                                  const Text(
-                                    'Business Type',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            // Business Type
+                            const Text(
+                              'Business Type',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String>(
+                              value: _selectedBusinessType,
+                              decoration: InputDecoration(
+                                hintText: 'Select business type',
+                                filled: true,
+                                fillColor: const Color(0xFFF5F7FA),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
                                   ),
-                                  const SizedBox(height: 8),
-                                  DropdownButtonFormField<String>(
-                                    value: _selectedBusinessType,
-                                    decoration: InputDecoration(
-                                      hintText: 'Select business type',
-                                      filled: true,
-                                      fillColor: const Color(0xFFF5F7FA),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
-                                          color: Colors.grey.shade300,
-                                        ),
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 14,
-                                          ),
-                                    ),
-                                    items: _businessTypes.map((String type) {
-                                      return DropdownMenuItem<String>(
-                                        value: type,
-                                        child: Text(type),
-                                      );
-                                    }).toList(),
-                                    onChanged: (String? newValue) {
-                                      setState(() {
-                                        _selectedBusinessType = newValue;
-                                      });
-                                    },
-                                  ),
-                                  const SizedBox(height: 20),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                              ),
+                              items: _businessTypes.map((String type) {
+                                return DropdownMenuItem<String>(
+                                  value: type,
+                                  child: Text(type),
+                                );
+                              }).toList(),
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  _selectedBusinessType = newValue;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 20),
 
-                                  // Mobile Number
-                                  const Text(
-                                    'Mobile Number',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            // Mobile Number
+                            const Text(
+                              'Mobile Number',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _mobileController,
+                              keyboardType: TextInputType.phone,
+                              decoration: InputDecoration(
+                                hintText: 'Enter mobile number',
+                                filled: true,
+                                fillColor: const Color(0xFFF5F7FA),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
                                   ),
-                                  const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: _mobileController,
-                                    keyboardType: TextInputType.phone,
-                                    decoration: InputDecoration(
-                                      hintText: 'Enter mobile number',
-                                      filled: true,
-                                      fillColor: const Color(0xFFF5F7FA),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
-                                          color: Colors.grey.shade300,
-                                        ),
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 14,
-                                          ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
 
-                                  // Area
-                                  const Text(
-                                    'Area',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            // Area
+                            const Text(
+                              'Area',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _areaController,
+                              decoration: InputDecoration(
+                                hintText: 'Enter area',
+                                filled: true,
+                                fillColor: const Color(0xFFF5F7FA),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
                                   ),
-                                  const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: _areaController,
-                                    decoration: InputDecoration(
-                                      hintText: 'Enter area',
-                                      filled: true,
-                                      fillColor: const Color(0xFFF5F7FA),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
-                                          color: Colors.grey.shade300,
-                                        ),
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 14,
-                                          ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
 
-                                  // Location
-                                  const Text(
-                                    'Location',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            // Location
+                            const Text(
+                              'Location',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _locationController,
+                              decoration: InputDecoration(
+                                hintText: 'Enter location',
+                                filled: true,
+                                fillColor: const Color(0xFFF5F7FA),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
                                   ),
-                                  const SizedBox(height: 8),
-                                  TextFormField(
-                                    controller: _locationController,
-                                    decoration: InputDecoration(
-                                      hintText: 'Enter location',
-                                      filled: true,
-                                      fillColor: const Color(0xFFF5F7FA),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
-                                          color: Colors.grey.shade300,
-                                        ),
-                                      ),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                            vertical: 14,
-                                          ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 32),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 32),
 
-                                  // Save and Cancel Buttons
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: OutlinedButton(
-                                          onPressed: _isSaving
-                                              ? null
-                                              : () => Navigator.pop(context),
-                                          style: OutlinedButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 16,
+                            // Save and Cancel Buttons
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: _isSaving
+                                        ? null
+                                        : () => Navigator.pop(context),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
+                                      ),
+                                      side: BorderSide(
+                                        color: Colors.grey.shade400,
+                                        width: 1.5,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Cancel',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: _isSaving ? null : _saveProfile,
+                                    style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 16,
+                                      ),
+                                      backgroundColor: const Color(0xFF2196F3),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: _isSaving
+                                        ? const SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                    Colors.white,
+                                                  ),
                                             ),
-                                            side: BorderSide(
-                                              color: Colors.grey.shade400,
-                                              width: 1.5,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                          ),
-                                          child: Text(
-                                            'Cancel',
+                                          )
+                                        : const Text(
+                                            'Save Profile',
                                             style: TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.w600,
-                                              color: Colors.grey.shade700,
+                                              color: Colors.white,
                                             ),
                                           ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: ElevatedButton(
-                                          onPressed: _isSaving
-                                              ? null
-                                              : _saveProfile,
-                                          style: ElevatedButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 16,
-                                            ),
-                                            backgroundColor: const Color(
-                                              0xFF2196F3,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                          ),
-                                          child: _isSaving
-                                              ? const SizedBox(
-                                                  height: 20,
-                                                  width: 20,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    valueColor:
-                                                        AlwaysStoppedAnimation<
-                                                          Color
-                                                        >(Colors.white),
-                                                  ),
-                                                )
-                                              : const Text(
-                                                  'Save Profile',
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                        ),
-                                      ),
-                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),

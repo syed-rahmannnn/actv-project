@@ -27,13 +27,6 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
     'Manufacturing',
     'Trader',
     'Service Provider',
-    'Retail',
-    'Technology',
-    'Healthcare',
-    'Education',
-    'Finance',
-    'Food & Beverage',
-    'Real Estate',
     'Others',
   ];
   File? _businessLogo;

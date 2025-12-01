@@ -5,6 +5,7 @@ import 'businessaccount _dashboard_screen.dart';
 import 'discover_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_screen.dart';
+import 'add_product_new_screen.dart';
 
 class ProductsServicesScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -52,7 +53,8 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddProductScreen(
+        builder: (context) => AddProductNewScreen(
+          userData: widget.userData,
           onProductAdded: (product) {
             setState(() {
               products.add(product);

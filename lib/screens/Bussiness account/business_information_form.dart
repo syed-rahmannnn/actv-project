@@ -26,15 +26,10 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
   final ImagePicker _picker = ImagePicker();
 
   final List<String> _businessTypes = [
-    'Retail',
-    'Restaurant',
-    'Consulting',
-    'Technology',
-    'Healthcare',
-    'Education',
     'Manufacturing',
-    'Real Estate',
-    'Other',
+    'Trader',
+    'Service Provider',
+    'Others',
   ];
 
   Future<void> _pickImage() async {

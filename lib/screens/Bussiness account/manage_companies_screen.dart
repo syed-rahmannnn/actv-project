@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'add_product_new_screen.dart';
+import 'business_profile_edit_screen.dart';
 
 class ManageCompaniesScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -117,7 +117,13 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
           ),
           ElevatedButton.icon(
             onPressed: () {
-              // TODO: Add new company
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      BusinessProfileEditScreen(userData: widget.userData),
+                ),
+              );
             },
             icon: const Icon(Icons.add, size: 18, color: Colors.white),
             label: const Text(
@@ -510,7 +516,7 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (context) =>
-                        AddProductNewScreen(userData: widget.userData),
+                        BusinessProfileEditScreen(userData: widget.userData),
                   ),
                 );
               },

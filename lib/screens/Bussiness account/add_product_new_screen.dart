@@ -5,8 +5,13 @@ import 'products_services_screen.dart';
 
 class AddProductNewScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
+  final Function(Map<String, dynamic>)? onProductAdded;
 
-  const AddProductNewScreen({super.key, required this.userData});
+  const AddProductNewScreen({
+    super.key,
+    required this.userData,
+    this.onProductAdded,
+  });
 
   @override
   State<AddProductNewScreen> createState() => _AddProductNewScreenState();
@@ -73,6 +78,23 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
       try {
         await Future.delayed(const Duration(seconds: 1));
 
+        // Create product data
+        final productData = {
+          'name': _productNameController.text,
+          'description': _descriptionController.text,
+          'category': _selectedCategory ?? 'Other',
+          'price': _priceController.text,
+          'stock': _stockController.text,
+          'sku': _skuController.text,
+          'image': _productImage,
+          'featured': false,
+        };
+
+        // Call the callback if provided
+        if (widget.onProductAdded != null) {
+          widget.onProductAdded!(productData);
+        }
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -81,13 +103,7 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
             ),
           );
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  ProductsServicesScreen(userData: widget.userData),
-            ),
-          );
+          Navigator.pop(context);
         }
       } catch (e) {
         if (mounted) {
