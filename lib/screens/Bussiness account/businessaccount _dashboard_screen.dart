@@ -5,6 +5,8 @@ import 'discover_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_screen.dart';
 import 'business_profile_edit_screen.dart';
+import '../../models/business_profile_model.dart';
+import '../../services/business_profile_service.dart';
 
 class BusinessDashboardScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -22,6 +24,74 @@ class BusinessDashboardScreen extends StatefulWidget {
 }
 
 class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
+  BusinessProfile? _businessProfile;
+  BusinessMetrics? _businessMetrics;
+  List<BusinessAssociation> _associations = [];
+  List<CompanyInfo> _companies = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBusinessData();
+  }
+
+  Future<void> _loadBusinessData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final memberId =
+          widget.userData['_id']?.toString() ??
+          widget.userData['id']?.toString() ??
+          '';
+
+      if (memberId.isEmpty) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Fetch business profile
+      final profile = await BusinessProfileService.getBusinessProfile(memberId);
+
+      if (profile == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      print('📱 Business Profile Mobile: ${profile.mobile}');
+      print('🏢 Business Profile Industry: ${profile.industry}');
+      print(
+        '📋 Business Profile Data: name=${profile.name}, status=${profile.status}',
+      );
+      print('⏰ Profile loaded at: ${DateTime.now()}');
+
+      // Fetch metrics, associations, and companies in parallel
+      final results = await Future.wait([
+        BusinessProfileService.getBusinessMetrics(profile.businessId),
+        BusinessProfileService.getBusinessAssociations(profile.businessId),
+        BusinessProfileService.getMemberCompanies(memberId),
+      ]);
+
+      setState(() {
+        _businessProfile = profile;
+        _businessMetrics = results[0] as BusinessMetrics;
+        _associations = results[1] as List<BusinessAssociation>;
+        _companies = results[2] as List<CompanyInfo>;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -41,41 +111,130 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
 
               // Main Content
               Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Manage My Companies Button
-                        _buildManageCompaniesButton(),
-                        const SizedBox(height: 16),
+                child: _isLoading
+                    ? _buildLoadingState()
+                    : _businessProfile == null
+                    ? _buildEmptyState()
+                    : SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Manage My Companies Button
+                              _buildManageCompaniesButton(),
+                              const SizedBox(height: 16),
 
-                        // My Business Card
-                        _buildMyBusinessCard(),
-                        const SizedBox(height: 16),
+                              // My Business Card
+                              _buildMyBusinessCard(),
+                              const SizedBox(height: 16),
 
-                        // Profile Stats Row
-                        _buildStatsRow(),
-                        const SizedBox(height: 16),
+                              // Profile Stats Row
+                              _buildStatsRow(),
+                              const SizedBox(height: 16),
 
-                        // Company Associations Section
-                        _buildCompanyAssociationsSection(),
-                        const SizedBox(height: 16),
+                              // Company Associations Section
+                              if (_associations.isNotEmpty)
+                                _buildCompanyAssociationsSection(),
+                              if (_associations.isNotEmpty)
+                                const SizedBox(height: 16),
 
-                        // Recent Activity Section
-                        _buildRecentActivitySection(),
-                        const SizedBox(height: 32),
-                      ],
-                    ),
-                  ),
-                ),
+                              // Recent Activity Section
+                              _buildRecentActivitySection(),
+                              const SizedBox(height: 32),
+                            ],
+                          ),
+                        ),
+                      ),
               ),
 
               // Bottom Navigation Bar
               _buildBottomNavigation(),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 16),
+          Text(
+            'Loading business profile...',
+            style: TextStyle(fontSize: 16, color: Colors.black54),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.business_outlined,
+                size: 64,
+                color: Colors.blue.shade700,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'No business profile found',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Complete onboarding to create your business profile',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.black54),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BusinessProfileEditScreen(
+                      userData: widget.userData,
+                      existingProfile: _businessProfile,
+                    ),
+                  ),
+                ).then((_) => _loadBusinessData());
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Create Business Profile'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2196F3),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -110,6 +269,11 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
               ],
             ),
           ),
+          if (_businessProfile != null)
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.black87),
+              onPressed: _loadBusinessData,
+            ),
         ],
       ),
     );
@@ -156,9 +320,9 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
             color: Colors.grey.shade100,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Text(
-            '2',
-            style: TextStyle(
+          child: Text(
+            _companies.length.toString(),
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -172,13 +336,15 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
               builder: (context) =>
                   ManageCompaniesScreen(userData: widget.userData),
             ),
-          );
+          ).then((_) => _loadBusinessData()); // Refresh data when returning
         },
       ),
     );
   }
 
   Widget _buildMyBusinessCard() {
+    if (_businessProfile == null) return const SizedBox.shrink();
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -213,60 +379,58 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
-                      'My Business',
-                      style: TextStyle(
+                      _businessProfile!.name,
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
+                    if (_businessProfile!.industry != null &&
+                        _businessProfile!.industry!.isNotEmpty)
+                      Text(
+                        _businessProfile!.industry!,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    // DEBUG: Always show mobile status
                     Text(
-                      'Technology • San Francisco',
-                      style: TextStyle(fontSize: 13, color: Colors.black54),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.schedule,
-                      size: 14,
-                      color: Colors.orange.shade700,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Under Review',
+                      _businessProfile!.mobile?.isNotEmpty == true
+                          ? _businessProfile!.mobile!
+                          : 'Mobile: Not set',
                       style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.orange.shade700,
+                        fontSize: 13,
+                        color: _businessProfile!.mobile?.isNotEmpty == true
+                            ? Colors.black87
+                            : Colors.red.shade400,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
               ),
+              _buildStatusPill(_businessProfile!.status),
             ],
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Your innovative tech solutions for modern businesses',
-            style: TextStyle(fontSize: 13, color: Colors.black54, height: 1.4),
-          ),
+          if (_businessProfile!.description != null &&
+              _businessProfile!.description!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              _businessProfile!.description!,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black54,
+                height: 1.4,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -276,10 +440,12 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        BusinessProfileEditScreen(userData: widget.userData),
+                    builder: (context) => BusinessProfileEditScreen(
+                      userData: widget.userData,
+                      existingProfile: _businessProfile,
+                    ),
                   ),
-                );
+                ).then((_) => _loadBusinessData());
               },
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: Colors.blue.shade300),
@@ -302,16 +468,73 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
     );
   }
 
+  Widget _buildStatusPill(String status) {
+    Color bgColor;
+    Color borderColor;
+    Color textColor;
+    IconData icon;
+    String displayText = _businessProfile!.statusDisplay;
+
+    switch (status.toUpperCase()) {
+      case 'APPROVED':
+      case 'ACTIVE':
+        bgColor = Colors.green.shade50;
+        borderColor = Colors.green.shade200;
+        textColor = Colors.green.shade700;
+        icon = Icons.check_circle;
+        break;
+      case 'REJECTED':
+        bgColor = Colors.red.shade50;
+        borderColor = Colors.red.shade200;
+        textColor = Colors.red.shade700;
+        icon = Icons.cancel;
+        break;
+      default:
+        bgColor = Colors.orange.shade50;
+        borderColor = Colors.orange.shade200;
+        textColor = Colors.orange.shade700;
+        icon = Icons.schedule;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: textColor),
+          const SizedBox(width: 4),
+          Text(
+            displayText,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatsRow() {
+    if (_businessMetrics == null) return const SizedBox.shrink();
+
     return Row(
       children: [
         Expanded(
           child: _buildStatCard(
             icon: Icons.visibility_outlined,
             title: 'Profile Views',
-            value: '1,234',
-            change: '+2% this week',
-            changeColor: Colors.green,
+            value: _businessMetrics!.profileViews.toString(),
+            change: _businessMetrics!.profileViewsChangeDisplay,
+            changeColor: _businessMetrics!.profileViewsChangePercent >= 0
+                ? Colors.green
+                : Colors.red,
           ),
         ),
         const SizedBox(width: 12),
@@ -319,8 +542,10 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
           child: _buildStatCard(
             icon: Icons.inventory_2_outlined,
             title: 'Products Listed',
-            value: '8',
-            change: '3 featured',
+            value: _businessMetrics!.productsCount.toString(),
+            change: _businessMetrics!.featuredProductsDisplay.isNotEmpty
+                ? _businessMetrics!.featuredProductsDisplay
+                : 'No featured',
             changeColor: Colors.blue,
           ),
         ),
@@ -425,17 +650,20 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          _buildAssociationItem(
-            name: 'Tech Solutions Inc.',
-            role: 'Partner',
-            location: 'New York, USA',
-          ),
-          const Divider(height: 24),
-          _buildAssociationItem(
-            name: 'Innovation Labs',
-            role: 'Client',
-            location: 'London, UK',
-          ),
+          ..._associations.asMap().entries.map((entry) {
+            final index = entry.key;
+            final association = entry.value;
+            return Column(
+              children: [
+                if (index > 0) const Divider(height: 24),
+                _buildAssociationItem(
+                  name: association.name,
+                  role: association.role,
+                  location: association.location,
+                ),
+              ],
+            );
+          }).toList(),
         ],
       ),
     );

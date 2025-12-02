@@ -58,7 +58,37 @@ const memberBusinessInfoSchema = new mongoose.Schema({
   registeredWithGovtOrganization: [{
     type: String,
     enum: ['MSME', 'KVIC', 'NABARD', 'None', 'Others']
-  }]
+  }],
+  // Additional fields for business profile dashboard
+  mobile: {
+    type: String,
+    trim: true
+  },
+  area: {
+    type: String,
+    trim: true
+  },
+  location: {
+    type: String,
+    trim: true
+  },
+  businessDescription: {
+    type: String,
+    trim: true
+  },
+  businessWebsite: {
+    type: String,
+    trim: true
+  },
+  logoUrl: {
+    type: String,
+    trim: true
+  },
+  status: {
+    type: String,
+    enum: ['UNDER_REVIEW', 'APPROVED', 'ACTIVE', 'REJECTED', 'PENDING'],
+    default: 'UNDER_REVIEW'
+  }
 }, {
   timestamps: true
 });

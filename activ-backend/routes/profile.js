@@ -57,6 +57,9 @@ router.get('/business-info/:memberId', async (req, res) => {
       });
     }
 
+    console.log('📱 Returning business info - mobile:', businessInfo.mobile);
+    console.log('📋 Business info object:', JSON.stringify(businessInfo, null, 2));
+
     res.status(200).json({
       success: true,
       data: { businessInfo }
@@ -75,7 +78,15 @@ router.get('/business-info/:memberId', async (req, res) => {
 // Save business information
 router.post('/business-info', async (req, res) => {
   try {
+    console.log('\n==========================================');
+    console.log('📥 POST /business-info REQUEST RECEIVED');
+    console.log('==========================================');
+    
     const { memberId, ...businessData } = req.body;
+
+    console.log('📦 Full request body:', JSON.stringify(req.body, null, 2));
+    console.log('📱 Mobile from request:', businessData.mobile);
+    console.log('🏢 Organization name from request:', businessData.organizationName);
 
     if (!memberId) {
       return res.status(400).json({
@@ -119,25 +130,59 @@ router.post('/business-info', async (req, res) => {
       'exportStatus',
       'hasExportLicense',
       'exportLicense',
-      'businessDescription'
+      'businessDescription',
+      // Dashboard fields
+      'mobile',
+      'area',
+      'location',
+      'logoUrl',
+      'status'
     ];
     const payload = {};
     allowed.forEach(k => { if (businessData[k] !== undefined) payload[k] = businessData[k]; });
 
+    console.log('📱 Business Info Payload:', JSON.stringify(payload, null, 2));
+    console.log('📱 Mobile number received:', payload.mobile);
+
+    // Build update object - common fields should NOT overwrite business data
+    const updateData = {
+      ...common,      // Add common fields first
+      ...payload,     // Then business data (this can override common if needed)
+      memberId: memberId
+    };
+
+    // Ensure mobile is explicitly set if provided
+    if (payload.mobile !== undefined) {
+      updateData.mobile = payload.mobile;
+      console.log('🔥 FORCING MOBILE UPDATE:', payload.mobile);
+    }
+    
+    // Ensure organizationName is preserved if provided
+    if (payload.organizationName !== undefined) {
+      updateData.organizationName = payload.organizationName;
+      console.log('🏢 FORCING ORGANIZATION NAME UPDATE:', payload.organizationName);
+    }
+    
+    console.log('🔍 FINAL UPDATE DATA OBJECT:');
+    console.log(JSON.stringify(updateData, null, 2));
+
     // Update or create business info
     const businessInfo = await MemberBusinessInfo.findOneAndUpdate(
       { memberId: memberId },
-      {
-        ...payload,
-        ...common,
-        memberId: memberId
-      },
+      { $set: updateData },
       { 
         upsert: true, 
         new: true, 
         runValidators: true 
       }
     );
+
+    console.log('✅ Business info saved to DB');
+    console.log('📱 Saved mobile number:', businessInfo.mobile);
+    console.log('🏢 Saved organization name:', businessInfo.organizationName);
+    console.log('📊 FULL DOCUMENT AFTER SAVE:');
+    console.log(JSON.stringify(businessInfo, null, 2));
+    console.log('==========================================\n');
 
     res.status(200).json({
       success: true,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'business_profile_edit_screen.dart';
+import 'package:activ/models/company_model.dart';
+import 'package:activ/services/company_service.dart';
+import 'create_company_screen.dart';
 
 class ManageCompaniesScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -11,6 +13,39 @@ class ManageCompaniesScreen extends StatefulWidget {
 }
 
 class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
+  List<Company> _companies = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCompanies();
+  }
+
+  Future<void> _loadCompanies() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final memberId =
+          widget.userData['_id']?.toString() ??
+          widget.userData['id']?.toString() ??
+          '';
+
+      if (memberId.isNotEmpty) {
+        final companies = await CompanyService.getCompanies(memberId);
+        setState(() {
+          _companies = companies;
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      print('Error loading companies: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,51 +65,34 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
 
               // Main Content
               Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Manage Multiple Companies Info Card
-                        _buildInfoCard(),
-                        const SizedBox(height: 16),
-
-                        // My Business Company Card
-                        _buildCompanyCard(
-                          companyName: 'My Business',
-                          category: 'Technology',
-                          location: 'San Francisco',
-                          status: 'Active',
-                          statusColor: Colors.green,
-                          isOwner: true,
-                          products: 8,
-                          views: '1.2K',
-                          connections: 24,
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _companies.isEmpty
+                    ? _buildEmptyState()
+                    : RefreshIndicator(
+                        onRefresh: _loadCompanies,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(16.0),
+                          itemCount: _companies.length + 1,
+                          itemBuilder: (context, index) {
+                            if (index == 0) {
+                              return Column(
+                                children: [
+                                  _buildInfoCard(),
+                                  const SizedBox(height: 16),
+                                ],
+                              );
+                            }
+                            final company = _companies[index - 1];
+                            return Column(
+                              children: [
+                                _buildCompanyCard(company),
+                                const SizedBox(height: 16),
+                              ],
+                            );
+                          },
                         ),
-                        const SizedBox(height: 16),
-
-                        // Tech Innovations Company Card
-                        _buildCompanyCard(
-                          companyName: 'Tech Innovations',
-                          category: 'Software',
-                          location: 'New York',
-                          status: 'Under Review',
-                          statusColor: Colors.orange,
-                          isOwner: true,
-                          products: 3,
-                          views: '1.2K',
-                          connections: 24,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Add Another Company Button
-                        _buildAddCompanyButton(),
-                        const SizedBox(height: 32),
-                      ],
-                    ),
-                  ),
-                ),
+                      ),
               ),
 
               // Bottom Navigation Bar
@@ -99,8 +117,8 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
+              children: [
+                const Text(
                   'My Companies',
                   style: TextStyle(
                     fontSize: 20,
@@ -109,21 +127,25 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
                   ),
                 ),
                 Text(
-                  '2 companies',
-                  style: TextStyle(fontSize: 13, color: Colors.black54),
+                  '${_companies.length} ${_companies.length == 1 ? "company" : "companies"}',
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
                 ),
               ],
             ),
           ),
           ElevatedButton.icon(
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) =>
-                      BusinessProfileEditScreen(userData: widget.userData),
+                      CreateCompanyScreen(userData: widget.userData),
                 ),
               );
+              // Reload companies if a new one was created
+              if (result == true) {
+                _loadCompanies();
+              }
             },
             icon: const Icon(Icons.add, size: 18, color: Colors.white),
             label: const Text(
@@ -148,6 +170,39 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
     );
   }
 
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.business_outlined,
+              size: 80,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'No companies yet',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Tap Add to create your first company',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.black45),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildInfoCard() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -158,41 +213,12 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade100,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.business_center,
-              color: Colors.blue.shade700,
-              size: 24,
-            ),
-          ),
+          Icon(Icons.info_outline, color: Colors.blue.shade700, size: 24),
           const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Manage Multiple Companies',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'You can create and manage multiple business profiles. Each company can have its own products, analytics, and settings.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade700,
-                    height: 1.4,
-                  ),
-                ),
-              ],
+          const Expanded(
+            child: Text(
+              'Manage multiple companies under your account. Each company can have its own products and profile.',
+              style: TextStyle(fontSize: 13, color: Colors.black87),
             ),
           ),
         ],
@@ -200,17 +226,7 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
     );
   }
 
-  Widget _buildCompanyCard({
-    required String companyName,
-    required String category,
-    required String location,
-    required String status,
-    required Color statusColor,
-    required bool isOwner,
-    required int products,
-    required String views,
-    required int connections,
-  }) {
+  Widget _buildCompanyCard(Company company) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -218,8 +234,8 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -227,177 +243,128 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row
+          // Company Header
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Company Logo/Icon
               Container(
-                padding: const EdgeInsets.all(10),
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: Colors.blue.shade50,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  Icons.business,
-                  color: Colors.blue.shade700,
-                  size: 24,
-                ),
+                child: company.logoUrl != null && company.logoUrl!.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          company.logoUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Icon(
+                            Icons.business,
+                            color: Colors.blue.shade700,
+                            size: 24,
+                          ),
+                        ),
+                      )
+                    : Icon(
+                        Icons.business,
+                        color: Colors.blue.shade700,
+                        size: 24,
+                      ),
               ),
               const SizedBox(width: 12),
+              // Company Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      companyName,
+                      company.name,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.black87,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '$category • $location',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.black54,
+                    const SizedBox(height: 4),
+                    if (company.displayIndustryLocation.isNotEmpty)
+                      Text(
+                        company.displayIndustryLocation,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black54,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
+              // Status Badge
+              _buildStatusBadge(company.statusDisplay, company.status),
             ],
           ),
-          const SizedBox(height: 12),
 
-          // Status Badges Row
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: statusColor.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: statusColor,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.person, size: 12, color: Colors.grey.shade700),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Owner',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 16),
 
           // Stats Row
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem(products.toString(), 'Products'),
-                Container(width: 1, height: 30, color: Colors.grey.shade300),
-                _buildStatItem(views, 'Views'),
-                Container(width: 1, height: 30, color: Colors.grey.shade300),
-                _buildStatItem(connections.toString(), 'Connections'),
-              ],
-            ),
+          Row(
+            children: [
+              _buildStatItem(
+                Icons.shopping_bag_outlined,
+                company.productsCount.toString(),
+                'Products',
+              ),
+              const SizedBox(width: 24),
+              _buildStatItem(
+                Icons.visibility_outlined,
+                _formatNumber(company.views),
+                'Views',
+              ),
+              const SizedBox(width: 24),
+              _buildStatItem(
+                Icons.people_outline,
+                company.connections.toString(),
+                'Connections',
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
 
-          // Action Buttons Row
+          const SizedBox(height: 16),
+
+          // Action Buttons
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
+                child: OutlinedButton(
                   onPressed: () {
-                    // TODO: Edit company
+                    // TODO: Navigate to edit company screen
                   },
-                  icon: const Icon(Icons.edit, size: 16),
-                  label: const Text('Edit'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.grey.shade700,
-                    side: BorderSide(color: Colors.grey.shade300),
+                    side: BorderSide(color: Colors.blue.shade300),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
+                  child: const Text('Edit'),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
-                    // TODO: View profile
+                    // TODO: Navigate to company details
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.blue,
-                    elevation: 0,
-                    side: BorderSide(color: Colors.blue.shade200),
+                    backgroundColor: Colors.blue,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   child: const Text(
-                    'View Profile',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                    'View Details',
+                    style: TextStyle(color: Colors.white),
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: IconButton(
-                  onPressed: () {
-                    // TODO: More options
-                  },
-                  icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
-                  padding: const EdgeInsets.all(8),
-                  constraints: const BoxConstraints(),
                 ),
               ),
             ],
@@ -407,137 +374,78 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
     );
   }
 
-  Widget _buildStatItem(String value, String label) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
+  Widget _buildStatusBadge(String text, String status) {
+    Color backgroundColor;
+    Color textColor;
+
+    switch (status.toUpperCase()) {
+      case 'ACTIVE':
+        backgroundColor = const Color(0xFFD4EDDA);
+        textColor = const Color(0xFF155724);
+        break;
+      case 'UNDER_REVIEW':
+      case 'PENDING':
+        backgroundColor = const Color(0xFFFFF3CD);
+        textColor = const Color(0xFF856404);
+        break;
+      case 'REJECTED':
+        backgroundColor = const Color(0xFFF8D7DA);
+        textColor = const Color(0xFF721C24);
+        break;
+      default:
+        backgroundColor = Colors.grey.shade200;
+        textColor = Colors.grey.shade700;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
         ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(IconData icon, String value, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: Colors.black54),
+        const SizedBox(width: 4),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: Colors.black54),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildAddCompanyButton() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Icon and Text Row (matching company card header height)
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.business,
-                  color: Colors.blue.shade700,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'Add Another Company',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Create a new business profile',
-                      style: TextStyle(fontSize: 13, color: Colors.black54),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Spacer matching badges row height
-          const SizedBox(height: 33),
-
-          // Center Add Button (matching stats row height)
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 30),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.add, color: Colors.blue.shade700, size: 32),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Action Button (matching button row)
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        BusinessProfileEditScreen(userData: widget.userData),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: const Text(
-                'Create New Company',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  String _formatNumber(int number) {
+    if (number >= 1000) {
+      return '${(number / 1000).toStringAsFixed(1)}K';
+    }
+    return number.toString();
   }
 
   Widget _buildBottomNavigation() {
@@ -546,7 +454,7 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.2),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -558,36 +466,11 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildBottomNavItem(
-                icon: Icons.business,
-                label: 'Business',
-                isSelected: true,
-                onTap: () {},
-              ),
-              _buildBottomNavItem(
-                icon: Icons.dashboard_outlined,
-                label: 'Products',
-                isSelected: false,
-                onTap: () {},
-              ),
-              _buildBottomNavItem(
-                icon: Icons.search,
-                label: 'Discover',
-                isSelected: false,
-                onTap: () {},
-              ),
-              _buildBottomNavItem(
-                icon: Icons.analytics_outlined,
-                label: 'Analytics',
-                isSelected: false,
-                onTap: () {},
-              ),
-              _buildBottomNavItem(
-                icon: Icons.settings_outlined,
-                label: 'Settings',
-                isSelected: false,
-                onTap: () {},
-              ),
+              _buildNavItem(Icons.business, 'Business', true),
+              _buildNavItem(Icons.grid_view, 'Products', false),
+              _buildNavItem(Icons.explore, 'Discover', false),
+              _buildNavItem(Icons.bar_chart, 'Analytics', false),
+              _buildNavItem(Icons.settings, 'Settings', false),
             ],
           ),
         ),
@@ -595,33 +478,21 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
     );
   }
 
-  Widget _buildBottomNavItem({
-    required IconData icon,
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? Colors.blue : Colors.grey[600],
-            size: 24,
+  Widget _buildNavItem(IconData icon, String label, bool isActive) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, color: isActive ? Colors.blue : Colors.grey, size: 24),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: isActive ? Colors.blue : Colors.grey,
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.blue : Colors.grey[600],
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'business_information_form.dart';
 import 'businessaccount _dashboard_screen.dart';
+import '../../services/business_profile_service.dart';
 
 class BusinessProfileScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -31,6 +31,27 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
   ];
   File? _businessLogo;
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _prefillMobileNumber();
+  }
+
+  void _prefillMobileNumber() {
+    // Try to get mobile number from member profile
+    final mobile =
+        widget.userData['mobile'] ??
+        widget.userData['mobileNumber'] ??
+        widget.userData['member']?['mobile'] ??
+        widget.userData['member']?['mobileNumber'] ??
+        '';
+
+    if (mobile.isNotEmpty) {
+      _mobileController.text = mobile;
+      print('📱 Pre-filled mobile number: $mobile');
+    }
+  }
 
   @override
   void dispose() {
@@ -65,34 +86,59 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
       });
 
       try {
-        // TODO: Implement backend integration to save business profile
-        // await ApiService.updateBusinessInfo(widget.userData['member_id'], {
-        //   'businessName': _businessNameController.text,
-        //   'description': _descriptionController.text,
-        //   'businessType': _selectedBusinessType,
-        //   'mobile': _mobileController.text,
-        //   'area': _areaController.text,
-        //   'location': _locationController.text,
-        // });
+        final memberId =
+            widget.userData['_id']?.toString() ??
+            widget.userData['id']?.toString() ??
+            '';
 
-        await Future.delayed(const Duration(seconds: 1)); // Simulate API call
+        if (memberId.isEmpty) {
+          throw Exception('Member ID not found');
+        }
+
+        // TODO: Upload logo if selected and get URL
+        String? logoUrl;
+        if (_businessLogo != null) {
+          // logoUrl = await uploadImage(_businessLogo!);
+        }
+
+        final result = await BusinessProfileService.saveBusinessProfile(
+          memberId: memberId,
+          businessName: _businessNameController.text.trim(),
+          businessType: _selectedBusinessType ?? 'Others',
+          description: _descriptionController.text.trim(),
+          mobile: _mobileController.text.trim(),
+          area: _areaController.text.trim(),
+          location: _locationController.text.trim(),
+          logoUrl: logoUrl,
+        );
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Business profile saved successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          if (result['success'] == true) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  result['message'] ?? 'Business profile saved successfully!',
+                ),
+                backgroundColor: Colors.green,
+              ),
+            );
 
-          // Navigate to Business Dashboard
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  BusinessDashboardScreen(userData: widget.userData),
-            ),
-          );
+            // Navigate to Business Dashboard
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    BusinessDashboardScreen(userData: widget.userData),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message'] ?? 'Failed to save profile'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       } catch (e) {
         if (mounted) {

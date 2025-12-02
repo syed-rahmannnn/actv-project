@@ -14,40 +14,16 @@ class ApiService {
     const apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
     if (apiBaseUrl.isNotEmpty) return apiBaseUrl;
 
-    // In release mode, ALWAYS use production backend
+    // TEMPORARY: Use production until local network is configured
+    return 'https://actv-project.onrender.com/api';
+
+    // TODO: After configuring firewall, uncomment this for local testing:
+    /*
     if (!kDebugMode) {
       return 'https://actv-project.onrender.com/api';
     }
-
-    // For debug mode, check if we should force production
-    const forceProduction = String.fromEnvironment(
-      'FORCE_PRODUCTION',
-      defaultValue: 'false',
-    );
-    if (forceProduction.toLowerCase() == 'true') {
-      return 'https://actv-project.onrender.com/api';
-    }
-
-    // Only use local development server if explicitly enabled
-    const useLocalDev = String.fromEnvironment(
-      'USE_LOCAL_DEV',
-      defaultValue: 'false',
-    );
-    if (useLocalDev.toLowerCase() == 'true') {
-      const devHost = String.fromEnvironment(
-        'DEV_HOST',
-        defaultValue: '192.168.29.130',
-      );
-      const apiPort = String.fromEnvironment('API_PORT', defaultValue: '3000');
-      const apiScheme = String.fromEnvironment(
-        'API_SCHEME',
-        defaultValue: 'http',
-      );
-      return '$apiScheme://$devHost:$apiPort/api';
-    }
-
-    // Default to production for all other cases (including physical devices in debug mode)
-    return 'https://actv-project.onrender.com/api';
+    return 'http://10.87.172.174:3000/api';
+    */
   }
 
   // Compute a safe request timeout. Render free tier can cold-start 50s+.
@@ -440,9 +416,9 @@ class ApiService {
 
     final headers = await _staticHeaders(json: true);
 
-    final resp = await http.get(url, headers: headers).timeout(
-      _requestTimeout(),
-    );
+    final resp = await http
+        .get(url, headers: headers)
+        .timeout(_requestTimeout());
 
     final body = _jsonDecodeSafe(resp.body);
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
@@ -453,10 +429,7 @@ class ApiService {
         'totalFields': body['data']?['totalFields'] ?? 0,
       };
     } else {
-      return {
-        'success': false,
-        'percentage': 0,
-      };
+      return {'success': false, 'percentage': 0};
     }
   }
 

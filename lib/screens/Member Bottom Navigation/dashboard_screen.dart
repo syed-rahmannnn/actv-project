@@ -5,8 +5,10 @@ import 'notification_screen.dart';
 import '../Member Addtional Details/personal_details_form.dart';
 import '../Application Status/application_status_screen.dart';
 import '../Bussiness account/business_profile_screen.dart';
+import '../Bussiness account/businessaccount _dashboard_screen.dart';
 import '../../services/member_service.dart';
 import '../../services/api_service.dart';
+import '../../services/business_profile_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -20,16 +22,36 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   String displayName = 'Member';
   String companyName = 'Your Company';
+  String mobileNumber = '';
   bool isLoading = true;
   int profileCompletionPercentage = 0;
   int filledFieldsCount = 0;
   int totalFieldsCount = 0;
   String? profileImageUrl;
 
+  // Business account state
+  bool hasBusinessAccount = false;
+  String? businessId;
+  String? accountStatus;
+
+  bool _hasLoadedOnce = false;
+
   @override
   void initState() {
     super.initState();
     _loadMemberData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload business account when returning to this screen
+    if (_hasLoadedOnce) {
+      print('🔄 Dashboard became active again, reloading business account...');
+      _loadBusinessAccount();
+    } else {
+      _hasLoadedOnce = true;
+    }
   }
 
   String _getInitials(String name) {
@@ -82,6 +104,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         setState(() {
           displayName = personalDetails?['full_name'] ?? displayName;
           companyName = businessInfo?['organization_name'] ?? 'Your Company';
+          mobileNumber = personalDetails?['mobile_number']?.toString() ?? '';
           isLoading = false;
         });
 
@@ -89,17 +112,91 @@ class _DashboardScreenState extends State<DashboardScreen> {
         print('✅ Final display name: $displayName');
         print('✅ Final company name: $companyName');
 
-        // Fetch profile completion percentage
-        _loadProfileCompletion();
+        // Fetch profile completion percentage and business account in parallel
+        // Use Future.wait with error handling for each future
+        await Future.wait([
+          _loadProfileCompletion().catchError((e) {
+            print('⚠️ Error loading profile completion: $e');
+            return null;
+          }),
+          _loadBusinessAccount().catchError((e) {
+            print('⚠️ Error loading business account: $e');
+            return null;
+          }),
+        ]);
       } else {
         setState(() => isLoading = false);
         print('⚠️ Could not fetch fresh data, using login data');
         print('⚠️ API response was: $data');
+
+        // Still try to load business account
+        _loadBusinessAccount().catchError((e) {
+          print('⚠️ Error loading business account: $e');
+        });
       }
     } catch (e, stackTrace) {
       setState(() => isLoading = false);
       print('❌ Error loading dashboard data: $e');
       print('❌ Stack trace: $stackTrace');
+
+      // Still try to load business account
+      _loadBusinessAccount().catchError((e) {
+        print('⚠️ Error loading business account: $e');
+      });
+    }
+  }
+
+  Future<void> _loadBusinessAccount() async {
+    try {
+      final memberId =
+          widget.userData['_id'] ??
+          widget.userData['id'] ??
+          widget.userData['member']?['_id'];
+
+      if (memberId == null) {
+        print('⚠️ No member ID found, cannot fetch business account');
+        return;
+      }
+
+      print('🏢 Fetching business account for member: $memberId');
+
+      // Fetch business profile
+      final profile = await BusinessProfileService.getBusinessProfile(
+        memberId.toString(),
+      );
+
+      if (!mounted) return; // Don't update state if widget is disposed
+
+      if (profile != null) {
+        setState(() {
+          hasBusinessAccount = true;
+          businessId = profile.businessId;
+          accountStatus = profile.status;
+          companyName = profile.name; // Use actual company name
+        });
+
+        print('✅ Business account found:');
+        print('   - Company: ${profile.name}');
+        print('   - Business ID: ${profile.businessId}');
+        print('   - Status: ${profile.status}');
+      } else {
+        setState(() {
+          hasBusinessAccount = false;
+          businessId = null;
+          accountStatus = null;
+        });
+
+        print('ℹ️ No business account found for this member');
+      }
+    } catch (e) {
+      print('❌ Error loading business account: $e');
+      if (!mounted) return; // Don't update state if widget is disposed
+
+      setState(() {
+        hasBusinessAccount = false;
+        businessId = null;
+        accountStatus = null;
+      });
     }
   }
 
@@ -208,6 +305,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           color: Colors.black87,
                                         ),
                                       ),
+                                      if (mobileNumber.isNotEmpty)
+                                        Text(
+                                          mobileNumber,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
                                       Text(
                                         companyName,
                                         style: const TextStyle(
@@ -378,6 +483,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
     BuildContext context,
     Map<String, dynamic> userData,
   ) {
+    // Conditional title and description
+    final String cardTitle = hasBusinessAccount
+        ? 'Your Business Account'
+        : 'Create Your Business Account';
+
+    final String cardDescription = hasBusinessAccount
+        ? 'View and manage your business profile and settings'
+        : 'Set up your business account to unlock team features and payments';
+
+    final String buttonText = hasBusinessAccount
+        ? 'View Account'
+        : 'Create Account';
+
+    final String badgeText = hasBusinessAccount
+        ? accountStatus == 'approved'
+              ? 'Active'
+              : 'Pending'
+        : 'Start setup';
+
+    final Color badgeColor = hasBusinessAccount
+        ? accountStatus == 'approved'
+              ? const Color(0xFFD4EDDA) // Green for active
+              : const Color(0xFFFFF3CD) // Yellow for pending
+        : const Color(0xFFFFF3CD);
+
+    final Color badgeTextColor = hasBusinessAccount
+        ? accountStatus == 'approved'
+              ? const Color(0xFF155724) // Dark green
+              : const Color(0xFF856404) // Dark yellow
+        : const Color(0xFF856404);
+
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -390,9 +526,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Create Your Business Account',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  Text(
+                    cardTitle,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Container(
@@ -401,36 +540,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF3CD),
+                      color: badgeColor,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text(
-                      'Start setup',
+                    child: Text(
+                      badgeText,
                       style: TextStyle(
-                        color: Color(0xFF856404),
+                        color: badgeTextColor,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Set up your business account to unlock team features and payments',
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                  Text(
+                    cardDescription,
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       print(
-                        '🔵 CREATE ACCOUNT BUTTON CLICKED - Navigating to BusinessProfileScreen',
+                        '🔵 BUSINESS BUTTON CLICKED - hasAccount: $hasBusinessAccount',
                       );
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              BusinessProfileScreen(userData: userData),
-                        ),
-                      );
+
+                      if (hasBusinessAccount && businessId != null) {
+                        // Navigate to Business Dashboard
+                        print('   → Navigating to BusinessDashboardScreen');
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                BusinessDashboardScreen(userData: userData),
+                          ),
+                        );
+                        // Reload business account after returning
+                        print('🔄 Returned from dashboard, reloading data...');
+                        await _loadBusinessAccount();
+                      } else {
+                        // Navigate to Business Profile onboarding
+                        print('   → Navigating to BusinessProfileScreen');
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                BusinessProfileScreen(userData: userData),
+                          ),
+                        );
+                        // Reload business account after returning (account may have been created)
+                        print('🔄 Returned from onboarding, reloading data...');
+                        await _loadBusinessAccount();
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0D6EFD),
@@ -442,9 +602,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         vertical: 10,
                       ),
                     ),
-                    child: const Text(
-                      'Create Account',
-                      style: TextStyle(
+                    child: Text(
+                      buttonText,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
