@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:activ/models/company_model.dart';
 import 'package:activ/services/company_service.dart';
-import 'create_company_screen.dart';
+import 'company_details_screen.dart';
+import 'business_profile_screen.dart';
 
 class ManageCompaniesScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -26,23 +27,53 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final memberId =
-          widget.userData['_id']?.toString() ??
-          widget.userData['id']?.toString() ??
-          '';
+      print('🔄 Loading companies from authenticated API...');
+      final companies = await CompanyService.getCompanies();
 
-      if (memberId.isNotEmpty) {
-        final companies = await CompanyService.getCompanies(memberId);
-        setState(() {
-          _companies = companies;
-          _isLoading = false;
-        });
-      } else {
-        setState(() => _isLoading = false);
+      // Debug: Print company details
+      for (var company in companies) {
+        print('📱 Company: ${company.name}');
+        print('   Industry: ${company.industry}');
+        print('   Mobile: ${company.mobile}');
+        print('   Location: ${company.location}');
       }
+
+      setState(() {
+        _companies = companies;
+        _isLoading = false;
+      });
+
+      print('✅ Loaded ${companies.length} companies');
     } catch (e) {
-      print('Error loading companies: $e');
+      print('❌ Error loading companies: $e');
       setState(() => _isLoading = false);
+
+      // Show error snackbar with specific message
+      if (mounted) {
+        String errorMessage = e.toString().replaceAll('Exception: ', '');
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+            action:
+                errorMessage.contains('Session expired') ||
+                    errorMessage.contains('login again')
+                ? SnackBarAction(
+                    label: 'Logout',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      // Navigate to login
+                      Navigator.of(
+                        context,
+                      ).pushNamedAndRemoveUntil('/login', (route) => false);
+                    },
+                  )
+                : null,
+          ),
+        );
+      }
     }
   }
 
@@ -138,8 +169,10 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) =>
-                      CreateCompanyScreen(userData: widget.userData),
+                  builder: (context) => BusinessProfileScreen(
+                    userData: widget.userData,
+                    mode: 'createCompany',
+                  ),
                 ),
               );
               // Reload companies if a new one was created
@@ -289,14 +322,13 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    if (company.displayIndustryLocation.isNotEmpty)
-                      Text(
-                        company.displayIndustryLocation,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.black54,
-                        ),
+                    Text(
+                      _buildCompanySubtitle(company),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.black54,
                       ),
+                    ),
                   ],
                 ),
               ),
@@ -309,19 +341,18 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
 
           // Stats Row
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildStatItem(
                 Icons.shopping_bag_outlined,
                 company.productsCount.toString(),
                 'Products',
               ),
-              const SizedBox(width: 24),
               _buildStatItem(
                 Icons.visibility_outlined,
                 _formatNumber(company.views),
                 'Views',
               ),
-              const SizedBox(width: 24),
               _buildStatItem(
                 Icons.people_outline,
                 company.connections.toString(),
@@ -332,42 +363,30 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
 
           const SizedBox(height: 16),
 
-          // Action Buttons
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    // TODO: Navigate to edit company screen
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.blue.shade300),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+          // Single Full-Width View Details Button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 0),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _navigateToDetails(company),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text('Edit'),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: Navigate to company details
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'View Details',
-                    style: TextStyle(color: Colors.white),
+                child: const Text(
+                  'View Details',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -415,27 +434,26 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
   }
 
   Widget _buildStatItem(IconData icon, String value, String label) {
-    return Row(
+    return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: Colors.black54),
-        const SizedBox(width: 4),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 11, color: Colors.black54),
-            ),
-          ],
+        Icon(icon, size: 20, color: Colors.blue.shade700),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.black54,
+          ),
         ),
       ],
     );
@@ -446,6 +464,40 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
       return '${(number / 1000).toStringAsFixed(1)}K';
     }
     return number.toString();
+  }
+
+  String _buildCompanySubtitle(Company company) {
+    final parts = <String>[];
+
+    // Add industry/business type
+    if (company.industry != null &&
+        company.industry!.isNotEmpty &&
+        company.industry != 'Not specified') {
+      parts.add(company.industry!);
+    }
+
+    // Add mobile number (priority over location)
+    if (company.mobile != null && company.mobile!.isNotEmpty) {
+      parts.add(company.mobile!);
+    } else if (company.location != null &&
+        company.location!.isNotEmpty &&
+        company.location != 'Not specified') {
+      parts.add(company.location!);
+    }
+
+    return parts.isNotEmpty ? parts.join(' · ') : 'Not specified';
+  }
+
+  Future<void> _navigateToDetails(Company company) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            CompanyDetailsScreen(companyId: company.id, userData: widget.userData),
+      ),
+    );
+    // Reload companies when returning in case of updates
+    _loadCompanies();
   }
 
   Widget _buildBottomNavigation() {

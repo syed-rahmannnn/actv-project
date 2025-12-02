@@ -14,16 +14,8 @@ class ApiService {
     const apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
     if (apiBaseUrl.isNotEmpty) return apiBaseUrl;
 
-    // TEMPORARY: Use production until local network is configured
-    return 'https://actv-project.onrender.com/api';
-
-    // TODO: After configuring firewall, uncomment this for local testing:
-    /*
-    if (!kDebugMode) {
-      return 'https://actv-project.onrender.com/api';
-    }
+    // Using local backend - requires Windows Firewall configuration
     return 'http://10.87.172.174:3000/api';
-    */
   }
 
   // Compute a safe request timeout. Render free tier can cold-start 50s+.

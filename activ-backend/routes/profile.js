@@ -1,5 +1,6 @@
 const express = require('express');
 const MemberDetails = require('../models/MemberDetails');
+const MemberAuth = require('../models/MemberAuth');
 const MemberBusinessInfo = require('../models/MemberBusinessInfo');
 const MemberFinancialInfo = require('../models/MemberFinancialInfo');
 const MemberDeclaration = require('../models/MemberDeclaration');
@@ -95,13 +96,29 @@ router.post('/business-info', async (req, res) => {
       });
     }
 
-    // Check if member exists
-    const member = await MemberDetails.findById(memberId);
+    // Check if member exists - try both MemberAuth and MemberDetails
+    console.log('🔍 Looking up member with ID:', memberId);
+    let member = await MemberDetails.findById(memberId);
+    
     if (!member) {
-      return res.status(404).json({
-        success: false,
-        message: 'Member not found'
-      });
+      console.log('⚠️  Not found in MemberDetails, checking MemberAuth...');
+      const memberAuth = await MemberAuth.findById(memberId);
+      if (!memberAuth) {
+        console.log('❌ Member not found in either collection');
+        return res.status(404).json({
+          success: false,
+          message: 'Member not found. Please ensure you are logged in with a valid account.'
+        });
+      }
+      console.log('✅ Found in MemberAuth:', memberAuth.email);
+      // Create minimal member object from MemberAuth
+      member = {
+        _id: memberAuth._id,
+        fullName: memberAuth.fullName || '',
+        email: memberAuth.email || ''
+      };
+    } else {
+      console.log('✅ Found in MemberDetails:', member.email);
     }
 
     // Ensure name/email are stored in collection

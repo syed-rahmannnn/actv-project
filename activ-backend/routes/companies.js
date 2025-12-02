@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const authenticateToken = require('../middleware/authenticateToken');
 
 // Company Schema
 const companySchema = new mongoose.Schema({
@@ -76,22 +77,20 @@ const companySchema = new mongoose.Schema({
 // Create model
 const Company = mongoose.model('Company', companySchema);
 
-// GET /api/companies?memberId={currentUserId}
-// Get all companies for a member
-router.get('/', async (req, res) => {
+// GET /api/companies (authenticated - gets companies for logged-in user)
+// Get all companies for the authenticated member
+router.get('/', authenticateToken, async (req, res) => {
   try {
-    const { memberId } = req.query;
+    // Get memberId from authenticated user's JWT token
+    const memberId = req.user.userId;
 
-    if (!memberId) {
-      return res.status(400).json({
-        success: false,
-        message: 'memberId is required'
-      });
-    }
+    console.log('📋 Fetching companies for member:', memberId);
 
     const companies = await Company.find({ memberId })
       .sort({ createdAt: -1 })
       .lean();
+
+    console.log(`✅ Found ${companies.length} companies`);
 
     res.status(200).json({
       success: true,
@@ -139,12 +138,14 @@ router.get('/:companyId', async (req, res) => {
   }
 });
 
-// POST /api/companies
-// Create a new company
-router.post('/', async (req, res) => {
+// POST /api/companies (authenticated)
+// Create a new company for the authenticated user
+router.post('/', authenticateToken, async (req, res) => {
   try {
+    // Get memberId from authenticated user's JWT token
+    const memberId = req.user.userId;
+
     const {
-      memberId,
       name,
       industry,
       location,
@@ -158,12 +159,14 @@ router.post('/', async (req, res) => {
       status
     } = req.body;
 
-    if (!memberId || !name) {
+    if (!name) {
       return res.status(400).json({
         success: false,
-        message: 'memberId and name are required'
+        message: 'Company name is required'
       });
     }
+
+    console.log('🏢 Creating company:', name, 'for member:', memberId);
 
     const newCompany = new Company({
       memberId,
@@ -184,6 +187,8 @@ router.post('/', async (req, res) => {
     });
 
     await newCompany.save();
+
+    console.log('✅ Company created successfully:', newCompany._id);
 
     res.status(201).json({
       success: true,

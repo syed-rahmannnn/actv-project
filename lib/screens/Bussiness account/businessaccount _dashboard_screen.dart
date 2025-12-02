@@ -6,7 +6,9 @@ import 'analytics_screen.dart';
 import 'settings_screen.dart';
 import 'business_profile_edit_screen.dart';
 import '../../models/business_profile_model.dart';
+import '../../models/company_model.dart';
 import '../../services/business_profile_service.dart';
+import '../../services/company_service.dart';
 
 class BusinessDashboardScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -27,7 +29,7 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
   BusinessProfile? _businessProfile;
   BusinessMetrics? _businessMetrics;
   List<BusinessAssociation> _associations = [];
-  List<CompanyInfo> _companies = [];
+  List<Company> _companies = [];
   bool _isLoading = true;
 
   @override
@@ -75,14 +77,14 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
       final results = await Future.wait([
         BusinessProfileService.getBusinessMetrics(profile.businessId),
         BusinessProfileService.getBusinessAssociations(profile.businessId),
-        BusinessProfileService.getMemberCompanies(memberId),
+        CompanyService.getCompanies(),
       ]);
 
       setState(() {
         _businessProfile = profile;
         _businessMetrics = results[0] as BusinessMetrics;
         _associations = results[1] as List<BusinessAssociation>;
-        _companies = results[2] as List<CompanyInfo>;
+        _companies = results[2] as List<Company>;
         _isLoading = false;
       });
     } catch (e) {

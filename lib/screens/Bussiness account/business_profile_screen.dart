@@ -3,11 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'businessaccount _dashboard_screen.dart';
 import '../../services/business_profile_service.dart';
+import '../../services/company_service.dart';
 
 class BusinessProfileScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
+  final String mode; // 'profile' (default) or 'createCompany'
 
-  const BusinessProfileScreen({super.key, required this.userData});
+  const BusinessProfileScreen({
+    super.key,
+    required this.userData,
+    this.mode = 'profile',
+  });
 
   @override
   State<BusinessProfileScreen> createState() => _BusinessProfileScreenState();
@@ -101,16 +107,32 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
           // logoUrl = await uploadImage(_businessLogo!);
         }
 
-        final result = await BusinessProfileService.saveBusinessProfile(
-          memberId: memberId,
-          businessName: _businessNameController.text.trim(),
-          businessType: _selectedBusinessType ?? 'Others',
-          description: _descriptionController.text.trim(),
-          mobile: _mobileController.text.trim(),
-          area: _areaController.text.trim(),
-          location: _locationController.text.trim(),
-          logoUrl: logoUrl,
-        );
+        // Check mode: create company or save business profile
+        dynamic result;
+        if (widget.mode == 'createCompany') {
+          // Create new company
+          await CompanyService.createCompany(
+            organizationName: _businessNameController.text.trim(),
+            businessType: _selectedBusinessType ?? 'Others',
+            mobile: _mobileController.text.trim(),
+            area: _areaController.text.trim(),
+            location: _locationController.text.trim(),
+            businessDescription: _descriptionController.text.trim(),
+          );
+          result = {'success': true, 'message': 'Company created successfully!'};
+        } else {
+          // Save business profile (existing flow)
+          result = await BusinessProfileService.saveBusinessProfile(
+            memberId: memberId,
+            businessName: _businessNameController.text.trim(),
+            businessType: _selectedBusinessType ?? 'Others',
+            description: _descriptionController.text.trim(),
+            mobile: _mobileController.text.trim(),
+            area: _areaController.text.trim(),
+            location: _locationController.text.trim(),
+            logoUrl: logoUrl,
+          );
+        }
 
         if (mounted) {
           if (result['success'] == true) {
@@ -123,14 +145,19 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
               ),
             );
 
-            // Navigate to Business Dashboard
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    BusinessDashboardScreen(userData: widget.userData),
-              ),
-            );
+            // If creating company, pop with true to signal success
+            if (widget.mode == 'createCompany') {
+              Navigator.pop(context, true);
+            } else {
+              // Navigate to Business Dashboard for profile mode
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      BusinessDashboardScreen(userData: widget.userData),
+                ),
+              );
+            }
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

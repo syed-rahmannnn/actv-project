@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:developer' as developer;
 import '../models/company_model.dart';
 import 'api_service.dart';
+import 'auth_service.dart';
 
 class CompanyService {
   static final String baseUrl = ApiService.baseUrl;
@@ -25,46 +26,123 @@ class CompanyService {
     }
   }
 
-  /// Get all companies for a member
-  static Future<List<Company>> getCompanies(String memberId) async {
+  /// Get all companies for the logged-in member (uses auth token)
+  static Future<List<Company>> getCompanies() async {
     try {
-      final url = Uri.parse('$baseUrl/companies?memberId=$memberId');
-      developer.log(
-        'Fetching companies for member: $memberId',
-        name: 'CompanyService',
-      );
+      final token = await AuthService.getToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final url = Uri.parse('$baseUrl/companies');
+      print('🌐 Companies URL: $url');
+      print('🔑 Token (first 30 chars): ${token.substring(0, 30)}...');
 
       final response = await http
-          .get(url, headers: {'Content-Type': 'application/json'})
+          .get(
+            url,
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
           .timeout(_requestTimeout());
+
+      print('📊 Response Status: ${response.statusCode}');
+      print('📄 Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final body = _jsonDecodeSafe(response.body);
-        if (body['success'] == true && body['data'] != null) {
+        developer.log(
+          '✅ Parsed response body successfully',
+          name: 'CompanyService',
+        );
+
+        if (body is Map && body['success'] == true) {
+          if (body['data'] == null) {
+            developer.log(
+              '⚠️ Response has no data field',
+              name: 'CompanyService',
+            );
+            return [];
+          }
+
           final List<dynamic> companiesJson = body['data'];
-          return companiesJson.map((json) => Company.fromJson(json)).toList();
+          developer.log(
+            '📦 Found ${companiesJson.length} companies in response',
+            name: 'CompanyService',
+          );
+
+          final companies = companiesJson.map((json) {
+            developer.log('🏢 Parsing company: $json', name: 'CompanyService');
+            return Company.fromJson(json);
+          }).toList();
+
+          developer.log(
+            '✅ Fetched ${companies.length} companies',
+            name: 'CompanyService',
+          );
+          return companies;
+        } else {
+          developer.log(
+            '❌ Response success=false or invalid format',
+            name: 'CompanyService',
+          );
+          throw Exception('Invalid response format');
         }
       }
 
       developer.log(
-        'Failed to fetch companies: ${response.statusCode}',
+        '❌ Failed to fetch companies: ${response.statusCode}',
         name: 'CompanyService',
       );
-      return [];
-    } catch (e) {
-      developer.log('Error fetching companies: $e', name: 'CompanyService');
-      return [];
+      developer.log(
+        '❌ Error response body: ${response.body}',
+        name: 'CompanyService',
+      );
+
+      // Provide specific error messages based on status code
+      if (response.statusCode == 401) {
+        throw Exception('Authentication required. Please login again.');
+      } else if (response.statusCode == 403) {
+        throw Exception('Session expired. Please logout and login again.');
+      } else if (response.statusCode == 404) {
+        throw Exception('Companies endpoint not found. Check API URL.');
+      } else {
+        throw Exception('Failed to fetch companies: ${response.statusCode}');
+      }
+    } catch (e, stackTrace) {
+      developer.log('❌ Error fetching companies: $e', name: 'CompanyService');
+      developer.log('📍 Stack trace: $stackTrace', name: 'CompanyService');
+
+      // Re-throw with more context if it's a generic exception
+      if (e.toString().contains('Failed to fetch companies')) {
+        rethrow;
+      } else {
+        throw Exception('Failed to fetch companies: $e');
+      }
     }
   }
 
   /// Get a single company by ID
   static Future<Company?> getCompany(String companyId) async {
     try {
+      final token = await AuthService.getToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
       final url = Uri.parse('$baseUrl/companies/$companyId');
-      developer.log('Fetching company: $companyId', name: 'CompanyService');
+      developer.log('🔍 Fetching company: $companyId', name: 'CompanyService');
 
       final response = await http
-          .get(url, headers: {'Content-Type': 'application/json'})
+          .get(
+            url,
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
           .timeout(_requestTimeout());
 
       if (response.statusCode == 200) {
@@ -76,76 +154,130 @@ class CompanyService {
 
       return null;
     } catch (e) {
-      developer.log('Error fetching company: $e', name: 'CompanyService');
+      developer.log('❌ Error fetching company: $e', name: 'CompanyService');
       return null;
     }
   }
 
   /// Create a new company
-  static Future<Map<String, dynamic>> createCompany({
-    required String memberId,
-    required String name,
-    String? industry,
-    String? location,
-    String? city,
-    String? area,
-    String? description,
-    String? website,
+  static Future<Company> createCompany({
+    required String organizationName,
+    required String businessType,
     String? mobile,
-    String? email,
-    String? logoUrl,
+    String? area,
+    String? location,
+    String? businessDescription,
   }) async {
     try {
+      final token = await AuthService.getToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
       final url = Uri.parse('$baseUrl/companies');
-      developer.log('Creating company: $name', name: 'CompanyService');
+      developer.log(
+        '📝 Creating company: $organizationName',
+        name: 'CompanyService',
+      );
 
       final body = {
-        'memberId': memberId,
-        'name': name,
-        if (industry != null) 'industry': industry,
-        if (location != null) 'location': location,
-        if (city != null) 'city': city,
-        if (area != null) 'area': area,
-        if (description != null) 'description': description,
-        if (website != null) 'website': website,
+        'name': organizationName, // Backend expects 'name'
+        'industry': businessType, // Backend expects 'industry'
         if (mobile != null) 'mobile': mobile,
-        if (email != null) 'email': email,
-        if (logoUrl != null) 'logoUrl': logoUrl,
+        if (area != null) 'area': area,
+        if (location != null) 'location': location,
+        if (businessDescription != null)
+          'description': businessDescription, // Backend expects 'description'
       };
+
+      developer.log('📦 Request body: $body', name: 'CompanyService');
 
       final response = await http
           .post(
             url,
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
             body: jsonEncode(body),
           )
           .timeout(_requestTimeout());
 
-      final responseBody = _jsonDecodeSafe(response.body);
+      developer.log(
+        '📊 Response Status: ${response.statusCode}',
+        name: 'CompanyService',
+      );
+      developer.log(
+        '📄 Response Body: ${response.body}',
+        name: 'CompanyService',
+      );
 
-      if (response.statusCode == 201) {
-        developer.log('Company created successfully', name: 'CompanyService');
-        return {
-          'success': true,
-          'message': responseBody['message'] ?? 'Company created successfully',
-          'data': responseBody['data'] != null
-              ? Company.fromJson(responseBody['data'])
-              : null,
-        };
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final responseBody = _jsonDecodeSafe(response.body);
+        if (responseBody['success'] == true) {
+          developer.log(
+            '✅ Company created successfully',
+            name: 'CompanyService',
+          );
+          return Company.fromJson(responseBody['data']);
+        } else {
+          final errorMsg = responseBody['message'] ?? 'Unknown error';
+          developer.log(
+            '❌ Backend returned success=false: $errorMsg',
+            name: 'CompanyService',
+          );
+          throw Exception(errorMsg);
+        }
       }
 
-      return {
-        'success': false,
-        'message': responseBody['message'] ?? 'Failed to create company',
-      };
+      // Handle error responses
+      final errorBody = _jsonDecodeSafe(response.body);
+      final errorMessage =
+          errorBody['message'] ??
+          errorBody['error'] ??
+          'Failed to create company';
+      developer.log('❌ Server error: $errorMessage', name: 'CompanyService');
+      throw Exception(errorMessage);
     } catch (e) {
-      developer.log('Error creating company: $e', name: 'CompanyService');
-      return {'success': false, 'message': 'Error: $e'};
+      developer.log('❌ Error creating company: $e', name: 'CompanyService');
+      rethrow;
+    }
+  }
+
+  /// Delete a company
+  static Future<void> deleteCompany(String companyId) async {
+    try {
+      final token = await AuthService.getToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      final url = Uri.parse('$baseUrl/companies/$companyId');
+      developer.log('🗑️ Deleting company: $companyId', name: 'CompanyService');
+
+      final response = await http
+          .delete(
+            url,
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(_requestTimeout());
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete company');
+      }
+
+      developer.log('✅ Company deleted successfully', name: 'CompanyService');
+    } catch (e) {
+      developer.log('❌ Error deleting company: $e', name: 'CompanyService');
+      rethrow;
     }
   }
 
   /// Update a company
-  static Future<Map<String, dynamic>> updateCompany({
+  static Future<Company> updateCompany({
     required String companyId,
     String? name,
     String? industry,
@@ -160,8 +292,13 @@ class CompanyService {
     String? status,
   }) async {
     try {
+      final token = await AuthService.getToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
       final url = Uri.parse('$baseUrl/companies/$companyId');
-      developer.log('Updating company: $companyId', name: 'CompanyService');
+      developer.log('📝 Updating company: $companyId', name: 'CompanyService');
 
       final body = <String, dynamic>{};
       if (name != null) body['name'] = name;
@@ -176,62 +313,49 @@ class CompanyService {
       if (logoUrl != null) body['logoUrl'] = logoUrl;
       if (status != null) body['status'] = status;
 
+      developer.log('📦 Update body: $body', name: 'CompanyService');
+
       final response = await http
           .put(
             url,
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
             body: jsonEncode(body),
           )
           .timeout(_requestTimeout());
 
-      final responseBody = _jsonDecodeSafe(response.body);
+      developer.log(
+        '📊 Response Status: ${response.statusCode}',
+        name: 'CompanyService',
+      );
+      developer.log(
+        '📄 Response Body: ${response.body}',
+        name: 'CompanyService',
+      );
 
       if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'message': responseBody['message'] ?? 'Company updated successfully',
-          'data': responseBody['data'] != null
-              ? Company.fromJson(responseBody['data'])
-              : null,
-        };
+        final responseBody = _jsonDecodeSafe(response.body);
+        if (responseBody['success'] == true && responseBody['data'] != null) {
+          developer.log(
+            '✅ Company updated successfully',
+            name: 'CompanyService',
+          );
+          return Company.fromJson(responseBody['data']);
+        } else {
+          throw Exception(
+            responseBody['message'] ?? 'Failed to update company',
+          );
+        }
       }
 
-      return {
-        'success': false,
-        'message': responseBody['message'] ?? 'Failed to update company',
-      };
+      final errorBody = _jsonDecodeSafe(response.body);
+      final errorMessage = errorBody['message'] ?? 'Failed to update company';
+      throw Exception(errorMessage);
     } catch (e) {
-      developer.log('Error updating company: $e', name: 'CompanyService');
-      return {'success': false, 'message': 'Error: $e'};
-    }
-  }
-
-  /// Delete a company
-  static Future<Map<String, dynamic>> deleteCompany(String companyId) async {
-    try {
-      final url = Uri.parse('$baseUrl/companies/$companyId');
-      developer.log('Deleting company: $companyId', name: 'CompanyService');
-
-      final response = await http
-          .delete(url, headers: {'Content-Type': 'application/json'})
-          .timeout(_requestTimeout());
-
-      final responseBody = _jsonDecodeSafe(response.body);
-
-      if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'message': responseBody['message'] ?? 'Company deleted successfully',
-        };
-      }
-
-      return {
-        'success': false,
-        'message': responseBody['message'] ?? 'Failed to delete company',
-      };
-    } catch (e) {
-      developer.log('Error deleting company: $e', name: 'CompanyService');
-      return {'success': false, 'message': 'Error: $e'};
+      developer.log('❌ Error updating company: $e', name: 'CompanyService');
+      rethrow;
     }
   }
 

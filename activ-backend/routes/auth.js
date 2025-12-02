@@ -49,12 +49,14 @@ router.post('/login', async (req, res) => {
 
     // Generate JWT token
     // JWT secret logging removed for security
+    const JWT_SECRET = process.env.JWT_SECRET || process.env.JWTSECRET || 'your-secret-key-here';
     const token = jwt.sign(
       { 
         userId: member._id, 
-        email: member.email 
+        email: member.email,
+        fullName: member.fullName
       },
-      process.env.JWTSECRET,
+      JWT_SECRET,
       { expiresIn: '24h' }
     );
 
