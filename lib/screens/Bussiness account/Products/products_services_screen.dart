@@ -11,6 +11,7 @@ import '../../../models/product_model.dart';
 import '../../../services/product_service.dart';
 import '../../../services/company_service.dart';
 import '../../../providers/company_selection_provider.dart';
+import '../../../widgets/company_switcher_widget.dart';
 
 class ProductsServicesScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -283,46 +284,73 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
   }
 
   Widget _buildHeader() {
+    final memberId =
+        widget.userData['_id']?.toString() ??
+        widget.userData['id']?.toString() ??
+        '';
+
     return Container(
       padding: const EdgeInsets.all(16.0),
-      child: Row(
+      child: Column(
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () => Navigator.pop(context),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Products & Services',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () => Navigator.pop(context),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Products & Services',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    Text(
+                      '${_products.length} items listed',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: _showAddProductDialog,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                Text(
-                  '${_products.length} items listed',
-                  style: const TextStyle(fontSize: 14, color: Colors.black54),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          ElevatedButton.icon(
-            onPressed: _showAddProductDialog,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          if (memberId.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: CompanySwitcherWidget(
+                memberId: memberId,
+                textColor: Colors.black87,
+                iconColor: Colors.black87,
+                dropdownColor: Colors.white,
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -634,10 +662,8 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => BusinessDashboardScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          BusinessDashboardScreen(userData: widget.userData),
                     ),
                   );
                 },
@@ -656,10 +682,8 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => DiscoverScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          DiscoverScreen(userData: widget.userData),
                     ),
                   );
                 },
@@ -672,10 +696,8 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AnalyticsScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          AnalyticsScreen(userData: widget.userData),
                     ),
                   );
                 },
@@ -688,10 +710,8 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => SettingsScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          SettingsScreen(userData: widget.userData),
                     ),
                   );
                 },
@@ -1239,15 +1259,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 label: 'Discover',
                 isSelected: false,
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const DiscoverScreen(
-                        userData: {},
-                        businessData: null,
-                      ),
-                    ),
-                  );
+                  Navigator.pop(context);
                 },
               ),
               _buildBottomNavItem(
@@ -1255,22 +1267,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 label: 'Analytics',
                 isSelected: false,
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AnalyticsScreen(
-                        userData: {},
-                        businessData: null,
-                      ),
-                    ),
-                  );
+                  Navigator.pop(context);
                 },
               ),
               _buildBottomNavItem(
                 icon: Icons.settings_outlined,
                 label: 'Settings',
                 isSelected: false,
-                onTap: () {},
+                onTap: () {
+                  Navigator.pop(context);
+                },
               ),
             ],
           ),

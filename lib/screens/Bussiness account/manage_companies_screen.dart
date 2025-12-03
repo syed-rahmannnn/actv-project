@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:activ/models/company_model.dart';
 import 'package:activ/services/company_service.dart';
 import 'package:activ/providers/company_selection_provider.dart';
+import 'package:activ/providers/analytics_provider.dart';
 import 'business_profile_screen.dart';
 import 'business_profile_view_screen.dart';
 
@@ -83,6 +84,9 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
   void _onSetActive(Company company) {
     // Set as active company
     context.read<CompanySelectionProvider>().setActiveCompany(company);
+
+    // Reload analytics for new active company
+    context.read<AnalyticsProvider>().loadAnalytics(company.id);
 
     // Show confirmation
     ScaffoldMessenger.of(context).showSnackBar(

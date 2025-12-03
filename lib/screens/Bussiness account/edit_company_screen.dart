@@ -42,7 +42,8 @@ class _EditCompanyScreenState extends State<EditCompanyScreen> {
     super.initState();
     // Prefill form with company data
     _nameController = TextEditingController(text: widget.company.name);
-    _selectedBusinessType = widget.company.industry; // Map industry to business type
+    _selectedBusinessType =
+        widget.company.industry; // Map industry to business type
     _locationController = TextEditingController(
       text: widget.company.location ?? '',
     );
@@ -580,8 +581,8 @@ class _EditCompanyScreenState extends State<EditCompanyScreen> {
                                             strokeWidth: 2,
                                             valueColor:
                                                 AlwaysStoppedAnimation<Color>(
-                                              Colors.white,
-                                            ),
+                                                  Colors.white,
+                                                ),
                                           ),
                                         )
                                       : const Text(
@@ -619,10 +620,7 @@ class _EditCompanyScreenState extends State<EditCompanyScreen> {
           end: Alignment.bottomRight,
         ),
       ),
-      padding: const EdgeInsets.symmetric(
-        vertical: 20,
-        horizontal: 20,
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
       child: Row(
         children: [
           IconButton(

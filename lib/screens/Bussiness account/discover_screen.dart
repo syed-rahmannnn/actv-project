@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/discover_provider.dart';
+import '../../utils/debouncer.dart';
 import 'businessaccount _dashboard_screen.dart';
 import 'products/products_services_screen.dart';
 import 'analytics_screen.dart';
@@ -16,131 +19,256 @@ class DiscoverScreen extends StatefulWidget {
 
 class _DiscoverScreenState extends State<DiscoverScreen> {
   int _selectedTab = 0; // 0 for Companies, 1 for Products
+  final TextEditingController _searchController = TextEditingController();
+  late final Debouncer _debouncer;
 
-  final List<Map<String, dynamic>> companies = [
-    {
-      'name': 'Tech Solutions Inc.',
-      'description': 'Leading provider of enterprise software solutions',
-      'category': 'Technology',
-      'location': 'San Francisco, USA',
-      'products': 12,
-      'verified': true,
-    },
-    {
-      'name': 'Innovation Labs',
-      'description': 'Cutting-edge technology research and development',
-      'category': 'Research & Development',
-      'location': 'London, UK',
-      'products': 8,
-      'verified': true,
-    },
-    {
-      'name': 'Digital Marketing Co.',
-      'description': 'Full-service digital marketing agency',
-      'category': 'Marketing',
-      'location': 'New York, USA',
-      'products': 15,
-      'verified': false,
-    },
-    {
-      'name': 'Global Consulting Group',
-      'description': 'Strategic business consulting services worldwide',
-      'category': 'Consulting',
-      'location': 'Singapore',
-      'products': 6,
-      'verified': true,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _debouncer = Debouncer(milliseconds: 400);
 
-  final List<Map<String, dynamic>> products = [
-    {
-      'name': 'Enterprise CRM Platform',
-      'company': 'Tech Solutions Inc.',
-      'category': 'Software',
-      'price': '\$499/mo',
-    },
-    {
-      'name': 'AI Analytics Tool',
-      'company': 'Innovation Labs',
-      'category': 'Software',
-      'price': '\$299/mo',
-    },
-    {
-      'name': 'SEO Optimization Service',
-      'company': 'Digital Marketing Co.',
-      'category': 'Services',
-      'price': '\$150/hr',
-    },
-    {
-      'name': 'Business Strategy Course',
-      'company': 'Global Consulting Group',
-      'category': 'Education',
-      'price': '\$399',
-    },
-    {
-      'name': 'Cloud Storage Solution',
-      'company': 'Tech Solutions Inc.',
-      'category': 'Software',
-      'price': '\$99/mo',
-    },
-  ];
+    // Load initial data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<DiscoverProvider>();
+      provider.loadCompanies();
+      provider.loadProducts();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debouncer.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _debouncer.run(() {
+      final provider = context.read<DiscoverProvider>();
+      if (_selectedTab == 0) {
+        provider.loadCompanies(query: value);
+      } else {
+        provider.loadProducts(query: value);
+      }
+    });
+  }
+
+  void _onTabChanged(int index) {
+    setState(() {
+      _selectedTab = index;
+    });
+
+    // Trigger search with current query when switching tabs
+    final query = _searchController.text;
+    final provider = context.read<DiscoverProvider>();
+    if (index == 0) {
+      provider.loadCompanies(query: query);
+    } else {
+      provider.loadProducts(query: query);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              _buildHeader(),
+    return Consumer<DiscoverProvider>(
+      builder: (context, discoverProvider, child) {
+        final companies = discoverProvider.companies;
+        final products = discoverProvider.products;
+        final isLoadingCompanies = discoverProvider.isLoadingCompanies;
+        final isLoadingProducts = discoverProvider.isLoadingProducts;
 
-              // Tab Selector
-              _buildTabSelector(),
+        return Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // Header
+                  _buildHeader(),
 
-              // Main Content
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: _selectedTab == 0
-                          ? [
-                              // Companies List
-                              ...companies.map(
-                                (company) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 16.0),
-                                  child: _buildCompanyCard(company),
-                                ),
-                              ),
-                            ]
-                          : [
-                              // Products List
-                              ...products.map(
-                                (product) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 16.0),
-                                  child: _buildProductCard(product),
-                                ),
-                              ),
-                            ],
+                  // Tab Selector
+                  _buildTabSelector(companies.length, products.length),
+
+                  // Main Content
+                  Expanded(
+                    child: _buildContent(
+                      companies,
+                      products,
+                      isLoadingCompanies,
+                      isLoadingProducts,
+                      discoverProvider,
                     ),
                   ),
-                ),
+                ],
+              ),
+            ),
+          ),
+          bottomNavigationBar: _buildBottomNavigationBar(),
+        );
+      },
+    );
+  }
+
+  Widget _buildContent(
+    List companies,
+    List products,
+    bool isLoadingCompanies,
+    bool isLoadingProducts,
+    DiscoverProvider provider,
+  ) {
+    if (_selectedTab == 0) {
+      // Companies tab
+      if (isLoadingCompanies) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      if (provider.companiesError != null) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
+              const SizedBox(height: 16),
+              Text(
+                'Failed to load companies',
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                provider.companiesError!,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () {
+                  provider.loadCompanies(query: _searchController.text);
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
               ),
             ],
           ),
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
-    );
+        );
+      }
+
+      if (companies.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.business_outlined,
+                size: 64,
+                color: Colors.grey.shade400,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No companies found',
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+              ),
+              if (_searchController.text.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Try searching with different keywords',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ],
+            ],
+          ),
+        );
+      }
+
+      return ListView.builder(
+        padding: const EdgeInsets.all(16.0),
+        itemCount: companies.length,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: _buildCompanyCard(companies[index]),
+          );
+        },
+      );
+    } else {
+      // Products tab
+      if (isLoadingProducts) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      if (provider.productsError != null) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
+              const SizedBox(height: 16),
+              Text(
+                'Failed to load products',
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                provider.productsError!,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () {
+                  provider.loadProducts(query: _searchController.text);
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        );
+      }
+
+      if (products.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.inventory_2_outlined,
+                size: 64,
+                color: Colors.grey.shade400,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No products found',
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+              ),
+              if (_searchController.text.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Try searching with different keywords',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ],
+            ],
+          ),
+        );
+      }
+
+      return ListView.builder(
+        padding: const EdgeInsets.all(16.0),
+        itemCount: products.length,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: _buildProductCard(products[index]),
+          );
+        },
+      );
+    }
   }
 
   Widget _buildHeader() {
@@ -185,10 +313,21 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               ],
             ),
             child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'Search companies, products...',
                 hintStyle: TextStyle(color: Colors.grey.shade400),
                 prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear, color: Colors.grey.shade600),
+                        onPressed: () {
+                          _searchController.clear();
+                          _onSearchChanged('');
+                        },
+                      )
+                    : null,
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -202,7 +341,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  Widget _buildTabSelector() {
+  Widget _buildTabSelector(int companiesCount, int productsCount) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -213,11 +352,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         children: [
           Expanded(
             child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedTab = 0;
-                });
-              },
+              onTap: () => _onTabChanged(0),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
@@ -225,7 +360,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'Companies (${companies.length})',
+                  'Companies ($companiesCount)',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -238,11 +373,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ),
           Expanded(
             child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedTab = 1;
-                });
-              },
+              onTap: () => _onTabChanged(1),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
@@ -250,7 +381,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'Products (${products.length})',
+                  'Products ($productsCount)',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -266,7 +397,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  Widget _buildCompanyCard(Map<String, dynamic> company) {
+  Widget _buildCompanyCard(dynamic company) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -293,11 +424,26 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     color: const Color(0xFFE3F2FD),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    Icons.business,
-                    color: Colors.blue.shade700,
-                    size: 24,
-                  ),
+                  child: company.logoUrl != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            company.logoUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.business,
+                                color: Colors.blue.shade700,
+                                size: 24,
+                              );
+                            },
+                          ),
+                        )
+                      : Icon(
+                          Icons.business,
+                          color: Colors.blue.shade700,
+                          size: 24,
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -308,7 +454,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              company['name'],
+                              company.name,
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -316,7 +462,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                               ),
                             ),
                           ),
-                          if (company['verified'])
+                          if (company.isVerified)
                             Icon(
                               Icons.verified,
                               color: Colors.blue.shade600,
@@ -326,7 +472,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        company['description'],
+                        company.tagline,
                         style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -349,7 +495,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    company['category'],
+                    company.category,
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.blue.shade700,
@@ -364,9 +510,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   color: Colors.grey[600],
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  company['location'],
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                Expanded(
+                  child: Text(
+                    company.location,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -375,12 +524,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '${company['products']} products',
+                  '${company.productsCount} products',
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
                 TextButton.icon(
                   onPressed: () {
-                    // View profile functionality
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('View ${company.name} profile'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
                   },
                   icon: const Icon(Icons.arrow_forward, size: 16),
                   label: const Text('View Profile'),
@@ -400,7 +554,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  Widget _buildProductCard(Map<String, dynamic> product) {
+  Widget _buildProductCard(dynamic product) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -427,11 +581,26 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     color: const Color(0xFFE3F2FD),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    Icons.inventory_2_outlined,
-                    color: Colors.blue.shade700,
-                    size: 24,
-                  ),
+                  child: product.imageUrl != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            product.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.inventory_2_outlined,
+                                color: Colors.blue.shade700,
+                                size: 24,
+                              );
+                            },
+                          ),
+                        )
+                      : Icon(
+                          Icons.inventory_2_outlined,
+                          color: Colors.blue.shade700,
+                          size: 24,
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -439,16 +608,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        product['name'],
+                        product.name,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.black87,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        product['company'],
+                        product.companyName,
                         style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       ),
                     ],
@@ -469,7 +640,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    product['category'],
+                    product.category,
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.green.shade700,
@@ -477,9 +648,23 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.location_on_outlined,
+                  size: 14,
+                  color: Colors.grey[600],
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    product.location,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 const Spacer(),
                 Text(
-                  product['price'],
+                  product.formattedPrice,
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -493,7 +678,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // View details functionality
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('View ${product.name} details'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
@@ -542,10 +732,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => BusinessDashboardScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          BusinessDashboardScreen(userData: widget.userData),
                     ),
                   );
                 },
@@ -558,10 +746,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ProductsServicesScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          ProductsServicesScreen(userData: widget.userData),
                     ),
                   );
                 },
@@ -580,10 +766,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AnalyticsScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          AnalyticsScreen(userData: widget.userData),
                     ),
                   );
                 },
@@ -596,10 +780,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => SettingsScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          SettingsScreen(userData: widget.userData),
                     ),
                   );
                 },

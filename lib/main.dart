@@ -7,6 +7,9 @@ import 'package:activ/screens/Member%20Bottom%20Navigation/dashboard_screen.dart
 import 'package:activ/services/auth_service.dart';
 import 'package:activ/services/user_profile_provider.dart';
 import 'package:activ/providers/company_selection_provider.dart';
+import 'package:activ/providers/discover_provider.dart';
+import 'package:activ/providers/analytics_provider.dart';
+import 'package:activ/providers/settings_provider.dart';
 import 'package:activ/screens/Block%20Admin/blockadmin_settings.dart';
 import 'package:activ/screens/Application%20Status/application_submitted_screen.dart';
 
@@ -25,6 +28,9 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (context) => UserProfileProvider()),
         ChangeNotifierProvider(create: (context) => CompanySelectionProvider()),
+        ChangeNotifierProvider(create: (context) => DiscoverProvider()),
+        ChangeNotifierProvider(create: (context) => AnalyticsProvider()),
+        ChangeNotifierProvider(create: (context) => SettingsProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

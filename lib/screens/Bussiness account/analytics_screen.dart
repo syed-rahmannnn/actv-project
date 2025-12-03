@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/analytics_provider.dart';
+import '../../providers/company_selection_provider.dart';
+import '../../widgets/company_switcher_widget.dart';
 import 'businessaccount _dashboard_screen.dart';
 import 'products/products_services_screen.dart';
 import 'discover_screen.dart';
@@ -15,59 +19,168 @@ class AnalyticsScreen extends StatefulWidget {
 }
 
 class _AnalyticsScreenState extends State<AnalyticsScreen> {
+  String? _currentCompanyId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load analytics data on screen init
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAnalytics();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Listen to company selection changes
+    final activeCompany = context
+        .watch<CompanySelectionProvider>()
+        .activeCompany;
+    if (activeCompany != null && activeCompany.id != _currentCompanyId) {
+      _currentCompanyId = activeCompany.id;
+      print('🔄 Analytics: Active company changed to ${activeCompany.name}');
+      _loadAnalytics();
+    }
+  }
+
+  void _loadAnalytics() {
+    final companyProvider = context.read<CompanySelectionProvider>();
+    final activeCompany = companyProvider.activeCompany;
+
+    if (activeCompany != null) {
+      print(
+        '📊 Loading analytics for company: ${activeCompany.name} (${activeCompany.id})',
+      );
+      context.read<AnalyticsProvider>().loadAnalytics(activeCompany.id);
+    } else {
+      print('⚠️ No active company selected for analytics');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              _buildHeader(),
-
-              // Main Content
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Stats Grid
-                        _buildStatsGrid(),
-                        const SizedBox(height: 20),
-
-                        // Profile Views Chart
-                        _buildProfileViewsChart(),
-                        const SizedBox(height: 20),
-
-                        // Top Performing Products
-                        _buildTopProducts(),
-                        const SizedBox(height: 20),
-
-                        // Performance Insight
-                        _buildPerformanceInsight(),
-                      ],
-                    ),
-                  ),
-                ),
+    return Consumer<AnalyticsProvider>(
+      builder: (context, analyticsProvider, child) {
+        return Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
               ),
-            ],
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // Header
+                  _buildHeader(),
+
+                  // Main Content
+                  Expanded(child: _buildContent(analyticsProvider)),
+                ],
+              ),
+            ),
           ),
+          bottomNavigationBar: _buildBottomNavigationBar(),
+        );
+      },
+    );
+  }
+
+  Widget _buildContent(AnalyticsProvider provider) {
+    if (provider.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (provider.error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load analytics',
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              provider.error!,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _loadAnalytics,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (provider.overview == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.analytics_outlined,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No analytics data available',
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Select an active company to view analytics',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final overview = provider.overview!;
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Stats Grid
+            _buildStatsGrid(overview),
+            const SizedBox(height: 20),
+
+            // Profile Views Chart
+            _buildProfileViewsChart(overview),
+            const SizedBox(height: 20),
+
+            // Top Performing Products
+            _buildTopProducts(overview),
+            const SizedBox(height: 20),
+
+            // Performance Insight
+            _buildPerformanceInsight(overview),
+          ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
   Widget _buildHeader() {
+    final memberId =
+        widget.userData['_id']?.toString() ??
+        widget.userData['id']?.toString() ??
+        '';
+
     return Container(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -97,12 +210,35 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               style: TextStyle(fontSize: 14, color: Colors.black54),
             ),
           ),
+          if (memberId.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.only(left: 48.0),
+              child: CompanySwitcherWidget(
+                memberId: memberId,
+                textColor: Colors.black87,
+                iconColor: Colors.black87,
+                dropdownColor: Colors.white,
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildStatsGrid() {
+  Widget _buildStatsGrid(overview) {
+    String formatNumber(int number) {
+      if (number >= 1000) {
+        return '${(number / 1000).toStringAsFixed(1)}k';
+      }
+      return number.toString();
+    }
+
+    String formatPercentage(int percent) {
+      return '${percent > 0 ? '+' : ''}$percent%';
+    }
+
     return Column(
       children: [
         Row(
@@ -111,10 +247,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               child: _buildStatCard(
                 icon: Icons.visibility_outlined,
                 iconColor: Colors.blue,
-                value: '1,234',
+                value: formatNumber(overview.profileViews),
                 label: 'Profile Views',
-                percentage: '+12%',
-                isPositive: true,
+                percentage: formatPercentage(
+                  overview.profileViewsChangePercent,
+                ),
+                isPositive: overview.profileViewsChangePercent >= 0,
               ),
             ),
             const SizedBox(width: 12),
@@ -122,10 +260,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               child: _buildStatCard(
                 icon: Icons.inventory_2_outlined,
                 iconColor: Colors.blue,
-                value: '3,456',
+                value: formatNumber(overview.productViews),
                 label: 'Product Views',
-                percentage: '+8%',
-                isPositive: true,
+                percentage: formatPercentage(
+                  overview.productViewsChangePercent,
+                ),
+                isPositive: overview.productViewsChangePercent >= 0,
               ),
             ),
           ],
@@ -137,10 +277,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               child: _buildStatCard(
                 icon: Icons.search_outlined,
                 iconColor: Colors.orange,
-                value: '892',
+                value: formatNumber(overview.searchAppearances),
                 label: 'Search Appearances',
-                percentage: '-3%',
-                isPositive: false,
+                percentage: formatPercentage(
+                  overview.searchAppearancesChangePercent,
+                ),
+                isPositive: overview.searchAppearancesChangePercent >= 0,
               ),
             ),
             const SizedBox(width: 12),
@@ -148,10 +290,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               child: _buildStatCard(
                 icon: Icons.people_outline,
                 iconColor: Colors.green,
-                value: '156',
+                value: formatNumber(overview.connections),
                 label: 'Connections',
-                percentage: '+16%',
-                isPositive: true,
+                percentage: formatPercentage(overview.connectionsChangePercent),
+                isPositive: overview.connectionsChangePercent >= 0,
               ),
             ),
           ],
@@ -221,7 +363,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildProfileViewsChart() {
+  Widget _buildProfileViewsChart(overview) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -247,19 +389,33 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          _buildBarChart(),
+          _buildBarChart(overview.weeklyProfileViews),
         ],
       ),
     );
   }
 
-  Widget _buildBarChart() {
-    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final values = [45, 52, 38, 65, 58, 42, 35];
-    final maxValue = 65;
+  Widget _buildBarChart(List weeklyViews) {
+    if (weeklyViews.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Text(
+            'No weekly data available',
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+        ),
+      );
+    }
+
+    // Find max value for scaling bars
+    final maxValue = weeklyViews
+        .map((v) => v.views)
+        .reduce((a, b) => a > b ? a : b);
+    final effectiveMaxValue = maxValue > 0 ? maxValue : 1;
 
     return Column(
-      children: List.generate(days.length, (index) {
+      children: weeklyViews.map<Widget>((dayData) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 12.0),
           child: Row(
@@ -267,7 +423,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               SizedBox(
                 width: 30,
                 child: Text(
-                  days[index],
+                  dayData.day,
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ),
@@ -283,7 +439,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       ),
                     ),
                     FractionallySizedBox(
-                      widthFactor: values[index] / maxValue,
+                      widthFactor: dayData.views / effectiveMaxValue,
                       child: Container(
                         height: 24,
                         decoration: BoxDecoration(
@@ -297,9 +453,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               ),
               const SizedBox(width: 12),
               SizedBox(
-                width: 25,
+                width: 35,
                 child: Text(
-                  '${values[index]}',
+                  '${dayData.views}',
                   textAlign: TextAlign.right,
                   style: TextStyle(
                     fontSize: 12,
@@ -311,11 +467,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ],
           ),
         );
-      }),
+      }).toList(),
     );
   }
 
-  Widget _buildTopProducts() {
+  Widget _buildTopProducts(overview) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -341,29 +497,32 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildProductRankItem(
-            rank: '#1',
-            name: 'Premium Software Suite',
-            views: '456 views',
-            engagement: '78% engagement',
-            rankColor: Colors.blue,
-          ),
-          const SizedBox(height: 12),
-          _buildProductRankItem(
-            rank: '#2',
-            name: 'Training Program',
-            views: '342 views',
-            engagement: '65% engagement',
-            rankColor: Colors.blue,
-          ),
-          const SizedBox(height: 12),
-          _buildProductRankItem(
-            rank: '#3',
-            name: 'Consulting Services',
-            views: '289 views',
-            engagement: '58% engagement',
-            rankColor: Colors.blue,
-          ),
+          if (overview.topProducts.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Text(
+                  'No products data available',
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ),
+            )
+          else
+            ...List.generate(overview.topProducts.length, (index) {
+              final product = overview.topProducts[index];
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: index < overview.topProducts.length - 1 ? 12.0 : 0,
+                ),
+                child: _buildProductRankItem(
+                  rank: '#${index + 1}',
+                  name: product.name,
+                  views: '${product.views} views',
+                  engagement: '${product.engagement}% engagement',
+                  rankColor: Colors.blue,
+                ),
+              );
+            }),
         ],
       ),
     );
@@ -438,7 +597,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildPerformanceInsight() {
+  Widget _buildPerformanceInsight(overview) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -457,11 +616,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             child: const Icon(Icons.trending_up, color: Colors.white, size: 24),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Performance Insight',
                   style: TextStyle(
                     fontSize: 14,
@@ -469,10 +628,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     color: Colors.black87,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Your profile views increased by 12% this week. Keep updating your products and engaging with connections to maintain this growth.',
-                  style: TextStyle(fontSize: 12, color: Colors.black87),
+                  overview.insightText,
+                  style: const TextStyle(fontSize: 12, color: Colors.black87),
                 ),
               ],
             ),
@@ -508,10 +667,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => BusinessDashboardScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          BusinessDashboardScreen(userData: widget.userData),
                     ),
                   );
                 },
@@ -524,10 +681,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ProductsServicesScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          ProductsServicesScreen(userData: widget.userData),
                     ),
                   );
                 },
@@ -540,10 +695,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => DiscoverScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          DiscoverScreen(userData: widget.userData),
                     ),
                   );
                 },
@@ -562,10 +715,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => SettingsScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          SettingsScreen(userData: widget.userData),
                     ),
                   );
                 },

@@ -12,6 +12,7 @@ import '../../models/company_model.dart';
 import '../../services/business_profile_service.dart';
 import '../../services/company_service.dart';
 import '../../providers/company_selection_provider.dart';
+import '../../widgets/company_switcher_widget.dart';
 
 class BusinessDashboardScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -54,6 +55,33 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
         _activeCompany = activeCompany;
       });
       print('✅ Active company updated from provider: ${activeCompany.name}');
+      // Reload company-specific data when company changes
+      _loadCompanySpecificData(activeCompany.id);
+    }
+  }
+
+  Future<void> _loadCompanySpecificData(String companyId) async {
+    try {
+      print('🔄 Loading data for company: $companyId');
+      // Reload metrics and associations for the new company
+      if (_businessProfile != null) {
+        final results = await Future.wait([
+          BusinessProfileService.getBusinessMetrics(
+            _businessProfile!.businessId,
+          ),
+          BusinessProfileService.getBusinessAssociations(
+            _businessProfile!.businessId,
+          ),
+        ]);
+
+        setState(() {
+          _businessMetrics = results[0] as BusinessMetrics;
+          _associations = results[1] as List<BusinessAssociation>;
+        });
+        print('✅ Reloaded metrics and associations');
+      }
+    } catch (e) {
+      print('❌ Error reloading company data: $e');
     }
   }
 
@@ -278,39 +306,60 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
   }
 
   Widget _buildHeader() {
+    final memberId =
+        widget.userData['_id']?.toString() ??
+        widget.userData['id']?.toString() ??
+        '';
+
     return Container(
       padding: const EdgeInsets.all(16),
-      child: Row(
+      child: Column(
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black87),
-            onPressed: () => Navigator.pop(context),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  'Business Profile',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                onPressed: () => Navigator.pop(context),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Business Profile',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      'Manage your business presence',
+                      style: TextStyle(fontSize: 13, color: Colors.black54),
+                    ),
+                  ],
                 ),
-                Text(
-                  'Manage your business presence',
-                  style: TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+              if (_businessProfile != null)
+                IconButton(
+                  icon: const Icon(Icons.refresh, color: Colors.black87),
+                  onPressed: _loadBusinessData,
                 ),
-              ],
-            ),
+            ],
           ),
-          if (_businessProfile != null)
-            IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.black87),
-              onPressed: _loadBusinessData,
+          if (memberId.isNotEmpty && _companies.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: CompanySwitcherWidget(
+                memberId: memberId,
+                textColor: Colors.black87,
+                iconColor: Colors.black87,
+                dropdownColor: Colors.white,
+              ),
             ),
+          ],
         ],
       ),
     );
@@ -1042,10 +1091,8 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ProductsServicesScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          ProductsServicesScreen(userData: widget.userData),
                     ),
                   );
                 },
@@ -1058,10 +1105,8 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => DiscoverScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          DiscoverScreen(userData: widget.userData),
                     ),
                   );
                 },
@@ -1074,10 +1119,8 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AnalyticsScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          AnalyticsScreen(userData: widget.userData),
                     ),
                   );
                 },
@@ -1090,10 +1133,8 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => SettingsScreen(
-                        userData: widget.userData,
-                        businessData: widget.businessData,
-                      ),
+                      builder: (context) =>
+                          SettingsScreen(userData: widget.userData),
                     ),
                   );
                 },
