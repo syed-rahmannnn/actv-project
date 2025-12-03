@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const MemberDetails = require('../models/MemberDetails');
 const MemberBusinessInfo = require('../models/MemberBusinessInfo');
 const MemberFinancialInfo = require('../models/MemberFinancialInfo');
@@ -48,17 +49,38 @@ router.get('/business-info/:memberId', async (req, res) => {
   try {
     const { memberId } = req.params;
 
-    const businessInfo = await MemberBusinessInfo.findOne({ memberId: memberId });
+    console.log('\n' + '='.repeat(80));
+    console.log('📥 GET /business-info/:memberId');
+    console.log('='.repeat(80));
+    console.log('📋 memberId:', memberId);
+
+    // Convert to ObjectId
+    let memberObjectId;
+    try {
+      memberObjectId = new mongoose.Types.ObjectId(memberId);
+      console.log('✅ Converted to ObjectId');
+    } catch (err) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid memberId format'
+      });
+    }
+
+    const businessInfo = await MemberBusinessInfo.findOne({ memberId: memberObjectId });
 
     if (!businessInfo) {
+      console.log('⚠️  Business information not found');
+      console.log('='.repeat(80) + '\n');
       return res.status(404).json({
         success: false,
         message: 'Business information not found'
       });
     }
 
+    console.log('✅ Business info found');
     console.log('📱 Returning business info - mobile:', businessInfo.mobile);
-    console.log('📋 Business info object:', JSON.stringify(businessInfo, null, 2));
+    console.log('🏢 organizationName:', businessInfo.organizationName);
+    console.log('='.repeat(80) + '\n');
 
     res.status(200).json({
       success: true,
@@ -95,8 +117,21 @@ router.post('/business-info', async (req, res) => {
       });
     }
 
+    // Convert memberId to ObjectId for queries
+    let memberObjectId;
+    try {
+      memberObjectId = new mongoose.Types.ObjectId(memberId);
+      console.log('✅ Converted memberId to ObjectId:', memberObjectId);
+    } catch (err) {
+      console.error('❌ Invalid memberId format:', err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid memberId format'
+      });
+    }
+
     // Check if member exists
-    const member = await MemberDetails.findById(memberId);
+    const member = await MemberDetails.findById(memberObjectId);
     if (!member) {
       return res.status(404).json({
         success: false,
@@ -148,7 +183,7 @@ router.post('/business-info', async (req, res) => {
     const updateData = {
       ...common,      // Add common fields first
       ...payload,     // Then business data (this can override common if needed)
-      memberId: memberId
+      memberId: memberObjectId  // Use ObjectId
     };
 
     // Ensure mobile is explicitly set if provided
@@ -166,9 +201,9 @@ router.post('/business-info', async (req, res) => {
     console.log('🔍 FINAL UPDATE DATA OBJECT:');
     console.log(JSON.stringify(updateData, null, 2));
 
-    // Update or create business info
+    // Update or create business info - use ObjectId for query
     const businessInfo = await MemberBusinessInfo.findOneAndUpdate(
-      { memberId: memberId },
+      { memberId: memberObjectId },
       { $set: updateData },
       { 
         upsert: true, 

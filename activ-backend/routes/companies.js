@@ -82,6 +82,12 @@ router.get('/', async (req, res) => {
   try {
     const { memberId } = req.query;
 
+    console.log('\n' + '='.repeat(80));
+    console.log('📥 GET /api/companies REQUEST');
+    console.log('='.repeat(80));
+    console.log('📋 memberId from query:', memberId);
+    console.log('📋 memberId type:', typeof memberId);
+
     if (!memberId) {
       return res.status(400).json({
         success: false,
@@ -89,9 +95,29 @@ router.get('/', async (req, res) => {
       });
     }
 
-    const companies = await Company.find({ memberId })
+    // Convert string to ObjectId for correct query
+    let memberObjectId;
+    try {
+      memberObjectId = new mongoose.Types.ObjectId(memberId);
+      console.log('✅ Converted to ObjectId:', memberObjectId);
+    } catch (err) {
+      console.error('❌ Invalid ObjectId format:', err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid memberId format'
+      });
+    }
+
+    console.log('🔍 Querying companies with ObjectId...');
+    const companies = await Company.find({ memberId: memberObjectId })
       .sort({ createdAt: -1 })
       .lean();
+
+    console.log(`✅ Found ${companies.length} companies`);
+    companies.forEach((c, i) => {
+      console.log(`   ${i + 1}. ${c.name} (${c._id})`);
+    });
+    console.log('='.repeat(80) + '\n');
 
     res.status(200).json({
       success: true,
@@ -100,7 +126,7 @@ router.get('/', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get companies error:', error);
+    console.error('❌ Get companies error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch companies',
@@ -158,6 +184,12 @@ router.post('/', async (req, res) => {
       status
     } = req.body;
 
+    console.log('\n' + '='.repeat(80));
+    console.log('📥 POST /api/companies - CREATE COMPANY');
+    console.log('='.repeat(80));
+    console.log('📋 memberId received:', memberId, 'type:', typeof memberId);
+    console.log('🏢 Company name:', name);
+
     if (!memberId || !name) {
       return res.status(400).json({
         success: false,
@@ -165,8 +197,21 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // Convert memberId to ObjectId
+    let memberObjectId;
+    try {
+      memberObjectId = new mongoose.Types.ObjectId(memberId);
+      console.log('✅ Converted memberId to ObjectId:', memberObjectId);
+    } catch (err) {
+      console.error('❌ Invalid memberId format:', err.message);
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid memberId format'
+      });
+    }
+
     const newCompany = new Company({
-      memberId,
+      memberId: memberObjectId,  // Save as ObjectId
       name,
       industry,
       location,
@@ -184,6 +229,8 @@ router.post('/', async (req, res) => {
     });
 
     await newCompany.save();
+    console.log('✅ Company created successfully:', newCompany._id);
+    console.log('='.repeat(80) + '\n');
 
     res.status(201).json({
       success: true,

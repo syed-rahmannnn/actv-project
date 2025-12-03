@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:activ/models/company_model.dart';
 import 'package:activ/services/company_service.dart';
-import 'create_company_screen.dart';
+import 'business_profile_screen.dart';
+import 'business_profile_view_screen.dart';
 
 class ManageCompaniesScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -31,19 +32,50 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
           widget.userData['id']?.toString() ??
           '';
 
-      if (memberId.isNotEmpty) {
-        final companies = await CompanyService.getCompanies(memberId);
-        setState(() {
-          _companies = companies;
-          _isLoading = false;
-        });
+      if (memberId.isEmpty) {
+        throw Exception('Member ID not found in user data');
+      }
+
+      print('🔍 Loading companies for memberId: $memberId');
+      print('📋 Full userData keys: ${widget.userData.keys.toList()}');
+      print('📋 userData values: ${widget.userData}');
+
+      final companies = await CompanyService.getCompanies(memberId);
+
+      setState(() {
+        _companies = companies;
+        _isLoading = false;
+      });
+      print('✅ Loaded ${companies.length} companies');
+
+      if (companies.isEmpty) {
+        print('⚠️ No companies returned from API');
+        print('⚠️ Check if memberId $memberId matches companies in database');
       } else {
-        setState(() => _isLoading = false);
+        companies.forEach((c) => print('   - ${c.name} (${c.id})'));
       }
     } catch (e) {
-      print('Error loading companies: $e');
+      print('❌ Error loading companies: $e');
       setState(() => _isLoading = false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load companies: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
+  }
+
+  void _onViewDetails(Company company) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BusinessProfileViewScreen(companyId: company.id),
+      ),
+    );
   }
 
   @override
@@ -138,8 +170,10 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) =>
-                      CreateCompanyScreen(userData: widget.userData),
+                  builder: (context) => BusinessProfileScreen(
+                    userData: widget.userData,
+                    mode: 'createCompany',
+                  ),
                 ),
               );
               // Reload companies if a new one was created
@@ -289,14 +323,13 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    if (company.displayIndustryLocation.isNotEmpty)
-                      Text(
-                        company.displayIndustryLocation,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.black54,
-                        ),
+                    Text(
+                      '${company.industry ?? "Business"} · ${company.mobile ?? "No mobile"}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.black54,
                       ),
+                    ),
                   ],
                 ),
               ),
@@ -309,65 +342,40 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
 
           // Stats Row
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildStatItem(
-                Icons.shopping_bag_outlined,
-                company.productsCount.toString(),
-                'Products',
-              ),
-              const SizedBox(width: 24),
-              _buildStatItem(
-                Icons.visibility_outlined,
-                _formatNumber(company.views),
-                'Views',
-              ),
-              const SizedBox(width: 24),
-              _buildStatItem(
-                Icons.people_outline,
-                company.connections.toString(),
-                'Connections',
-              ),
+              _buildMetricItem('Products', company.productsCount),
+              _buildMetricItem('Views', company.views),
+              _buildMetricItem('Connections', company.connections),
             ],
           ),
 
           const SizedBox(height: 16),
 
-          // Action Buttons
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    // TODO: Navigate to edit company screen
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.blue.shade300),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+          // Action Button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 0),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _onViewDetails(company),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Text('Edit'),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: Navigate to company details
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'View Details',
-                    style: TextStyle(color: Colors.white),
+                child: const Text(
+                  'View Details',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -414,28 +422,25 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
     );
   }
 
-  Widget _buildStatItem(IconData icon, String value, String label) {
-    return Row(
+  Widget _buildMetricItem(String label, int value) {
+    return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: Colors.black54),
-        const SizedBox(width: 4),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 11, color: Colors.black54),
-            ),
-          ],
+        Text(
+          _formatNumber(value),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.black54,
+          ),
         ),
       ],
     );

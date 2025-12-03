@@ -146,10 +146,11 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
           throw Exception('Member ID not found');
         }
 
-        // TODO: Upload logo if selected and get URL
+        // Logo upload feature - will be implemented when image upload service is ready
         String? logoUrl;
         if (_businessLogo != null) {
-          // logoUrl = await uploadImage(_businessLogo!);
+          // Future implementation: Upload to cloud storage and get URL
+          logoUrl = null; // Placeholder until upload service is implemented
         }
 
         print('📱 SAVING MOBILE NUMBER: ${_mobileController.text.trim()}');
@@ -219,13 +220,8 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
             // Small delay to ensure DB is updated
             await Future.delayed(const Duration(milliseconds: 500));
 
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    BusinessDashboardScreen(userData: widget.userData),
-              ),
-            );
+            // Pop with true to signal successful update and trigger dashboard refresh
+            Navigator.pop(context, true);
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

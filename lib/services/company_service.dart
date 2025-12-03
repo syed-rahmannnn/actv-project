@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:developer' as developer;
 import '../models/company_model.dart';
 import 'api_service.dart';
+import 'auth_service.dart';
 
 class CompanyService {
   static final String baseUrl = ApiService.baseUrl;
@@ -25,35 +26,75 @@ class CompanyService {
     }
   }
 
-  /// Get all companies for a member
+  /// Get all companies for the logged-in member
   static Future<List<Company>> getCompanies(String memberId) async {
     try {
+      if (memberId.isEmpty) {
+        throw Exception('memberId is required');
+      }
+
       final url = Uri.parse('$baseUrl/companies?memberId=$memberId');
       developer.log(
-        'Fetching companies for member: $memberId',
+        '🌐 Fetching companies for memberId: $memberId',
         name: 'CompanyService',
       );
+      developer.log('🌐 Full URL: $url', name: 'CompanyService');
 
       final response = await http
           .get(url, headers: {'Content-Type': 'application/json'})
           .timeout(_requestTimeout());
 
+      developer.log(
+        '📊 Response Status: ${response.statusCode}',
+        name: 'CompanyService',
+      );
+      developer.log(
+        '📊 Response Body: ${response.body}',
+        name: 'CompanyService',
+      );
+
       if (response.statusCode == 200) {
         final body = _jsonDecodeSafe(response.body);
-        if (body['success'] == true && body['data'] != null) {
+        developer.log('✅ Parsed response successfully', name: 'CompanyService');
+
+        if (body is Map && body['success'] == true && body['data'] != null) {
           final List<dynamic> companiesJson = body['data'];
-          return companiesJson.map((json) => Company.fromJson(json)).toList();
+          developer.log(
+            '📦 Found ${companiesJson.length} companies',
+            name: 'CompanyService',
+          );
+          final companies = companiesJson
+              .map((json) => Company.fromJson(json))
+              .toList();
+          companies.forEach(
+            (c) => developer.log(
+              '  - ${c.name} (${c.id})',
+              name: 'CompanyService',
+            ),
+          );
+          return companies;
+        } else {
+          developer.log(
+            '⚠️ Unexpected response format: $body',
+            name: 'CompanyService',
+          );
+          return [];
         }
       }
 
       developer.log(
-        'Failed to fetch companies: ${response.statusCode}',
+        '❌ Failed to fetch companies: ${response.statusCode}',
         name: 'CompanyService',
       );
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw Exception('Authentication failed. Please login again.');
+      }
+
       return [];
     } catch (e) {
-      developer.log('Error fetching companies: $e', name: 'CompanyService');
-      return [];
+      developer.log('❌ Error fetching companies: $e', name: 'CompanyService');
+      rethrow;
     }
   }
 
@@ -79,6 +120,15 @@ class CompanyService {
       developer.log('Error fetching company: $e', name: 'CompanyService');
       return null;
     }
+  }
+
+  /// Get a single company by ID (throws exception if not found)
+  static Future<Company> getCompanyById(String companyId) async {
+    final company = await getCompany(companyId);
+    if (company == null) {
+      throw Exception('Company not found');
+    }
+    return company;
   }
 
   /// Create a new company
