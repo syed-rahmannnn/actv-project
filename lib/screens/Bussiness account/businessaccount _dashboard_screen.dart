@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'manage_companies_screen.dart';
-import 'products_services_screen.dart';
+import 'products/products_services_screen.dart';
 import 'discover_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_screen.dart';
@@ -77,7 +77,9 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
       final results = await Future.wait([
         BusinessProfileService.getBusinessMetrics(profile.businessId),
         BusinessProfileService.getBusinessAssociations(profile.businessId),
-        CompanyService.getCompanies(memberId), // Use same service as My Companies
+        CompanyService.getCompanies(
+          memberId,
+        ), // Use same service as My Companies
       ]);
 
       setState(() {

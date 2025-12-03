@@ -1,16 +1,22 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'products_services_screen.dart';
+import 'package:http/http.dart' as http;
+import '../../../models/product_model.dart';
 
 class AddProductNewScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
-  final Function(Map<String, dynamic>)? onProductAdded;
+  final String companyId;
+  final Product? product; // For edit mode
+  final bool isEdit; // Flag to indicate edit mode
 
   const AddProductNewScreen({
     super.key,
     required this.userData,
-    this.onProductAdded,
+    required this.companyId,
+    this.product,
+    this.isEdit = false,
   });
 
   @override
@@ -28,20 +34,28 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
   String? _selectedCategory;
   final List<String> _categories = [
     'Software',
-    'Hardware',
-    'Electronics',
-    'Clothing',
-    'Food',
-    'Books',
-    'Toys',
-    'Furniture',
-    'Sports',
-    'Beauty',
-    'Others',
+    'Services',
+    'Education',
+    'Product',
+    'Other',
   ];
 
   File? _productImage;
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Prefill form fields if in edit mode
+    if (widget.isEdit && widget.product != null) {
+      _productNameController.text = widget.product!.name;
+      _descriptionController.text = widget.product!.description ?? '';
+      _selectedCategory = widget.product!.category;
+      _priceController.text = widget.product!.price.toString();
+      // Note: stock and sku are not in current Product model
+      // If you need them, add to model and backend first
+    }
+  }
 
   @override
   void dispose() {
@@ -76,36 +90,81 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
       });
 
       try {
-        await Future.delayed(const Duration(seconds: 1));
+        // Parse price value
+        final priceValue = double.tryParse(_priceController.text) ?? 0.0;
 
-        // Create product data
+        // Create product data JSON
         final productData = {
-          'name': _productNameController.text,
-          'description': _descriptionController.text,
+          'companyId': widget.companyId,
+          'name': _productNameController.text.trim(),
+          'description': _descriptionController.text.trim(),
           'category': _selectedCategory ?? 'Other',
-          'price': _priceController.text,
-          'stock': _stockController.text,
-          'sku': _skuController.text,
-          'image': _productImage,
+          'price': priceValue,
+          'priceUnit': 'one-time',
+          'currency': 'INR',
           'featured': false,
+          'imageUrl': null,
         };
 
-        // Call the callback if provided
-        if (widget.onProductAdded != null) {
-          widget.onProductAdded!(productData);
+        final baseUrl = 'http://10.42.208.174:3000/api/products';
+        http.Response response;
+
+        if (widget.isEdit && widget.product != null) {
+          // UPDATE existing product
+          print('📦 Updating product ${widget.product!.id}');
+          print('📦 Update payload: ${jsonEncode(productData)}');
+
+          response = await http
+              .put(
+                Uri.parse('$baseUrl/${widget.product!.id}'),
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode(productData),
+              )
+              .timeout(const Duration(seconds: 10));
+
+          print('📦 Update status: ${response.statusCode}');
+          print('📦 Update response: ${response.body}');
+        } else {
+          // CREATE new product
+          print('📦 Creating new product');
+          print('📦 Create payload: ${jsonEncode(productData)}');
+
+          response = await http
+              .post(
+                Uri.parse(baseUrl),
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode(productData),
+              )
+              .timeout(const Duration(seconds: 10));
+
+          print('📦 Create status: ${response.statusCode}');
+          print('📦 Create response: ${response.body}');
         }
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Product added successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          // Success
+          if (mounted) {
+            Navigator.pop(context, true); // Return true to reload list
+          }
+        } else {
+          // API returned error
+          final errorData = jsonDecode(response.body);
+          final errorMessage = errorData['message'] ?? 'Failed to save product';
 
-          Navigator.pop(context);
+          if (mounted) {
+            setState(() {
+              _isSaving = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(errorMessage),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       } catch (e) {
+        print('❌ Error in _saveProduct: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -113,9 +172,6 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
               backgroundColor: Colors.red,
             ),
           );
-        }
-      } finally {
-        if (mounted) {
           setState(() {
             _isSaving = false;
           });
@@ -158,11 +214,11 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Add Product',
+                        widget.isEdit ? 'Edit Product' : 'Add Product',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -476,9 +532,11 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                                       >(Colors.white),
                                                 ),
                                               )
-                                            : const Text(
-                                                'Save Product',
-                                                style: TextStyle(
+                                            : Text(
+                                                widget.isEdit
+                                                    ? 'Update Product'
+                                                    : 'Save Product',
+                                                style: const TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w600,
                                                   color: Colors.white,

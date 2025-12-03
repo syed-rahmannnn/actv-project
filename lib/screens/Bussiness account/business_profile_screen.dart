@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'businessaccount _dashboard_screen.dart';
-import 'products_services_screen.dart';
+import 'products/products_services_screen.dart';
 import 'discover_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_screen.dart';

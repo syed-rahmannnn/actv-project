@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'products_services_screen.dart';
+import 'products/products_services_screen.dart';
 
 class AddCompanyScreen extends StatefulWidget {
   final Map<String, dynamic> userData;

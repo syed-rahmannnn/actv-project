@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'businessaccount _dashboard_screen.dart';
-import 'discover_screen.dart';
-import 'analytics_screen.dart';
-import 'settings_screen.dart';
+import '../businessaccount _dashboard_screen.dart';
+import '../discover_screen.dart';
+import '../analytics_screen.dart';
+import '../settings_screen.dart';
 import 'add_product_new_screen.dart';
-import '../../models/product_model.dart';
-import '../../services/product_service.dart';
-import '../../services/company_service.dart';
+import '../../../models/product_model.dart';
+import '../../../services/product_service.dart';
+import '../../../services/company_service.dart';
 
 class ProductsServicesScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -98,6 +98,36 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
     }
   }
 
+  void _editProduct(Product product) async {
+    if (_currentCompanyId == null) return;
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddProductNewScreen(
+          userData: widget.userData,
+          companyId: _currentCompanyId!,
+          product: product,
+          isEdit: true,
+        ),
+      ),
+    );
+
+    // Reload products list if product was updated
+    if (result == true) {
+      print('📦 Product updated successfully, reloading list...');
+      await _loadProducts();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Product updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
+  }
+
   void _showAddProductDialog() async {
     if (_currentCompanyId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -115,59 +145,7 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
         builder: (context) => AddProductNewScreen(
           userData: widget.userData,
           companyId: _currentCompanyId!,
-          onProductAdded: (productMap) async {
-            // Create Product object from map
-            try {
-              print('📦 onProductAdded callback triggered');
-              print('📦 Product data: $productMap');
-
-              final product = Product(
-                id: '', // Will be set by backend
-                companyId: _currentCompanyId!,
-                name: productMap['name'] ?? '',
-                description: productMap['description'],
-                category: productMap['category'] ?? 'Other',
-                price: (productMap['price'] ?? 0).toDouble(),
-                priceUnit: productMap['priceUnit'] ?? 'one-time',
-                currency: 'INR',
-                featured: productMap['featured'] ?? false,
-                imageUrl: productMap['imageUrl'],
-                status: 'ACTIVE',
-                createdAt: DateTime.now(),
-                updatedAt: DateTime.now(),
-              );
-
-              print('📦 Calling ProductService.createProduct...');
-              // Save to backend
-              final result = await ProductService.createProduct(product);
-
-              print('📦 ProductService result: $result');
-
-              if (result['success']) {
-                print('✅ Product created successfully');
-              } else {
-                print('❌ Product creation failed: ${result['message']}');
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(result['message']),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            } catch (e) {
-              print('❌ Error in onProductAdded callback: $e');
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error adding product: $e'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            }
-          },
+          isEdit: false,
         ),
       ),
     );
@@ -455,14 +433,7 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () {
-                          // TODO: Implement edit functionality
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Edit feature coming soon'),
-                            ),
-                          );
-                        },
+                        onPressed: () => _editProduct(product),
                         icon: const Icon(Icons.edit_outlined, size: 18),
                         label: const Text('Edit'),
                         style: OutlinedButton.styleFrom(
