@@ -6,6 +6,7 @@ import 'package:activ/screens/onboarding_screen.dart';
 import 'package:activ/screens/Member%20Bottom%20Navigation/dashboard_screen.dart';
 import 'package:activ/services/auth_service.dart';
 import 'package:activ/services/user_profile_provider.dart';
+import 'package:activ/providers/company_selection_provider.dart';
 import 'package:activ/screens/Block%20Admin/blockadmin_settings.dart';
 import 'package:activ/screens/Application%20Status/application_submitted_screen.dart';
 
@@ -20,8 +21,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => UserProfileProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => UserProfileProvider()),
+        ChangeNotifierProvider(create: (context) => CompanySelectionProvider()),
+      ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'ACTIV Portal',
@@ -36,7 +40,9 @@ class MyApp extends StatelessWidget {
           '/settings': (context) => const BlockAdminSettingsPage(),
           '/application_submitted': (context) {
             final userData = ModalRoute.of(context)?.settings.arguments;
-            return ApplicationSubmittedScreen(userData: userData as Map<String, dynamic>);
+            return ApplicationSubmittedScreen(
+              userData: userData as Map<String, dynamic>,
+            );
           },
         },
       ),

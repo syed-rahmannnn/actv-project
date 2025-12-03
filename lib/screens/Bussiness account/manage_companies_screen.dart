@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:activ/models/company_model.dart';
 import 'package:activ/services/company_service.dart';
+import 'package:activ/providers/company_selection_provider.dart';
 import 'business_profile_screen.dart';
 import 'business_profile_view_screen.dart';
 
@@ -76,6 +78,23 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
         builder: (_) => BusinessProfileViewScreen(companyId: company.id),
       ),
     );
+  }
+
+  void _onSetActive(Company company) {
+    // Set as active company
+    context.read<CompanySelectionProvider>().setActiveCompany(company);
+
+    // Show confirmation
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${company.name} set as active company'),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    // Return to Business dashboard
+    Navigator.pop(context);
   }
 
   @override
@@ -352,29 +371,53 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
 
           const SizedBox(height: 16),
 
-          // Action Button
+          // Action Buttons
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 0),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => _onViewDetails(company),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _onViewDetails(company),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.blue,
+                      side: const BorderSide(color: Colors.blue),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'View Details',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
-                child: const Text(
-                  'View Details',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _onSetActive(company),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Set as Active',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ],

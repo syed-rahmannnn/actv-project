@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'manage_companies_screen.dart';
 import 'products/products_services_screen.dart';
 import 'discover_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_screen.dart';
 import 'business_profile_edit_screen.dart';
+import 'edit_company_screen.dart';
 import '../../models/business_profile_model.dart';
 import '../../models/company_model.dart';
 import '../../services/business_profile_service.dart';
 import '../../services/company_service.dart';
+import '../../providers/company_selection_provider.dart';
 
 class BusinessDashboardScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -29,13 +32,29 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
   BusinessProfile? _businessProfile;
   BusinessMetrics? _businessMetrics;
   List<BusinessAssociation> _associations = [];
-  List<Company> _companies = []; // Changed from CompanyInfo to Company
+  List<Company> _companies = [];
+  Company? _activeCompany; // Currently active company
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadBusinessData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Listen to active company changes from provider
+    final activeCompany = context
+        .watch<CompanySelectionProvider>()
+        .activeCompany;
+    if (activeCompany != null && activeCompany.id != _activeCompany?.id) {
+      setState(() {
+        _activeCompany = activeCompany;
+      });
+      print('✅ Active company updated from provider: ${activeCompany.name}');
+    }
   }
 
   Future<void> _loadBusinessData() async {
@@ -86,13 +105,21 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
         _businessProfile = profile;
         _businessMetrics = results[0] as BusinessMetrics;
         _associations = results[1] as List<BusinessAssociation>;
-        _companies = results[2] as List<Company>; // Now using Company model
+        _companies = results[2] as List<Company>;
         _isLoading = false;
       });
 
       print('✅ Loaded ${_companies.length} companies for dashboard');
       if (_companies.isNotEmpty) {
         _companies.forEach((c) => print('   - ${c.name} (${c.id})'));
+
+        // Set first company as active if none is set
+        final companyProvider = context.read<CompanySelectionProvider>();
+        if (companyProvider.activeCompany == null) {
+          companyProvider.setActiveCompany(_companies[0]);
+          _activeCompany = _companies[0];
+          print('✅ Set first company as active: ${_companies[0].name}');
+        }
       }
     } catch (e) {
       print('❌ Error loading business data: $e');
@@ -135,8 +162,8 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
                               _buildManageCompaniesButton(),
                               const SizedBox(height: 16),
 
-                              // My Business Card
-                              _buildMyBusinessCard(),
+                              // Active Company Card (main white card)
+                              _buildActiveCompanyDetailsCard(),
                               const SizedBox(height: 16),
 
                               // Profile Stats Row
@@ -348,6 +375,152 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
             ),
           ).then((_) => _loadBusinessData()); // Refresh data when returning
         },
+      ),
+    );
+  }
+
+  Widget _buildActiveCompanyDetailsCard() {
+    // Main white card showing active company or prompt to select one
+    if (_activeCompany == null) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.business_outlined,
+              size: 48,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No active company selected',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Tap "Set as Active" from Manage My Companies',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.business,
+                  color: Colors.blue.shade700,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _activeCompany!.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    if (_activeCompany!.industry != null &&
+                        _activeCompany!.industry!.isNotEmpty)
+                      Text(
+                        _activeCompany!.industry!,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    if (_activeCompany!.mobile != null &&
+                        _activeCompany!.mobile!.isNotEmpty)
+                      Text(
+                        _activeCompany!.mobile!,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              _buildStatusPill(_activeCompany!.status),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 42,
+            child: OutlinedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        EditCompanyScreen(company: _activeCompany!),
+                  ),
+                ).then((_) => _loadBusinessData());
+              },
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Colors.blue.shade300),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Edit',
+                style: TextStyle(
+                  color: Colors.blue,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../businessaccount _dashboard_screen.dart';
@@ -9,6 +10,7 @@ import 'add_product_new_screen.dart';
 import '../../../models/product_model.dart';
 import '../../../services/product_service.dart';
 import '../../../services/company_service.dart';
+import '../../../providers/company_selection_provider.dart';
 
 class ProductsServicesScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -36,6 +38,19 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
     _initializeAndLoadProducts();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Listen to company selection changes
+    final activeCompany = context
+        .watch<CompanySelectionProvider>()
+        .activeCompany;
+    if (activeCompany != null && activeCompany.id != _currentCompanyId) {
+      _currentCompanyId = activeCompany.id;
+      _loadProducts();
+    }
+  }
+
   Future<void> _initializeAndLoadProducts() async {
     setState(() {
       _isLoading = true;
@@ -43,7 +58,29 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
     });
 
     try {
-      // Get the first company for the user
+      // Check if there's an active company in provider
+      final companyProvider = context.read<CompanySelectionProvider>();
+      final activeCompany = companyProvider.activeCompany;
+
+      if (activeCompany != null) {
+        // Use active company from provider
+        _currentCompanyId = activeCompany.id;
+        await _loadProducts();
+        return;
+      }
+
+      // Check for saved company ID
+      final savedCompanyId = await companyProvider.loadSavedCompanyId();
+      if (savedCompanyId != null) {
+        // Load the saved company
+        final company = await CompanyService.getCompanyById(savedCompanyId);
+        companyProvider.setActiveCompany(company);
+        _currentCompanyId = company.id;
+        await _loadProducts();
+        return;
+      }
+
+      // Otherwise, get the first company for the user
       final memberId = widget.userData['memberId'] ?? widget.userData['_id'];
       if (memberId == null) {
         setState(() {
@@ -63,8 +100,9 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
         return;
       }
 
-      // Use the first company
+      // Use the first company and save it
       _currentCompanyId = companies[0].id;
+      companyProvider.setActiveCompany(companies[0]);
       await _loadProducts();
     } catch (e) {
       print('❌ Error initializing: $e');
