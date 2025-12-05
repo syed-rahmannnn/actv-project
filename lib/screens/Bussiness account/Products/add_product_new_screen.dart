@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import '../../../models/product_model.dart';
+import '../../../models/discover_product.dart';
 
 class AddProductNewScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
   final String companyId;
   final Product? product; // For edit mode
+  final DiscoverProduct? discoverProduct; // For viewing from Discover
   final bool isEdit; // Flag to indicate edit mode
 
   const AddProductNewScreen({
@@ -16,6 +18,7 @@ class AddProductNewScreen extends StatefulWidget {
     required this.userData,
     required this.companyId,
     this.product,
+    this.discoverProduct,
     this.isEdit = false,
   });
 
@@ -46,8 +49,15 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
   @override
   void initState() {
     super.initState();
-    // Prefill form fields if in edit mode
-    if (widget.isEdit && widget.product != null) {
+    // Prefill form fields if in edit mode or viewing from Discover
+    if (widget.discoverProduct != null) {
+      // Use discover product data
+      _productNameController.text = widget.discoverProduct!.name;
+      _descriptionController.text = widget.discoverProduct!.description ?? '';
+      _selectedCategory = widget.discoverProduct!.category;
+      _priceController.text = widget.discoverProduct!.price.toString();
+    } else if (widget.isEdit && widget.product != null) {
+      // Use existing product data
       _productNameController.text = widget.product!.name;
       _descriptionController.text = widget.product!.description ?? '';
       _selectedCategory = widget.product!.category;
@@ -216,7 +226,9 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                     ),
                     Expanded(
                       child: Text(
-                        widget.isEdit ? 'Edit Product' : 'Add Product',
+                        widget.discoverProduct != null 
+                            ? 'View Product Details' 
+                            : (widget.isEdit ? 'Edit Product' : 'Add Product'),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.white,
@@ -260,7 +272,7 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                 // Upload Image
                                 Center(
                                   child: GestureDetector(
-                                    onTap: _pickProductImage,
+                                    onTap: widget.discoverProduct == null ? _pickProductImage : null,
                                     child: Container(
                                       width: double.infinity,
                                       height: 180,
@@ -323,6 +335,7 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                 const SizedBox(height: 8),
                                 TextFormField(
                                   controller: _productNameController,
+                                  enabled: widget.discoverProduct == null,
                                   decoration: InputDecoration(
                                     hintText: 'Enter product name',
                                     filled: true,
@@ -331,9 +344,10 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  validator: (value) => value?.isEmpty ?? true
-                                      ? 'Required'
-                                      : null,
+                                  validator: (value) {
+                                    if (widget.discoverProduct != null) return null;
+                                    return value?.isEmpty ?? true ? 'Required' : null;
+                                  },
                                 ),
                                 const SizedBox(height: 20),
 
@@ -348,6 +362,7 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                 const SizedBox(height: 8),
                                 TextFormField(
                                   controller: _descriptionController,
+                                  enabled: widget.discoverProduct == null,
                                   maxLines: 4,
                                   decoration: InputDecoration(
                                     hintText: 'Describe your product...',
@@ -357,9 +372,10 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  validator: (value) => value?.isEmpty ?? true
-                                      ? 'Required'
-                                      : null,
+                                  validator: (value) {
+                                    if (widget.discoverProduct != null) return null;
+                                    return value?.isEmpty ?? true ? 'Required' : null;
+                                  },
                                 ),
                                 const SizedBox(height: 20),
 
@@ -388,13 +404,15 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                       child: Text(category),
                                     );
                                   }).toList(),
-                                  onChanged: (String? newValue) {
+                                  onChanged: widget.discoverProduct == null ? (String? newValue) {
                                     setState(() {
                                       _selectedCategory = newValue;
                                     });
+                                  } : null,
+                                  validator: (value) {
+                                    if (widget.discoverProduct != null) return null;
+                                    return value == null ? 'Required' : null;
                                   },
-                                  validator: (value) =>
-                                      value == null ? 'Required' : null,
                                 ),
                                 const SizedBox(height: 20),
 
@@ -409,6 +427,7 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                 const SizedBox(height: 8),
                                 TextFormField(
                                   controller: _priceController,
+                                  enabled: widget.discoverProduct == null,
                                   keyboardType: TextInputType.number,
                                   decoration: InputDecoration(
                                     hintText: 'Enter price',
@@ -418,9 +437,10 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  validator: (value) => value?.isEmpty ?? true
-                                      ? 'Required'
-                                      : null,
+                                  validator: (value) {
+                                    if (widget.discoverProduct != null) return null;
+                                    return value?.isEmpty ?? true ? 'Required' : null;
+                                  },
                                 ),
                                 const SizedBox(height: 20),
 
@@ -435,6 +455,7 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                 const SizedBox(height: 8),
                                 TextFormField(
                                   controller: _stockController,
+                                  enabled: widget.discoverProduct == null,
                                   keyboardType: TextInputType.number,
                                   decoration: InputDecoration(
                                     hintText: 'Enter stock quantity',
@@ -458,6 +479,7 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                 const SizedBox(height: 8),
                                 TextFormField(
                                   controller: _skuController,
+                                  enabled: widget.discoverProduct == null,
                                   decoration: InputDecoration(
                                     hintText: 'Enter SKU',
                                     filled: true,
@@ -467,85 +489,87 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 32),
-
-                                // Save and Cancel Buttons
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        onPressed: _isSaving
-                                            ? null
-                                            : () => Navigator.pop(context),
-                                        style: OutlinedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 16,
-                                          ),
-                                          side: BorderSide(
-                                            color: Colors.grey.shade400,
-                                            width: 1.5,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
+                                if (widget.discoverProduct == null) ...
+                                [
+                                  const SizedBox(height: 32),
+                                  // Save and Cancel Buttons
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed: _isSaving
+                                              ? null
+                                              : () => Navigator.pop(context),
+                                          style: OutlinedButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 16,
                                             ),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          'Cancel',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.grey.shade700,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        onPressed: _isSaving
-                                            ? null
-                                            : _saveProduct,
-                                        style: ElevatedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 16,
-                                          ),
-                                          backgroundColor: const Color(
-                                            0xFF2196F3,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
+                                            side: BorderSide(
+                                              color: Colors.grey.shade400,
+                                              width: 1.5,
                                             ),
-                                          ),
-                                        ),
-                                        child: _isSaving
-                                            ? const SizedBox(
-                                                height: 20,
-                                                width: 20,
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  valueColor:
-                                                      AlwaysStoppedAnimation<
-                                                        Color
-                                                      >(Colors.white),
-                                                ),
-                                              )
-                                            : Text(
-                                                widget.isEdit
-                                                    ? 'Update Product'
-                                                    : 'Save Product',
-                                                style: const TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.white,
-                                                ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(
+                                                8,
                                               ),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Cancel',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey.shade700,
+                                            ),
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: ElevatedButton(
+                                          onPressed: _isSaving
+                                              ? null
+                                              : _saveProduct,
+                                          style: ElevatedButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 16,
+                                            ),
+                                            backgroundColor: const Color(
+                                              0xFF2196F3,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(
+                                                8,
+                                              ),
+                                            ),
+                                          ),
+                                          child: _isSaving
+                                              ? const SizedBox(
+                                                  height: 20,
+                                                  width: 20,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor:
+                                                        AlwaysStoppedAnimation<
+                                                          Color
+                                                        >(Colors.white),
+                                                  ),
+                                                )
+                                              : Text(
+                                                  widget.isEdit
+                                                      ? 'Update Product'
+                                                      : 'Save Product',
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ],
                             ),
                           ),

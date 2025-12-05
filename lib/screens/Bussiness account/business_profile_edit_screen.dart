@@ -4,15 +4,18 @@ import 'package:image_picker/image_picker.dart';
 import 'businessaccount _dashboard_screen.dart';
 import '../../services/business_profile_service.dart';
 import '../../models/business_profile_model.dart';
+import '../../models/discover_company.dart';
 
 class BusinessProfileEditScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
   final BusinessProfile? existingProfile;
+  final DiscoverCompany? company;
 
   const BusinessProfileEditScreen({
     super.key,
     required this.userData,
     this.existingProfile,
+    this.company,
   });
 
   @override
@@ -51,8 +54,32 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
     print(
       '🔍 widget.existingProfile is null: ${widget.existingProfile == null}',
     );
+    print(
+      '🔍 widget.company is null: ${widget.company == null}',
+    );
 
-    if (widget.existingProfile != null) {
+    if (widget.company != null) {
+      // Use company data from Discover screen
+      print('✅ Using company data from Discover');
+      print(
+        '📋 Company data: name=${widget.company!.name}, category=${widget.company!.category}',
+      );
+      final businessProfile = BusinessProfile(
+        businessId: widget.company!.id,
+        name: widget.company!.name,
+        tagline: widget.company!.tagline,
+        description: widget.company!.tagline,
+        industry: widget.company!.category,
+        location: widget.company!.location,
+        area: widget.company!.area,
+        logoUrl: widget.company!.logoUrl,
+        status: 'ACTIVE',
+      );
+      _populateFields(businessProfile);
+      setState(() {
+        _isLoading = false;
+      });
+    } else if (widget.existingProfile != null) {
       // Use provided profile
       print('✅ Using provided existing profile');
       print(
@@ -284,11 +311,11 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                       icon: const Icon(Icons.arrow_back, color: Colors.white),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Business Profile',
+                        widget.company != null ? 'View Profile' : 'Business Profile',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -329,7 +356,7 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                   // Upload Business Logo
                                   Center(
                                     child: GestureDetector(
-                                      onTap: _pickBusinessLogo,
+                                      onTap: widget.company == null ? _pickBusinessLogo : null,
                                       child: Container(
                                         width: 120,
                                         height: 120,
@@ -389,6 +416,7 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                   const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _businessNameController,
+                                    enabled: widget.company == null,
                                     decoration: InputDecoration(
                                       hintText: 'Enter business name',
                                       filled: true,
@@ -419,6 +447,7 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                   const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _descriptionController,
+                                    enabled: widget.company == null,
                                     maxLines: 4,
                                     decoration: InputDecoration(
                                       hintText: 'Describe your business...',
@@ -468,11 +497,11 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                         child: Text(type),
                                       );
                                     }).toList(),
-                                    onChanged: (String? newValue) {
+                                    onChanged: widget.company == null ? (String? newValue) {
                                       setState(() {
                                         _selectedBusinessType = newValue;
                                       });
-                                    },
+                                    } : null,
                                   ),
                                   const SizedBox(height: 20),
 
@@ -487,6 +516,7 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                   const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _mobileController,
+                                    enabled: widget.company == null,
                                     keyboardType: TextInputType.phone,
                                     decoration: InputDecoration(
                                       hintText: 'Enter mobile number',
@@ -518,6 +548,7 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                   const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _areaController,
+                                    enabled: widget.company == null,
                                     decoration: InputDecoration(
                                       hintText: 'Enter area',
                                       filled: true,
@@ -548,6 +579,7 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                   const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _locationController,
+                                    enabled: widget.company == null,
                                     decoration: InputDecoration(
                                       hintText: 'Enter location',
                                       filled: true,
@@ -565,81 +597,83 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                           ),
                                     ),
                                   ),
-                                  const SizedBox(height: 32),
-
-                                  // Save and Cancel Buttons
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: OutlinedButton(
-                                          onPressed: _isSaving
-                                              ? null
-                                              : () => Navigator.pop(context),
-                                          style: OutlinedButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 16,
+                                  if (widget.company == null) ...
+                                  [
+                                    const SizedBox(height: 32),
+                                    // Save and Cancel Buttons
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: OutlinedButton(
+                                            onPressed: _isSaving
+                                                ? null
+                                                : () => Navigator.pop(context),
+                                            style: OutlinedButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(
+                                                vertical: 16,
+                                              ),
+                                              side: BorderSide(
+                                                color: Colors.grey.shade400,
+                                                width: 1.5,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
                                             ),
-                                            side: BorderSide(
-                                              color: Colors.grey.shade400,
-                                              width: 1.5,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                          ),
-                                          child: Text(
-                                            'Cancel',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.grey.shade700,
+                                            child: Text(
+                                              'Cancel',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.grey.shade700,
+                                              ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: ElevatedButton(
-                                          onPressed: _isSaving
-                                              ? null
-                                              : _saveProfile,
-                                          style: ElevatedButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 16,
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            onPressed: _isSaving
+                                                ? null
+                                                : _saveProfile,
+                                            style: ElevatedButton.styleFrom(
+                                              padding: const EdgeInsets.symmetric(
+                                                vertical: 16,
+                                              ),
+                                              backgroundColor: const Color(
+                                                0xFF2196F3,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
                                             ),
-                                            backgroundColor: const Color(
-                                              0xFF2196F3,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
+                                            child: _isSaving
+                                                ? const SizedBox(
+                                                    height: 20,
+                                                    width: 20,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<
+                                                            Color
+                                                          >(Colors.white),
+                                                    ),
+                                                  )
+                                                : const Text(
+                                                    'Save Profile',
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
                                           ),
-                                          child: _isSaving
-                                              ? const SizedBox(
-                                                  height: 20,
-                                                  width: 20,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    valueColor:
-                                                        AlwaysStoppedAnimation<
-                                                          Color
-                                                        >(Colors.white),
-                                                  ),
-                                                )
-                                              : const Text(
-                                                  'Save Profile',
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
+                                      ],
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),

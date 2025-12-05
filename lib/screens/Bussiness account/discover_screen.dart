@@ -6,6 +6,8 @@ import 'businessaccount _dashboard_screen.dart';
 import 'products/products_services_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_screen.dart';
+import 'business_profile_edit_screen.dart';
+import 'Products/add_product_new_screen.dart';
 
 class DiscoverScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -398,23 +400,35 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Widget _buildCompanyCard(dynamic company) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BusinessProfileEditScreen(
+              userData: widget.userData,
+              company: company,
+            ),
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Row(
               children: [
                 Container(
@@ -529,10 +543,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 ),
                 TextButton.icon(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('View ${company.name} profile'),
-                        duration: const Duration(seconds: 2),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BusinessProfileEditScreen(
+                          userData: widget.userData,
+                          company: company,
+                        ),
                       ),
                     );
                   },
@@ -551,27 +568,41 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
   Widget _buildProductCard(dynamic product) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AddProductNewScreen(
+              userData: widget.userData,
+              companyId: product.companyId ?? '',
+              discoverProduct: product,
+            ),
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Row(
               children: [
                 Container(
@@ -678,10 +709,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('View ${product.name} details'),
-                      duration: const Duration(seconds: 2),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AddProductNewScreen(
+                        userData: widget.userData,
+                        companyId: product.companyId ?? '',
+                        discoverProduct: product,
+                      ),
                     ),
                   );
                 },
@@ -702,6 +737,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
