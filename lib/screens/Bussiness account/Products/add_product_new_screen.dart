@@ -46,6 +46,9 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
   File? _productImage;
   bool _isSaving = false;
 
+  // Helper to check if we're in view-only mode (from Discover)
+  bool get _isViewOnly => widget.discoverProduct != null;
+
   @override
   void initState() {
     super.initState();
@@ -226,8 +229,8 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                     ),
                     Expanded(
                       child: Text(
-                        widget.discoverProduct != null 
-                            ? 'View Product Details' 
+                        _isViewOnly
+                            ? 'Product Details'
                             : (widget.isEdit ? 'Edit Product' : 'Add Product'),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
@@ -272,7 +275,9 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                 // Upload Image
                                 Center(
                                   child: GestureDetector(
-                                    onTap: widget.discoverProduct == null ? _pickProductImage : null,
+                                    onTap: _isViewOnly
+                                        ? null
+                                        : _pickProductImage,
                                     child: Container(
                                       width: double.infinity,
                                       height: 180,
@@ -335,7 +340,7 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                 const SizedBox(height: 8),
                                 TextFormField(
                                   controller: _productNameController,
-                                  enabled: widget.discoverProduct == null,
+                                  readOnly: _isViewOnly,
                                   decoration: InputDecoration(
                                     hintText: 'Enter product name',
                                     filled: true,
@@ -344,10 +349,9 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  validator: (value) {
-                                    if (widget.discoverProduct != null) return null;
-                                    return value?.isEmpty ?? true ? 'Required' : null;
-                                  },
+                                  validator: (value) => value?.isEmpty ?? true
+                                      ? 'Required'
+                                      : null,
                                 ),
                                 const SizedBox(height: 20),
 
@@ -362,7 +366,7 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                 const SizedBox(height: 8),
                                 TextFormField(
                                   controller: _descriptionController,
-                                  enabled: widget.discoverProduct == null,
+                                  readOnly: _isViewOnly,
                                   maxLines: 4,
                                   decoration: InputDecoration(
                                     hintText: 'Describe your product...',
@@ -372,10 +376,9 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  validator: (value) {
-                                    if (widget.discoverProduct != null) return null;
-                                    return value?.isEmpty ?? true ? 'Required' : null;
-                                  },
+                                  validator: (value) => value?.isEmpty ?? true
+                                      ? 'Required'
+                                      : null,
                                 ),
                                 const SizedBox(height: 20),
 
@@ -404,15 +407,15 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                       child: Text(category),
                                     );
                                   }).toList(),
-                                  onChanged: widget.discoverProduct == null ? (String? newValue) {
-                                    setState(() {
-                                      _selectedCategory = newValue;
-                                    });
-                                  } : null,
-                                  validator: (value) {
-                                    if (widget.discoverProduct != null) return null;
-                                    return value == null ? 'Required' : null;
-                                  },
+                                  onChanged: _isViewOnly
+                                      ? null
+                                      : (String? newValue) {
+                                          setState(() {
+                                            _selectedCategory = newValue;
+                                          });
+                                        },
+                                  validator: (value) =>
+                                      value == null ? 'Required' : null,
                                 ),
                                 const SizedBox(height: 20),
 
@@ -427,7 +430,7 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                 const SizedBox(height: 8),
                                 TextFormField(
                                   controller: _priceController,
-                                  enabled: widget.discoverProduct == null,
+                                  readOnly: _isViewOnly,
                                   keyboardType: TextInputType.number,
                                   decoration: InputDecoration(
                                     hintText: 'Enter price',
@@ -437,10 +440,9 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  validator: (value) {
-                                    if (widget.discoverProduct != null) return null;
-                                    return value?.isEmpty ?? true ? 'Required' : null;
-                                  },
+                                  validator: (value) => value?.isEmpty ?? true
+                                      ? 'Required'
+                                      : null,
                                 ),
                                 const SizedBox(height: 20),
 
@@ -455,7 +457,7 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                 const SizedBox(height: 8),
                                 TextFormField(
                                   controller: _stockController,
-                                  enabled: widget.discoverProduct == null,
+                                  readOnly: _isViewOnly,
                                   keyboardType: TextInputType.number,
                                   decoration: InputDecoration(
                                     hintText: 'Enter stock quantity',
@@ -479,7 +481,7 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                 const SizedBox(height: 8),
                                 TextFormField(
                                   controller: _skuController,
-                                  enabled: widget.discoverProduct == null,
+                                  readOnly: _isViewOnly,
                                   decoration: InputDecoration(
                                     hintText: 'Enter SKU',
                                     filled: true,
@@ -489,10 +491,10 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                     ),
                                   ),
                                 ),
-                                if (widget.discoverProduct == null) ...
-                                [
-                                  const SizedBox(height: 32),
-                                  // Save and Cancel Buttons
+                                const SizedBox(height: 32),
+
+                                // Save and Cancel Buttons (hidden in view-only mode)
+                                if (!_isViewOnly)
                                   Row(
                                     children: [
                                       Expanded(
@@ -509,9 +511,8 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                               width: 1.5,
                                             ),
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(
-                                                8,
-                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                           ),
                                           child: Text(
@@ -538,9 +539,8 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                               0xFF2196F3,
                                             ),
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(
-                                                8,
-                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
                                             ),
                                           ),
                                           child: _isSaving
@@ -569,7 +569,6 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                       ),
                                     ],
                                   ),
-                                ],
                               ],
                             ),
                           ),

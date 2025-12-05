@@ -11,6 +11,7 @@ import '../../models/business_profile_model.dart';
 import '../../models/company_model.dart';
 import '../../services/business_profile_service.dart';
 import '../../services/company_service.dart';
+import '../../services/dashboard_service.dart';
 import '../../providers/company_selection_provider.dart';
 import '../../widgets/company_switcher_widget.dart';
 
@@ -36,6 +37,13 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
   List<Company> _companies = [];
   Company? _activeCompany; // Currently active company
   bool _isLoading = true;
+
+  // Dynamic dashboard data
+  int _profileViews = 0;
+  int _productsCount = 0;
+  String _profileViewsChange = 'No change';
+  String _productsChange = 'No featured';
+  List<Map<String, dynamic>> _recentActivities = [];
 
   @override
   void initState() {
@@ -72,13 +80,32 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
           BusinessProfileService.getBusinessAssociations(
             _businessProfile!.businessId,
           ),
+          DashboardService.getCompanyStats(companyId),
+          DashboardService.getRecentActivities(companyId, limit: 10),
         ]);
 
         setState(() {
           _businessMetrics = results[0] as BusinessMetrics;
           _associations = results[1] as List<BusinessAssociation>;
+
+          // Update dynamic dashboard data
+          final stats = results[2] as Map<String, dynamic>;
+          _profileViews = stats['profileViews'] ?? 0;
+          _productsCount = stats['productsCount'] ?? 0;
+          _profileViewsChange = stats['profileViewsChange'] ?? 'No change';
+          _productsChange = stats['productsChange'] ?? 'No featured';
+
+          _recentActivities = results[3] as List<Map<String, dynamic>>;
+
+          print('📊 Dashboard data loaded:');
+          print('   Profile Views: $_profileViews');
+          print('   Products Count: $_productsCount');
+          print('   Recent Activities: ${_recentActivities.length} items');
+          if (_recentActivities.isNotEmpty) {
+            print('   First activity: ${_recentActivities[0]['title']}');
+          }
         });
-        print('✅ Reloaded metrics and associations');
+        print('✅ Reloaded metrics, associations, and dashboard data');
       }
     } catch (e) {
       print('❌ Error reloading company data: $e');
@@ -147,6 +174,9 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
           companyProvider.setActiveCompany(_companies[0]);
           _activeCompany = _companies[0];
           print('✅ Set first company as active: ${_companies[0].name}');
+
+          // Load dashboard data for the first company
+          await _loadCompanySpecificData(_companies[0].id);
         }
       }
     } catch (e) {
@@ -155,6 +185,15 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _refreshDashboard() async {
+    print('🔄 Refreshing dashboard data...');
+    await _loadBusinessData();
+    if (_activeCompany != null) {
+      await _loadCompanySpecificData(_activeCompany!.id);
+    }
+    print('✅ Dashboard refreshed');
   }
 
   @override
@@ -180,34 +219,38 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
                     ? _buildLoadingState()
                     : _businessProfile == null
                     ? _buildEmptyState()
-                    : SingleChildScrollView(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Manage My Companies Button
-                              _buildManageCompaniesButton(),
-                              const SizedBox(height: 16),
-
-                              // Active Company Card (main white card)
-                              _buildActiveCompanyDetailsCard(),
-                              const SizedBox(height: 16),
-
-                              // Profile Stats Row
-                              _buildStatsRow(),
-                              const SizedBox(height: 16),
-
-                              // Company Associations Section
-                              if (_associations.isNotEmpty)
-                                _buildCompanyAssociationsSection(),
-                              if (_associations.isNotEmpty)
+                    : RefreshIndicator(
+                        onRefresh: _refreshDashboard,
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Manage My Companies Button
+                                _buildManageCompaniesButton(),
                                 const SizedBox(height: 16),
 
-                              // Recent Activity Section
-                              _buildRecentActivitySection(),
-                              const SizedBox(height: 32),
-                            ],
+                                // Active Company Card (main white card)
+                                _buildActiveCompanyDetailsCard(),
+                                const SizedBox(height: 16),
+
+                                // Profile Stats Row
+                                _buildStatsRow(),
+                                const SizedBox(height: 16),
+
+                                // Company Associations Section
+                                if (_associations.isNotEmpty)
+                                  _buildCompanyAssociationsSection(),
+                                if (_associations.isNotEmpty)
+                                  const SizedBox(height: 16),
+
+                                // Recent Activity Section
+                                _buildRecentActivitySection(),
+                                const SizedBox(height: 32),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -762,11 +805,13 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
           child: _buildStatCard(
             icon: Icons.visibility_outlined,
             title: 'Profile Views',
-            value: _businessMetrics!.profileViews.toString(),
-            change: _businessMetrics!.profileViewsChangeDisplay,
-            changeColor: _businessMetrics!.profileViewsChangePercent >= 0
+            value: _profileViews.toString(),
+            change: _profileViewsChange,
+            changeColor:
+                _profileViewsChange.contains('increase') ||
+                    _profileViewsChange.contains('+')
                 ? Colors.green
-                : Colors.red,
+                : Colors.grey,
           ),
         ),
         const SizedBox(width: 12),
@@ -774,10 +819,8 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
           child: _buildStatCard(
             icon: Icons.inventory_2_outlined,
             title: 'Products Listed',
-            value: _businessMetrics!.productsCount.toString(),
-            change: _businessMetrics!.featuredProductsDisplay.isNotEmpty
-                ? _businessMetrics!.featuredProductsDisplay
-                : 'No featured',
+            value: _productsCount.toString(),
+            change: _productsChange,
             changeColor: Colors.blue,
           ),
         ),
@@ -987,29 +1030,42 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildActivityItem(
-            icon: Icons.shopping_bag_outlined,
-            title: 'Product viewed',
-            subtitle: 'Premium Software Suite',
-            time: '2 hours ago',
-            color: Colors.blue,
-          ),
-          const SizedBox(height: 16),
-          _buildActivityItem(
-            icon: Icons.edit_outlined,
-            title: 'Profile updated',
-            subtitle: 'Business description',
-            time: '1 day ago',
-            color: Colors.green,
-          ),
-          const SizedBox(height: 16),
-          _buildActivityItem(
-            icon: Icons.link,
-            title: 'New connection',
-            subtitle: 'Tech Solutions Inc.',
-            time: '2 days ago',
-            color: Colors.orange,
-          ),
+          if (_recentActivities.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text(
+                  'No recent activity',
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                ),
+              ),
+            )
+          else
+            ...List.generate(_recentActivities.length, (index) {
+              if (index > 0) {
+                return Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    _buildActivityItem(
+                      icon: _getIconData(_recentActivities[index]['icon']),
+                      title: _recentActivities[index]['title'] ?? '',
+                      subtitle: _recentActivities[index]['subtitle'] ?? '',
+                      time: _recentActivities[index]['time'] ?? '',
+                      color: _getColorFromString(
+                        _recentActivities[index]['color'],
+                      ),
+                    ),
+                  ],
+                );
+              }
+              return _buildActivityItem(
+                icon: _getIconData(_recentActivities[index]['icon']),
+                title: _recentActivities[index]['title'] ?? '',
+                subtitle: _recentActivities[index]['subtitle'] ?? '',
+                time: _recentActivities[index]['time'] ?? '',
+                color: _getColorFromString(_recentActivities[index]['color']),
+              );
+            }),
         ],
       ),
     );
@@ -1174,5 +1230,52 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
         ],
       ),
     );
+  }
+
+  // Helper method to map icon string to IconData
+  IconData _getIconData(String? iconName) {
+    switch (iconName) {
+      case 'add_box':
+        return Icons.add_box;
+      case 'edit':
+        return Icons.edit;
+      case 'delete':
+        return Icons.delete;
+      case 'edit_outlined':
+        return Icons.edit_outlined;
+      case 'business':
+        return Icons.business;
+      case 'business_center':
+        return Icons.business_center;
+      case 'visibility':
+        return Icons.visibility;
+      case 'link':
+        return Icons.link;
+      case 'shopping_bag_outlined':
+        return Icons.shopping_bag_outlined;
+      default:
+        return Icons.info_outline;
+    }
+  }
+
+  // Helper method to map color string to Color
+  Color _getColorFromString(String? colorName) {
+    switch (colorName?.toLowerCase()) {
+      case 'blue':
+        return Colors.blue;
+      case 'green':
+        return Colors.green;
+      case 'red':
+        return Colors.red;
+      case 'orange':
+        return Colors.orange;
+      case 'purple':
+        return Colors.purple;
+      case 'grey':
+      case 'gray':
+        return Colors.grey;
+      default:
+        return Colors.blue;
+    }
   }
 }

@@ -521,7 +521,28 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (result['ok'] == true) {
         // Member login successful
-        final member = result['body']['data']['member'];
+        // Safely extract member data with type checking
+        final body = result['body'];
+        if (body is! Map) {
+          throw Exception('Invalid response format: body is not a Map');
+        }
+        
+        // Handle different possible response structures
+        dynamic memberData;
+        if (body['data'] != null && body['data'] is Map) {
+          // Structure: { data: { member: {...} } }
+          memberData = body['data']['member'] ?? body['data'];
+        } else if (body['member'] != null) {
+          // Structure: { member: {...} }
+          memberData = body['member'];
+        } else {
+          // Fallback: use body directly if it contains member fields
+          memberData = body;
+        }
+        
+        final member = memberData is Map<String, dynamic> 
+            ? memberData 
+            : Map<String, dynamic>.from(memberData as Map);
         final token = result['token'];
 
         // Debug: Print what member data we got from login

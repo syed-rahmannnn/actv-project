@@ -26,6 +26,7 @@ const productsRoutes = require('./routes/products');
 const discoverRoutes = require('./routes/discover');
 const analyticsRoutes = require('./routes/analytics');
 const businessSettingsRoutes = require('./routes/businessSettings');
+const dashboardRoutes = require('./routes/dashboard');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -112,6 +113,7 @@ app.use('/api/products', productsRoutes); // Products management
 app.use('/api/discover', discoverRoutes); // Discover search for companies and products
 app.use('/api/analytics', analyticsRoutes); // Analytics overview
 app.use('/api/business', businessSettingsRoutes); // Business settings (mounted under /api/business for settings endpoints)
+app.use('/api/dashboard', dashboardRoutes); // Dashboard stats and activities
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

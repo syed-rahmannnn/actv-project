@@ -43,9 +43,15 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
   bool _isSaving = false;
   bool _isLoading = true;
 
+  // Helper to check if we're in view-only mode (from Discover)
+  bool get _isViewOnly => widget.company != null;
+
   @override
   void initState() {
     super.initState();
+    print('🔍 BusinessProfileEditScreen initialized');
+    print('   widget.company: ${widget.company?.name ?? "null"}');
+    print('   _isViewOnly: $_isViewOnly');
     _loadExistingProfile();
   }
 
@@ -54,9 +60,7 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
     print(
       '🔍 widget.existingProfile is null: ${widget.existingProfile == null}',
     );
-    print(
-      '🔍 widget.company is null: ${widget.company == null}',
-    );
+    print('🔍 widget.company is null: ${widget.company == null}');
 
     if (widget.company != null) {
       // Use company data from Discover screen
@@ -313,7 +317,7 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                     ),
                     Expanded(
                       child: Text(
-                        widget.company != null ? 'View Profile' : 'Business Profile',
+                        _isViewOnly ? 'Company Profile' : 'Business Profile',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: Colors.white,
@@ -356,7 +360,9 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                   // Upload Business Logo
                                   Center(
                                     child: GestureDetector(
-                                      onTap: widget.company == null ? _pickBusinessLogo : null,
+                                      onTap: _isViewOnly
+                                          ? null
+                                          : _pickBusinessLogo,
                                       child: Container(
                                         width: 120,
                                         height: 120,
@@ -416,15 +422,27 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                   const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _businessNameController,
-                                    enabled: widget.company == null,
+                                    readOnly: _isViewOnly,
+                                    enabled: !_isViewOnly,
+                                    style: _isViewOnly
+                                        ? const TextStyle(
+                                            color: Colors.black87,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          )
+                                        : null,
                                     decoration: InputDecoration(
                                       hintText: 'Enter business name',
                                       filled: true,
-                                      fillColor: const Color(0xFFF5F7FA),
+                                      fillColor: _isViewOnly
+                                          ? Colors.grey.shade100
+                                          : const Color(0xFFF5F7FA),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: Colors.grey.shade300,
+                                          color: _isViewOnly
+                                              ? Colors.grey.shade200
+                                              : Colors.grey.shade300,
                                         ),
                                       ),
                                       contentPadding:
@@ -447,16 +465,28 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                   const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _descriptionController,
-                                    enabled: widget.company == null,
+                                    readOnly: _isViewOnly,
+                                    enabled: !_isViewOnly,
                                     maxLines: 4,
+                                    style: _isViewOnly
+                                        ? const TextStyle(
+                                            color: Colors.black87,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          )
+                                        : null,
                                     decoration: InputDecoration(
                                       hintText: 'Describe your business...',
                                       filled: true,
-                                      fillColor: const Color(0xFFF5F7FA),
+                                      fillColor: _isViewOnly
+                                          ? Colors.grey.shade100
+                                          : const Color(0xFFF5F7FA),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: Colors.grey.shade300,
+                                          color: _isViewOnly
+                                              ? Colors.grey.shade200
+                                              : Colors.grey.shade300,
                                         ),
                                       ),
                                       contentPadding: const EdgeInsets.all(16),
@@ -475,14 +505,28 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                   const SizedBox(height: 8),
                                   DropdownButtonFormField<String>(
                                     value: _selectedBusinessType,
+                                    style: _isViewOnly
+                                        ? const TextStyle(
+                                            color: Colors.black87,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          )
+                                        : const TextStyle(
+                                            color: Colors.black87,
+                                            fontSize: 16,
+                                          ),
                                     decoration: InputDecoration(
                                       hintText: 'Select business type',
                                       filled: true,
-                                      fillColor: const Color(0xFFF5F7FA),
+                                      fillColor: _isViewOnly
+                                          ? Colors.grey.shade100
+                                          : const Color(0xFFF5F7FA),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: Colors.grey.shade300,
+                                          color: _isViewOnly
+                                              ? Colors.grey.shade200
+                                              : Colors.grey.shade300,
                                         ),
                                       ),
                                       contentPadding:
@@ -497,11 +541,13 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                         child: Text(type),
                                       );
                                     }).toList(),
-                                    onChanged: widget.company == null ? (String? newValue) {
-                                      setState(() {
-                                        _selectedBusinessType = newValue;
-                                      });
-                                    } : null,
+                                    onChanged: _isViewOnly
+                                        ? null
+                                        : (String? newValue) {
+                                            setState(() {
+                                              _selectedBusinessType = newValue;
+                                            });
+                                          },
                                   ),
                                   const SizedBox(height: 20),
 
@@ -516,16 +562,28 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                   const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _mobileController,
-                                    enabled: widget.company == null,
+                                    readOnly: _isViewOnly,
+                                    enabled: !_isViewOnly,
                                     keyboardType: TextInputType.phone,
+                                    style: _isViewOnly
+                                        ? const TextStyle(
+                                            color: Colors.black87,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          )
+                                        : null,
                                     decoration: InputDecoration(
                                       hintText: 'Enter mobile number',
                                       filled: true,
-                                      fillColor: const Color(0xFFF5F7FA),
+                                      fillColor: _isViewOnly
+                                          ? Colors.grey.shade100
+                                          : const Color(0xFFF5F7FA),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: Colors.grey.shade300,
+                                          color: _isViewOnly
+                                              ? Colors.grey.shade200
+                                              : Colors.grey.shade300,
                                         ),
                                       ),
                                       contentPadding:
@@ -548,15 +606,27 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                   const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _areaController,
-                                    enabled: widget.company == null,
+                                    readOnly: _isViewOnly,
+                                    enabled: !_isViewOnly,
+                                    style: _isViewOnly
+                                        ? const TextStyle(
+                                            color: Colors.black87,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          )
+                                        : null,
                                     decoration: InputDecoration(
                                       hintText: 'Enter area',
                                       filled: true,
-                                      fillColor: const Color(0xFFF5F7FA),
+                                      fillColor: _isViewOnly
+                                          ? Colors.grey.shade100
+                                          : const Color(0xFFF5F7FA),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: Colors.grey.shade300,
+                                          color: _isViewOnly
+                                              ? Colors.grey.shade200
+                                              : Colors.grey.shade300,
                                         ),
                                       ),
                                       contentPadding:
@@ -579,15 +649,27 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                   const SizedBox(height: 8),
                                   TextFormField(
                                     controller: _locationController,
-                                    enabled: widget.company == null,
+                                    readOnly: _isViewOnly,
+                                    enabled: !_isViewOnly,
+                                    style: _isViewOnly
+                                        ? const TextStyle(
+                                            color: Colors.black87,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          )
+                                        : null,
                                     decoration: InputDecoration(
                                       hintText: 'Enter location',
                                       filled: true,
-                                      fillColor: const Color(0xFFF5F7FA),
+                                      fillColor: _isViewOnly
+                                          ? Colors.grey.shade100
+                                          : const Color(0xFFF5F7FA),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: Colors.grey.shade300,
+                                          color: _isViewOnly
+                                              ? Colors.grey.shade200
+                                              : Colors.grey.shade300,
                                         ),
                                       ),
                                       contentPadding:
@@ -597,10 +679,10 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                           ),
                                     ),
                                   ),
-                                  if (widget.company == null) ...
-                                  [
-                                    const SizedBox(height: 32),
-                                    // Save and Cancel Buttons
+                                  const SizedBox(height: 32),
+
+                                  // Save and Cancel Buttons (hidden in view-only mode)
+                                  if (!_isViewOnly)
                                     Row(
                                       children: [
                                         Expanded(
@@ -609,9 +691,10 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                                 ? null
                                                 : () => Navigator.pop(context),
                                             style: OutlinedButton.styleFrom(
-                                              padding: const EdgeInsets.symmetric(
-                                                vertical: 16,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 16,
+                                                  ),
                                               side: BorderSide(
                                                 color: Colors.grey.shade400,
                                                 width: 1.5,
@@ -638,9 +721,10 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                                 ? null
                                                 : _saveProfile,
                                             style: ElevatedButton.styleFrom(
-                                              padding: const EdgeInsets.symmetric(
-                                                vertical: 16,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 16,
+                                                  ),
                                               backgroundColor: const Color(
                                                 0xFF2196F3,
                                               ),
@@ -665,7 +749,8 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                                     'Save Profile',
                                                     style: TextStyle(
                                                       fontSize: 16,
-                                                      fontWeight: FontWeight.w600,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                       color: Colors.white,
                                                     ),
                                                   ),
@@ -673,7 +758,6 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                         ),
                                       ],
                                     ),
-                                  ],
                                 ],
                               ),
                             ),
