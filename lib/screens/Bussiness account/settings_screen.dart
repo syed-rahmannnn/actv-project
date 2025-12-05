@@ -3,6 +3,9 @@ import 'businessaccount _dashboard_screen.dart';
 import 'products/products_services_screen.dart';
 import 'discover_screen.dart';
 import 'analytics_screen.dart';
+import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
+import '../Login/login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -22,6 +25,153 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _productInquiriesNotification = true;
   bool _weeklySummaryNotification = true;
   String _verificationStatus = 'Pending Review';
+  bool _isDeletingAccount = false;
+
+  // Show delete account confirmation dialog
+  void _showDeleteAccountDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text(
+            'Delete Account',
+            style: TextStyle(
+              color: Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: const Text(
+            'Are you sure you want to delete your account? This action cannot be undone. All your data, including business profile, products, and analytics will be permanently deleted.',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deleteAccount();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text(
+                'Delete',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Delete account API call
+  Future<void> _deleteAccount() async {
+    setState(() {
+      _isDeletingAccount = true;
+    });
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      },
+    );
+
+    try {
+      final memberId = widget.userData['_id']?.toString() ??
+          widget.userData['id']?.toString() ??
+          widget.userData['memberId']?.toString() ??
+          '';
+
+      if (memberId.isEmpty) {
+        throw Exception('Member ID not found');
+      }
+
+      print('🗑️ Deleting account for member: $memberId');
+
+      // Call delete account API
+      final apiService = ApiService();
+      final result = await apiService.deleteMember(memberId);
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (result['success'] == true) {
+        print('✅ Account deleted successfully');
+        
+        // Clear all local auth data
+        await AuthService.logout();
+
+        if (mounted) {
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Account deleted successfully'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+
+          // Wait a moment for the snackbar to show
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Navigate to login screen and clear all navigation stack
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => const LoginScreen(),
+            ),
+            (Route<dynamic> route) => false,
+          );
+        }
+      } else {
+        throw Exception(result['message'] ?? 'Failed to delete account');
+      }
+    } catch (e) {
+      print('❌ Error deleting account: $e');
+      
+      // Close loading dialog if still open
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not delete account: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDeletingAccount = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -416,24 +566,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 16),
           _buildAccountButton(
-            title: 'Edit Profile Information',
-            onTap: () {
-              // Navigate to edit profile
-            },
-          ),
-          const SizedBox(height: 12),
-          _buildAccountButton(
-            title: 'Change Password',
-            onTap: () {
-              // Navigate to change password
-            },
-          ),
-          const SizedBox(height: 12),
-          _buildAccountButton(
             title: 'Delete Account',
-            onTap: () {
-              // Show delete confirmation dialog
-            },
+            onTap: _showDeleteAccountDialog,
             isDestructive: true,
           ),
         ],

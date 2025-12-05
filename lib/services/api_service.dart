@@ -758,6 +758,40 @@ class ApiService {
     if (res.statusCode == 200) return true;
     throw _err(res);
   }
+
+  // Delete member account
+  Future<Map<String, dynamic>> deleteMember(String memberId) async {
+    final url = Uri.parse('$baseUrl/members/$memberId');
+    
+    try {
+      final resp = await http
+          .delete(url, headers: _headers())
+          .timeout(_requestTimeout());
+
+      final body = jsonDecodeSafe(resp.body);
+      
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        return {
+          'success': true,
+          'message': body['message'] ?? 'Account deleted successfully',
+          'data': body,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': body['message'] ?? 'Failed to delete account',
+          'error': body['error'],
+        };
+      }
+    } catch (e) {
+      developer.log('deleteMember error: $e', name: 'ApiService');
+      return {
+        'success': false,
+        'message': 'Network error or timeout',
+        'error': e.toString(),
+      };
+    }
+  }
 }
 
 class DistrictApi {
