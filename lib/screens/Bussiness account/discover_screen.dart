@@ -29,11 +29,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     super.initState();
     _debouncer = Debouncer(milliseconds: 400);
 
-    // Load initial data
+    // Load initial data with memberId
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<DiscoverProvider>();
-      provider.loadCompanies();
-      provider.loadProducts();
+      final memberId = widget.userData['id'] ?? '';
+      if (memberId.isNotEmpty) {
+        final provider = context.read<DiscoverProvider>();
+        provider.loadCompanies(memberId: memberId);
+        provider.loadProducts(memberId: memberId);
+      }
     });
   }
 
@@ -45,12 +48,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   void _onSearchChanged(String value) {
+    final memberId = widget.userData['id'] ?? '';
+    if (memberId.isEmpty) return;
+
     _debouncer.run(() {
       final provider = context.read<DiscoverProvider>();
       if (_selectedTab == 0) {
-        provider.loadCompanies(query: value);
+        provider.loadCompanies(memberId: memberId, query: value);
       } else {
-        provider.loadProducts(query: value);
+        provider.loadProducts(memberId: memberId, query: value);
       }
     });
   }
@@ -61,12 +67,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     });
 
     // Trigger search with current query when switching tabs
+    final memberId = widget.userData['id'] ?? '';
+    if (memberId.isEmpty) return;
+
     final query = _searchController.text;
     final provider = context.read<DiscoverProvider>();
     if (index == 0) {
-      provider.loadCompanies(query: query);
+      provider.loadCompanies(memberId: memberId, query: query);
     } else {
-      provider.loadProducts(query: query);
+      provider.loadProducts(memberId: memberId, query: query);
     }
   }
 
@@ -150,7 +159,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: () {
-                  provider.loadCompanies(query: _searchController.text);
+                  final memberId = widget.userData['id'] ?? '';
+                  if (memberId.isNotEmpty) {
+                    provider.loadCompanies(
+                      memberId: memberId,
+                      query: _searchController.text,
+                    );
+                  }
                 },
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),
@@ -223,7 +238,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: () {
-                  provider.loadProducts(query: _searchController.text);
+                  final memberId = widget.userData['id'] ?? '';
+                  if (memberId.isNotEmpty) {
+                    provider.loadProducts(
+                      memberId: memberId,
+                      query: _searchController.text,
+                    );
+                  }
                 },
                 icon: const Icon(Icons.refresh),
                 label: const Text('Retry'),

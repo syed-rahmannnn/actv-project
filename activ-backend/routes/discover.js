@@ -9,30 +9,49 @@ const Company = mongoose.model('Company');
 
 /**
  * GET /api/discover/companies
- * Search companies with pagination
+ * Search companies with pagination - filtered by memberId (business account)
  * Query params:
+ *   - memberId: current user's member ID (required)
  *   - query: search term (optional)
  *   - page: page number (default: 1)
  *   - limit: items per page (default: 20)
  */
 router.get('/companies', async (req, res) => {
   try {
-    const { query = '', page = 1, limit = 20 } = req.query;
+    const { memberId, query = '', page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Build search filter
-    let filter = {};
+    // Require memberId to ensure business-scoped results
+    if (!memberId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'memberId is required to fetch companies'
+      });
+    }
+
+    // Convert memberId to ObjectId
+    let memberObjectId;
+    try {
+      memberObjectId = new mongoose.Types.ObjectId(memberId);
+    } catch (err) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid memberId format'
+      });
+    }
+
+    // Build search filter - ALWAYS scoped to the current business (memberId)
+    let filter = { memberId: memberObjectId };
+    
     if (query && query.trim() !== '') {
       const searchRegex = new RegExp(query.trim(), 'i');
-      filter = {
-        $or: [
-          { name: searchRegex },
-          { description: searchRegex },
-          { industry: searchRegex },
-          { city: searchRegex },
-          { location: searchRegex }
-        ]
-      };
+      filter.$or = [
+        { name: searchRegex },
+        { description: searchRegex },
+        { industry: searchRegex },
+        { city: searchRegex },
+        { location: searchRegex }
+      ];
     }
 
     // Find companies
@@ -70,8 +89,10 @@ router.get('/companies', async (req, res) => {
       });
     }
 
-    // Get total count for pagination
+    // Get total count for pagination (also scoped to memberId)
     const total = await Company.countDocuments(filter);
+
+    console.log(`🔍 Discover Companies - memberId: ${memberId}, found: ${companiesWithCount.length} companies`);
 
     res.status(200).json({
       status: 'success',
@@ -95,28 +116,67 @@ router.get('/companies', async (req, res) => {
 
 /**
  * GET /api/discover/products
- * Search products with pagination
+ * Search products with pagination - filtered by memberId (business account)
  * Query params:
+ *   - memberId: current user's member ID (required)
  *   - query: search term (optional)
  *   - page: page number (default: 1)
  *   - limit: items per page (default: 20)
  */
 router.get('/products', async (req, res) => {
   try {
-    const { query = '', page = 1, limit = 20 } = req.query;
+    const { memberId, query = '', page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Build search filter
-    let filter = {};
+    // Require memberId to ensure business-scoped results
+    if (!memberId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'memberId is required to fetch products'
+      });
+    }
+
+    // Convert memberId to ObjectId
+    let memberObjectId;
+    try {
+      memberObjectId = new mongoose.Types.ObjectId(memberId);
+    } catch (err) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid memberId format'
+      });
+    }
+
+    // First, find all companies belonging to this member (business)
+    const memberCompanies = await Company.find({ memberId: memberObjectId })
+      .select('_id');
+    
+    const companyIds = memberCompanies.map(c => c._id);
+
+    // If no companies found for this member, return empty results
+    if (companyIds.length === 0) {
+      return res.status(200).json({
+        status: 'success',
+        data: [],
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: 0,
+          totalItems: 0,
+          itemsPerPage: parseInt(limit)
+        }
+      });
+    }
+
+    // Build search filter - ALWAYS scoped to companies owned by this member
+    let filter = { companyId: { $in: companyIds } };
+    
     if (query && query.trim() !== '') {
       const searchRegex = new RegExp(query.trim(), 'i');
-      filter = {
-        $or: [
-          { name: searchRegex },
-          { description: searchRegex },
-          { category: searchRegex }
-        ]
-      };
+      filter.$or = [
+        { name: searchRegex },
+        { description: searchRegex },
+        { category: searchRegex }
+      ];
     }
 
     // Find products and populate company info
@@ -154,8 +214,10 @@ router.get('/products', async (req, res) => {
       });
     }
 
-    // Get total count for pagination
+    // Get total count for pagination (also scoped to member's companies)
     const total = await Product.countDocuments(filter);
+
+    console.log(`🔍 Discover Products - memberId: ${memberId}, found: ${productsData.length} products across ${companyIds.length} companies`);
 
     res.status(200).json({
       status: 'success',

@@ -976,7 +976,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         ),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String>(
-                          value: selectedCategory,
+                          value:
+                              [
+                                'Software',
+                                'Services',
+                                'Education',
+                                'Product',
+                                'Other',
+                              ].contains(selectedCategory)
+                              ? selectedCategory
+                              : 'Software',
                           decoration: InputDecoration(
                             hintText: 'Select category',
                             border: OutlineInputBorder(

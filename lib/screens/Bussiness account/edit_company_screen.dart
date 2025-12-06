@@ -370,7 +370,13 @@ class _EditCompanyScreenState extends State<EditCompanyScreen> {
                               ),
                               const SizedBox(height: 8),
                               DropdownButtonFormField<String>(
-                                value: _selectedBusinessType,
+                                value:
+                                    _selectedBusinessType != null &&
+                                        _businessTypes.contains(
+                                          _selectedBusinessType,
+                                        )
+                                    ? _selectedBusinessType
+                                    : null,
                                 decoration: InputDecoration(
                                   hintText: 'Select business type',
                                   hintStyle: TextStyle(

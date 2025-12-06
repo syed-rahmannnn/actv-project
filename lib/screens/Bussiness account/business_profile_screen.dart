@@ -101,6 +101,11 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
             widget.userData['id']?.toString() ??
             '';
 
+        print('📋 Saving profile with memberId: $memberId');
+        print('📋 Business Name: ${_businessNameController.text.trim()}');
+        print('📋 Business Type: ${_selectedBusinessType ?? "Others"}');
+        print('📋 Mode: ${widget.mode}');
+
         if (memberId.isEmpty) {
           throw Exception('Member ID not found');
         }
@@ -144,14 +149,16 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
         }
 
         if (mounted) {
-          if (result['success'] == true) {
+          // Handle success response
+          final success = result is Map && result['success'] == true;
+          final message = result is Map
+              ? (result['message']?.toString() ??
+                    'Operation completed successfully')
+              : 'Operation completed successfully';
+
+          if (success) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  result['message'] ?? 'Business profile saved successfully!',
-                ),
-                backgroundColor: Colors.green,
-              ),
+              SnackBar(content: Text(message), backgroundColor: Colors.green),
             );
 
             // If creating company, pop with true to signal success
@@ -169,19 +176,21 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
             }
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(result['message'] ?? 'Failed to save profile'),
-                backgroundColor: Colors.red,
-              ),
+              SnackBar(content: Text(message), backgroundColor: Colors.red),
             );
           }
         }
       } catch (e) {
+        print('❌ Error saving profile: $e');
+        print('❌ Error type: ${e.runtimeType}');
+        print('❌ Stack trace: ${StackTrace.current}');
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error saving profile: $e'),
+              content: Text('Error saving profile: ${e.toString()}'),
               backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
             ),
           );
         }
@@ -444,7 +453,13 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 DropdownButtonFormField<String>(
-                                  value: _selectedBusinessType,
+                                  value:
+                                      _selectedBusinessType != null &&
+                                          _businessTypes.contains(
+                                            _selectedBusinessType,
+                                          )
+                                      ? _selectedBusinessType
+                                      : null,
                                   decoration: InputDecoration(
                                     hintText: 'Select business type',
                                     hintStyle: TextStyle(

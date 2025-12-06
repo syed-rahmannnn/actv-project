@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/application_status_service.dart';
 import '../Member Bottom Navigation/dashboard_screen.dart';
 import '../../services/auth_service.dart';
-import '../Payment/payment_screen.dart';
+import '../Bussiness account/complete_membership_screen.dart';
 
 // Stage model for dynamic UI rendering
 class ApplicationStage {
@@ -1054,15 +1054,20 @@ class _ApplicationStatusScreenState extends State<ApplicationStatusScreen> {
               child: Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
-                // Navigate to payment screen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PaymentScreen(),
-                  ),
-                );
+                // Get user data from AuthService
+                final userData = await AuthService.getUserData();
+                if (userData != null) {
+                  // Navigate to payment screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          CompleteMembershipScreen(userData: userData),
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4CAF50),

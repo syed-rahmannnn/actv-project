@@ -22,11 +22,20 @@ class DiscoverProvider extends ChangeNotifier {
   String? get productsError => _productsError;
 
   /// Load companies with optional search query
+  /// Requires memberId to filter companies by business account
   Future<void> loadCompanies({
+    required String memberId,
     String query = '',
     int page = 1,
     int limit = 20,
   }) async {
+    if (memberId.isEmpty) {
+      _companiesError = 'Member ID is required';
+      _companies = [];
+      notifyListeners();
+      return;
+    }
+
     _isLoadingCompanies = true;
     _companiesError = null;
     notifyListeners();
@@ -34,6 +43,7 @@ class DiscoverProvider extends ChangeNotifier {
     try {
       final uri = Uri.parse('${ApiService.baseUrl}/discover/companies').replace(
         queryParameters: {
+          'memberId': memberId,
           'query': query,
           'page': page.toString(),
           'limit': limit.toString(),
@@ -80,11 +90,20 @@ class DiscoverProvider extends ChangeNotifier {
   }
 
   /// Load products with optional search query
+  /// Requires memberId to filter products by business account
   Future<void> loadProducts({
+    required String memberId,
     String query = '',
     int page = 1,
     int limit = 20,
   }) async {
+    if (memberId.isEmpty) {
+      _productsError = 'Member ID is required';
+      _products = [];
+      notifyListeners();
+      return;
+    }
+
     _isLoadingProducts = true;
     _productsError = null;
     notifyListeners();
@@ -92,6 +111,7 @@ class DiscoverProvider extends ChangeNotifier {
     try {
       final uri = Uri.parse('${ApiService.baseUrl}/discover/products').replace(
         queryParameters: {
+          'memberId': memberId,
           'query': query,
           'page': page.toString(),
           'limit': limit.toString(),

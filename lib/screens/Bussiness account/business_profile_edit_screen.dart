@@ -504,7 +504,13 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   DropdownButtonFormField<String>(
-                                    value: _selectedBusinessType,
+                                    value:
+                                        _selectedBusinessType != null &&
+                                            _businessTypes.contains(
+                                              _selectedBusinessType,
+                                            )
+                                        ? _selectedBusinessType
+                                        : null,
                                     style: _isViewOnly
                                         ? const TextStyle(
                                             color: Colors.black87,

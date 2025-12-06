@@ -312,7 +312,13 @@ class _AddCompanyScreenState extends State<AddCompanyScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 DropdownButtonFormField<String>(
-                                  value: _selectedCategory,
+                                  value:
+                                      _selectedCategory != null &&
+                                          _categories.contains(
+                                            _selectedCategory,
+                                          )
+                                      ? _selectedCategory
+                                      : null,
                                   decoration: InputDecoration(
                                     hintText: 'Select category',
                                     filled: true,
