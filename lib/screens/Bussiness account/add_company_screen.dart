@@ -114,16 +114,17 @@ class _AddCompanyScreenState extends State<AddCompanyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+    return ExcludeSemantics(
+      child: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+            ),
           ),
-        ),
-        child: SafeArea(
+          child: SafeArea(
           child: Column(
             children: [
               // Header
@@ -179,7 +180,7 @@ class _AddCompanyScreenState extends State<AddCompanyScreen> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: Colors.black.withValues(alpha: 0.1),
                                 blurRadius: 15,
                                 offset: const Offset(0, 4),
                               ),
@@ -312,13 +313,7 @@ class _AddCompanyScreenState extends State<AddCompanyScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 DropdownButtonFormField<String>(
-                                  value:
-                                      _selectedCategory != null &&
-                                          _categories.contains(
-                                            _selectedCategory,
-                                          )
-                                      ? _selectedCategory
-                                      : null,
+                                  initialValue: _selectedCategory,
                                   decoration: InputDecoration(
                                     hintText: 'Select category',
                                     filled: true,
@@ -455,6 +450,7 @@ class _AddCompanyScreenState extends State<AddCompanyScreen> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

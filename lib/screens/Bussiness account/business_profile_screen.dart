@@ -101,11 +101,6 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
             widget.userData['id']?.toString() ??
             '';
 
-        print('📋 Saving profile with memberId: $memberId');
-        print('📋 Business Name: ${_businessNameController.text.trim()}');
-        print('📋 Business Type: ${_selectedBusinessType ?? "Others"}');
-        print('📋 Mode: ${widget.mode}');
-
         if (memberId.isEmpty) {
           throw Exception('Member ID not found');
         }
@@ -149,48 +144,49 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
         }
 
         if (mounted) {
-          // Handle success response
-          final success = result is Map && result['success'] == true;
-          final message = result is Map
-              ? (result['message']?.toString() ??
-                    'Operation completed successfully')
-              : 'Operation completed successfully';
-
-          if (success) {
+          if (result['success'] == true) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(message), backgroundColor: Colors.green),
+              SnackBar(
+                content: Text(
+                  result['message'] ?? 'Business profile saved successfully!',
+                ),
+                backgroundColor: Colors.green,
+              ),
             );
+
+            // ✅ CRITICAL: Wait for backend company auto-creation + cache clearing
+            // Increased to 1500ms to ensure backend fully processes and clears cache
+            await Future.delayed(const Duration(milliseconds: 1500));
 
             // If creating company, pop with true to signal success
             if (widget.mode == 'createCompany') {
               Navigator.pop(context, true);
             } else {
-              // Navigate to Business Dashboard for profile mode
-              Navigator.pushReplacement(
-                context,
+              // Navigate to Business Dashboard - account just created!
+              // Pop all routes and go to business dashboard
+              Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (context) =>
                       BusinessDashboardScreen(userData: widget.userData),
                 ),
+                (route) => false, // Remove all previous routes
               );
             }
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(message), backgroundColor: Colors.red),
+              SnackBar(
+                content: Text(result['message'] ?? 'Failed to save profile'),
+                backgroundColor: Colors.red,
+              ),
             );
           }
         }
       } catch (e) {
-        print('❌ Error saving profile: $e');
-        print('❌ Error type: ${e.runtimeType}');
-        print('❌ Stack trace: ${StackTrace.current}');
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error saving profile: ${e.toString()}'),
+              content: Text('Error saving profile: $e'),
               backgroundColor: Colors.red,
-              duration: const Duration(seconds: 5),
             ),
           );
         }
@@ -210,16 +206,18 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
-          ),
-        ),
-        child: SafeArea(
+    return ExcludeSemantics(
+      child: RepaintBoundary(
+        child: Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+              ),
+            ),
+          child: SafeArea(
           child: Column(
             children: [
               // Header
@@ -338,7 +336,7 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
+                                color: Colors.black.withValues(alpha: 0.08),
                                 blurRadius: 20,
                                 offset: const Offset(0, 4),
                               ),
@@ -453,13 +451,7 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 DropdownButtonFormField<String>(
-                                  value:
-                                      _selectedBusinessType != null &&
-                                          _businessTypes.contains(
-                                            _selectedBusinessType,
-                                          )
-                                      ? _selectedBusinessType
-                                      : null,
+                                  initialValue: _selectedBusinessType,
                                   decoration: InputDecoration(
                                     hintText: 'Select business type',
                                     hintStyle: TextStyle(
@@ -743,6 +735,8 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
             ],
           ),
         ),
+        ),
+      ),
       ),
     );
   }
@@ -753,7 +747,7 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -840,26 +834,32 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? Colors.blue : Colors.grey[600],
-            size: 24,
+    return RepaintBoundary(
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 60,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? Colors.blue : Colors.grey[600],
+                size: 24,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.blue : Colors.grey[600],
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.blue : Colors.grey[600],
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

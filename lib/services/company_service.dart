@@ -3,9 +3,10 @@ import 'package:http/http.dart' as http;
 import 'dart:developer' as developer;
 import '../models/company_model.dart';
 import 'api_service.dart';
-import 'auth_service.dart';
+import '../utils/cache_manager.dart';
 
 class CompanyService {
+  static final _cache = FastCacheManager();
   static final String baseUrl = ApiService.baseUrl;
 
   static Duration _requestTimeout() {
@@ -19,11 +20,21 @@ class CompanyService {
 
   static dynamic _jsonDecodeSafe(String input) {
     try {
-      return input.isNotEmpty ? jsonDecode(input) : null;
+      return input.isNotEmpty ? jsonDecode(input) : {};
     } catch (e) {
-      developer.log('_jsonDecodeSafe error: $e', name: 'CompanyService');
-      return input;
+      developer.log('_jsonDecodeSafe error: $e, input: $input', name: 'CompanyService');
+      return {'error': 'Invalid JSON response', 'raw': input};
     }
+  }
+
+  /// Clear cache for specific member
+  static Future<void> clearCache(String memberId) async {
+    final cacheKey = 'companies_$memberId';
+    _cache.remove(cacheKey);
+    developer.log(
+      '🗑️ Cleared companies cache for: $memberId',
+      name: 'CompanyService',
+    );
   }
 
   /// Get all companies for the logged-in member
@@ -33,9 +44,21 @@ class CompanyService {
         throw Exception('memberId is required');
       }
 
+      final cacheKey = 'companies_$memberId';
+      
+      // Try cache first
+      final cached = _cache.get<List<Company>>(cacheKey);
+      if (cached != null) {
+        developer.log(
+          '✅ Loaded ${cached.length} companies from cache',
+          name: 'CompanyService',
+        );
+        return cached;
+      }
+      
       final url = Uri.parse('$baseUrl/companies?memberId=$memberId');
       developer.log(
-        '🌐 Fetching companies for memberId: $memberId',
+        '🌐 Fetching companies from API for memberId: $memberId',
         name: 'CompanyService',
       );
       developer.log('🌐 Full URL: $url', name: 'CompanyService');
@@ -66,12 +89,14 @@ class CompanyService {
           final companies = companiesJson
               .map((json) => Company.fromJson(json))
               .toList();
-          companies.forEach(
-            (c) => developer.log(
+          for (final c in companies) {
+            developer.log(
               '  - ${c.name} (${c.id})',
               name: 'CompanyService',
-            ),
-          );
+            );
+          }
+          // Cache for 3 minutes
+          _cache.set(cacheKey, companies);
           return companies;
         } else {
           developer.log(
@@ -175,6 +200,10 @@ class CompanyService {
 
       if (response.statusCode == 201) {
         developer.log('Company created successfully', name: 'CompanyService');
+        
+        // 🗑️ Clear frontend cache after successful creation
+        await clearCache(memberId);
+        
         return {
           'success': true,
           'message': responseBody['message'] ?? 'Company created successfully',

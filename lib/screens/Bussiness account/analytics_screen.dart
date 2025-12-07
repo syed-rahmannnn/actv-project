@@ -60,9 +60,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AnalyticsProvider>(
-      builder: (context, analyticsProvider, child) {
-        return Scaffold(
+    return ExcludeSemantics(
+      child: Consumer<AnalyticsProvider>(
+        builder: (context, analyticsProvider, child) {
+          return Scaffold(
           body: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -86,6 +87,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           bottomNavigationBar: _buildBottomNavigationBar(),
         );
       },
+      ),
     );
   }
 
@@ -123,53 +125,83 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     }
 
     if (provider.overview == null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.analytics_outlined,
-              size: 64,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No analytics data available',
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Select an active company to view analytics',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-            ),
-          ],
+      return RefreshIndicator(
+        onRefresh: () async {
+          _loadAnalytics();
+          await Future.delayed(const Duration(milliseconds: 500));
+        },
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                  Icon(
+                    Icons.analytics_outlined,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No analytics data available',
+                    style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Select an active company to view analytics',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 8),
+                      const Text(
+                        'Pull down to refresh',
+                        style: TextStyle(fontSize: 12, color: Colors.blue),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       );
     }
 
     final overview = provider.overview!;
 
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Stats Grid
-            _buildStatsGrid(overview),
-            const SizedBox(height: 20),
+    return RefreshIndicator(
+      onRefresh: () async {
+        _loadAnalytics();
+        await Future.delayed(const Duration(milliseconds: 500));
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Stats Grid
+              _buildStatsGrid(overview),
+              const SizedBox(height: 20),
 
-            // Profile Views Chart
-            _buildProfileViewsChart(overview),
-            const SizedBox(height: 20),
+              // Profile Views Chart
+              _buildProfileViewsChart(overview),
+              const SizedBox(height: 20),
 
-            // Top Performing Products
-            _buildTopProducts(overview),
-            const SizedBox(height: 20),
+              // Top Performing Products
+              _buildTopProducts(overview),
+              const SizedBox(height: 20),
 
-            // Performance Insight
-            _buildPerformanceInsight(overview),
-          ],
+              // Performance Insight
+              _buildPerformanceInsight(overview),
+            ],
+          ),
         ),
       ),
     );
@@ -734,26 +766,32 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? Colors.blue : Colors.grey[600],
-            size: 24,
+    return RepaintBoundary(
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 60,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? Colors.blue : Colors.grey[600],
+                size: 24,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.blue : Colors.grey[600],
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.blue : Colors.grey[600],
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

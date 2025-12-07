@@ -82,14 +82,21 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
       }
 
       // Otherwise, get the first company for the user
-      final memberId = widget.userData['memberId'] ?? widget.userData['_id'];
-      if (memberId == null) {
+      final memberId = 
+          widget.userData['_id']?.toString() ??
+          widget.userData['id']?.toString() ??
+          widget.userData['memberId']?.toString() ?? '';
+      
+      if (memberId.isEmpty) {
         setState(() {
-          _errorMessage = 'Member ID not found';
+          _errorMessage = 'Member ID not found in user data';
           _isLoading = false;
         });
+        print('❌ Member ID not found. userData keys: ${widget.userData.keys.toList()}');
         return;
       }
+      
+      print('✅ Using memberId: $memberId');
 
       final companies = await CompanyService.getCompanies(memberId);
 
@@ -115,7 +122,10 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
   }
 
   Future<void> _loadProducts() async {
-    if (_currentCompanyId == null) return;
+    if (_currentCompanyId == null) {
+      print('⚠️ Cannot load products: No company ID set');
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -123,15 +133,18 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
     });
 
     try {
+      print('📦 Loading products for companyId: $_currentCompanyId');
       final products = await ProductService.getProducts(_currentCompanyId!);
       setState(() {
         _products = products;
         _isLoading = false;
       });
+      print('✅ Loaded ${products.length} products successfully');
     } catch (e) {
       print('❌ Error loading products: $e');
+      print('❌ Stack trace: ${StackTrace.current}');
       setState(() {
-        _errorMessage = 'Failed to load products';
+        _errorMessage = 'Failed to load products: $e';
         _isLoading = false;
       });
     }
@@ -195,9 +208,18 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
       await _loadProducts();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Product added successfully!'),
+          SnackBar(
+            content: const Text('Product added successfully!'),
             backgroundColor: Colors.green,
+            duration: const Duration(milliseconds: 1200),
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
           ),
         );
       }
@@ -206,16 +228,18 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
-          ),
-        ),
-        child: SafeArea(
+    return ExcludeSemantics(
+      child: RepaintBoundary(
+        child: Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+              ),
+            ),
+            child: SafeArea(
           child: Column(
             children: [
               // Header
@@ -248,38 +272,45 @@ class _ProductsServicesScreenState extends State<ProductsServicesScreen> {
                           ],
                         ),
                       )
-                    : SingleChildScrollView(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Info Card
-                              _buildInfoCard(),
-                              const SizedBox(height: 20),
+                    : RefreshIndicator(
+                        key: const ValueKey('products_refresh'),
+                        onRefresh: _loadProducts,
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Info Card
+                                _buildInfoCard(),
+                                const SizedBox(height: 20),
 
-                              // Products List or Empty State
-                              if (_products.isEmpty)
-                                _buildEmptyState()
-                              else
-                                ..._products.map(
-                                  (product) => Padding(
-                                    padding: const EdgeInsets.only(
-                                      bottom: 16.0,
+                                // Products List or Empty State
+                                if (_products.isEmpty)
+                                  _buildEmptyState()
+                                else
+                                  ..._products.map(
+                                    (product) => Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 16.0,
+                                      ),
+                                      child: _buildProductCard(product),
                                     ),
-                                    child: _buildProductCard(product),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
               ),
             ],
           ),
+          ),
+        ),
+          bottomNavigationBar: _buildBottomNavigationBar(),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
@@ -976,16 +1007,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         ),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String>(
-                          value:
-                              [
-                                'Software',
-                                'Services',
-                                'Education',
-                                'Product',
-                                'Other',
-                              ].contains(selectedCategory)
-                              ? selectedCategory
-                              : 'Software',
+                          initialValue: selectedCategory,
                           decoration: InputDecoration(
                             hintText: 'Select category',
                             border: OutlineInputBorder(
@@ -1122,7 +1144,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                     isFeatured = value;
                                   });
                                 },
-                                activeColor: Colors.blue,
+                                activeTrackColor: Colors.blue,
                               ),
                             ],
                           ),

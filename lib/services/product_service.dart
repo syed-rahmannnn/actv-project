@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/product_model.dart';
+import 'api_service.dart';
 
 class ProductService {
-  static const String baseUrl = 'http://10.42.208.174:3000/api/products';
+  static final String baseUrl = '${ApiService.baseUrl}/products';
   static const Duration timeoutDuration = Duration(seconds: 10);
 
   /// Get all products for a company

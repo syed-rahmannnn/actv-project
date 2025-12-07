@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'businessaccount _dashboard_screen.dart';
 import '../../services/business_profile_service.dart';
 import '../../models/business_profile_model.dart';
 import '../../models/discover_company.dart';
@@ -128,7 +127,14 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
     _mobileController.text = profile.mobile ?? '';
     _areaController.text = profile.area ?? '';
     _locationController.text = profile.location ?? '';
-    _selectedBusinessType = profile.industry;
+    
+    // ✅ FIX: Ensure selected business type exists in the dropdown list
+    // If the profile industry doesn't match any item, set to null or first item
+    if (profile.industry != null && _businessTypes.contains(profile.industry)) {
+      _selectedBusinessType = profile.industry;
+    } else {
+      _selectedBusinessType = null; // or _businessTypes.first if you want a default
+    }
   }
 
   @override
@@ -283,16 +289,17 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+    return ExcludeSemantics(
+      child: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+            ),
           ),
-        ),
-        child: SafeArea(
+          child: SafeArea(
           child: Column(
             children: [
               // Header
@@ -346,7 +353,7 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
+                                  color: Colors.black.withValues(alpha: 0.1),
                                   blurRadius: 15,
                                   offset: const Offset(0, 4),
                                 ),
@@ -504,13 +511,7 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   DropdownButtonFormField<String>(
-                                    value:
-                                        _selectedBusinessType != null &&
-                                            _businessTypes.contains(
-                                              _selectedBusinessType,
-                                            )
-                                        ? _selectedBusinessType
-                                        : null,
+                                    initialValue: _selectedBusinessType,
                                     style: _isViewOnly
                                         ? const TextStyle(
                                             color: Colors.black87,
@@ -773,6 +774,7 @@ class _BusinessProfileEditScreenState extends State<BusinessProfileEditScreen> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

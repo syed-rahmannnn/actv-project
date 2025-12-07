@@ -55,6 +55,16 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
         throw Exception('Member ID not found');
       }
 
+      // ✅ FIX: Log which user is creating the company
+      print('\n' + '='*60);
+      print('🏢 CREATING NEW COMPANY');
+      print('='*60);
+      print('👤 Member ID: $memberId');
+      print('👤 User: ${widget.userData['fullName'] ?? 'Unknown'}');
+      print('📧 Email: ${widget.userData['email'] ?? 'Unknown'}');
+      print('🏢 Company Name: ${_nameController.text.trim()}');
+      print('='*60 + '\n');
+
       final result = await CompanyService.createCompany(
         memberId: memberId,
         name: _nameController.text.trim(),
@@ -76,6 +86,8 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
                 result['message'] ?? 'Company created successfully!',
               ),
               backgroundColor: Colors.green,
+              duration: const Duration(milliseconds: 1200),
+              behavior: SnackBarBehavior.floating,
             ),
           );
           Navigator.pop(context, true); // Return true to indicate success
@@ -103,16 +115,17 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+    return ExcludeSemantics(
+      child: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+            ),
           ),
-        ),
-        child: SafeArea(
+          child: SafeArea(
           child: Column(
             children: [
               // Header
@@ -243,6 +256,7 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

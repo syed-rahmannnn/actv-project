@@ -329,12 +329,13 @@ class _LoginScreenState extends State<LoginScreen> {
       final email = _emailController.text.trim().toLowerCase();
       final isLikelyAdmin =
           email.contains('admin') ||
-          email.startsWith('block.') ||
-          email.startsWith('district.') ||
-          email.startsWith('state.') ||
-          email.startsWith('super.');
+          (email.contains('@activ.com') &&
+              (email.startsWith('block.') ||
+                  email.startsWith('district.') ||
+                  email.startsWith('state.') ||
+                  email.startsWith('super.')));
 
-      // First try admin login with different roles ONLY if it looks like admin email
+      // First try admin login with different roles
       Map<String, dynamic>? adminResult;
       final adminRoles = [
         'BlockAdmin',
@@ -345,175 +346,171 @@ class _LoginScreenState extends State<LoginScreen> {
       bool adminLoginAttempted = false;
       String? lastAdminError;
 
-      if (isLikelyAdmin) {
-        for (String role in adminRoles) {
-          try {
-            adminLoginAttempted = true;
-            adminResult = await apiService.loginAdmin(
-              _emailController.text.trim(),
-              _passwordController.text,
-              role,
-            );
-            if (adminResult['ok'] == true) {
-              // Admin login successful
-              final token = adminResult['token'];
-              final adminRole = adminResult['role'];
-              final adminData =
-                  adminResult['body'] ??
-                  adminResult; // Extract from body first, fallback to adminResult
-              final adminId =
-                  adminData['id'] ??
-                  adminResult['adminId']; // Get id from body first
-              final mongoId =
-                  adminData['id'] ??
-                  adminResult['mongoId']; // Get id from body first
-              final apiBaseUrl = ApiService.baseUrl;
+      for (String role in adminRoles) {
+        try {
+          adminLoginAttempted = true;
+          adminResult = await apiService.loginAdmin(
+            _emailController.text.trim(),
+            _passwordController.text,
+            role,
+          );
+          if (adminResult['ok'] == true) {
+            // Admin login successful
+            final token = adminResult['token'];
+            final adminRole = adminResult['role'];
+            final adminData =
+                adminResult['body'] ??
+                adminResult; // Extract from body first, fallback to adminResult
+            final adminId =
+                adminData['id'] ??
+                adminResult['adminId']; // Get id from body first
+            final mongoId =
+                adminData['id'] ??
+                adminResult['mongoId']; // Get id from body first
+            final apiBaseUrl = ApiService.baseUrl;
 
-              final userDataToSave = {
-                'adminId': adminId, // Using the MongoDB _id as adminId
-                'mongoId':
-                    mongoId, // Store MongoDB _id separately for backward compatibility
-                'role': adminRole,
-                'email': adminData['email'] ?? _emailController.text.trim(),
-                'fullName': adminData['fullName'] ?? '',
-                'adminName': adminData['fullName'] ?? '', // Alias for fullName
-                'block':
-                    adminData['location']?['block'] ??
-                    adminData['meta']?['block'] ??
-                    '',
-                'blockName':
-                    adminData['location']?['block'] ??
-                    adminData['meta']?['block'] ??
-                    '', // Extract from location.block first
-                'district':
-                    adminData['location']?['district'] ??
-                    adminData['meta']?['district'] ??
-                    '',
-                'districtName':
-                    adminData['location']?['district'] ??
-                    adminData['meta']?['district'] ??
-                    '', // Extract from location.district first
+            final userDataToSave = {
+              'adminId': adminId, // Using the MongoDB _id as adminId
+              'mongoId':
+                  mongoId, // Store MongoDB _id separately for backward compatibility
+              'role': adminRole,
+              'email': adminData['email'] ?? _emailController.text.trim(),
+              'fullName': adminData['fullName'] ?? '',
+              'adminName': adminData['fullName'] ?? '', // Alias for fullName
+              'block':
+                  adminData['location']?['block'] ??
+                  adminData['meta']?['block'] ??
+                  '',
+              'blockName':
+                  adminData['location']?['block'] ??
+                  adminData['meta']?['block'] ??
+                  '', // Extract from location.block first
+              'district':
+                  adminData['location']?['district'] ??
+                  adminData['meta']?['district'] ??
+                  '',
+              'districtName':
+                  adminData['location']?['district'] ??
+                  adminData['meta']?['district'] ??
+                  '', // Extract from location.district first
+              'state':
+                  adminData['location']?['state'] ??
+                  adminData['meta']?['state'] ??
+                  '',
+              'stateName':
+                  adminData['location']?['state'] ??
+                  adminData['meta']?['state'] ??
+                  '', // Extract from location.state first
+              'active': adminData['active'] ?? true,
+              'isAdmin': true,
+              // Add meta structure that AuthProvider expects
+              'meta': {
                 'state':
                     adminData['location']?['state'] ??
                     adminData['meta']?['state'] ??
                     '',
+                'district':
+                    adminData['location']?['district'] ??
+                    adminData['meta']?['district'] ??
+                    '',
+                'block':
+                    adminData['location']?['block'] ??
+                    adminData['meta']?['block'] ??
+                    '',
                 'stateName':
                     adminData['location']?['state'] ??
                     adminData['meta']?['state'] ??
-                    '', // Extract from location.state first
-                'active': adminData['active'] ?? true,
-                'isAdmin': true,
-                // Add meta structure that AuthProvider expects
-                'meta': {
-                  'state':
-                      adminData['location']?['state'] ??
-                      adminData['meta']?['state'] ??
-                      '',
-                  'district':
-                      adminData['location']?['district'] ??
-                      adminData['meta']?['district'] ??
-                      '',
-                  'block':
-                      adminData['location']?['block'] ??
-                      adminData['meta']?['block'] ??
-                      '',
-                  'stateName':
-                      adminData['location']?['state'] ??
-                      adminData['meta']?['state'] ??
-                      '',
-                  'districtName':
-                      adminData['location']?['district'] ??
-                      adminData['meta']?['district'] ??
-                      '',
-                  'blockName':
-                      adminData['location']?['block'] ??
-                      adminData['meta']?['block'] ??
-                      '',
-                },
-              };
+                    '',
+                'districtName':
+                    adminData['location']?['district'] ??
+                    adminData['meta']?['district'] ??
+                    '',
+                'blockName':
+                    adminData['location']?['block'] ??
+                    adminData['meta']?['block'] ??
+                    '',
+              },
+            };
 
-              // Save admin login data with complete metadata
-              await AuthService.saveLoginData(
-                token: token,
-                userData: userDataToSave,
-              );
-
-              if (mounted) {
-                // Route based on admin role
-                if (adminRole == 'BlockAdmin') {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => BlockAdminDashboard(
-                        apiBaseUrl: apiBaseUrl,
-                        authToken: token,
-                        blockAdminId: adminId,
-                        blockName: adminData['block'] ?? 'Unknown Block',
-                        adminEmail: adminData['email'] ?? '',
-                      ),
-                    ),
-                  );
-                } else if (adminRole == 'DistrictAdmin') {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          DistrictAdminDashboard(adminId: adminId),
-                    ),
-                  );
-                } else if (adminRole == 'StateAdmin') {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          StateAdminDashboard(adminId: adminId),
-                    ),
-                  );
-                } else if (adminRole == 'SuperAdmin') {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          SuperAdminDashboard(adminId: adminId),
-                    ),
-                  );
-                } else {
-                  // For any other admin roles, show a placeholder message
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('$adminRole dashboard not implemented yet'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                }
-              }
-              return; // Exit the function after successful admin login
-            } else {
-              // Store the last admin error message
-              lastAdminError =
-                  adminResult['body']?['message'] ?? 'Admin login failed';
-            }
-          } catch (e) {
-            // Store the error and continue to next role
-            lastAdminError = 'Admin login error: $e';
-            continue;
-          }
-        }
-
-        // If admin login was attempted and failed, show admin error
-        if (isLikelyAdmin && adminLoginAttempted) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  lastAdminError ?? 'Admin not found or invalid credentials',
-                ),
-                backgroundColor: Colors.red,
-              ),
+            // Save admin login data with complete metadata
+            await AuthService.saveLoginData(
+              token: token,
+              userData: userDataToSave,
             );
+
+            if (mounted) {
+              // Route based on admin role
+              if (adminRole == 'BlockAdmin') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BlockAdminDashboard(
+                      apiBaseUrl: apiBaseUrl,
+                      authToken: token,
+                      blockAdminId: adminId,
+                      blockName: adminData['block'] ?? 'Unknown Block',
+                      adminEmail: adminData['email'] ?? '',
+                    ),
+                  ),
+                );
+              } else if (adminRole == 'DistrictAdmin') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        DistrictAdminDashboard(adminId: adminId),
+                  ),
+                );
+              } else if (adminRole == 'StateAdmin') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => StateAdminDashboard(adminId: adminId),
+                  ),
+                );
+              } else if (adminRole == 'SuperAdmin') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SuperAdminDashboard(adminId: adminId),
+                  ),
+                );
+              } else {
+                // For any other admin roles, show a placeholder message
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('$adminRole dashboard not implemented yet'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              }
+            }
+            return; // Exit the function after successful admin login
+          } else {
+            // Store the last admin error message
+            lastAdminError =
+                adminResult['body']?['message'] ?? 'Admin login failed';
           }
-          return; // Don't try member login for admin emails
+        } catch (e) {
+          // Store the error and continue to next role
+          lastAdminError = 'Admin login error: $e';
+          continue;
         }
+      }
+
+      // If this looks like an admin email and admin login failed, show admin error
+      if (isLikelyAdmin && adminLoginAttempted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                lastAdminError ?? 'Admin not found or invalid credentials',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return; // Don't try member login for admin emails
       }
 
       // If admin login failed and it's not obviously an admin email, try regular member login
@@ -524,28 +521,31 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (result['ok'] == true) {
         // Member login successful
-        // Safely extract member data with type checking
+        // Safely extract member data with proper type checking
         final body = result['body'];
-        if (body is! Map) {
-          throw Exception('Invalid response format: body is not a Map');
+        if (body == null || body is! Map) {
+          throw Exception('Invalid response format: body is null or not a Map');
         }
-
+        
         // Handle different possible response structures
-        dynamic memberData;
+        Map<String, dynamic> member;
+        
+        // Try to extract member data from different possible structures
         if (body['data'] != null && body['data'] is Map) {
           // Structure: { data: { member: {...} } }
-          memberData = body['data']['member'] ?? body['data'];
-        } else if (body['member'] != null) {
+          final data = body['data'] as Map;
+          if (data['member'] != null && data['member'] is Map) {
+            member = Map<String, dynamic>.from(data['member'] as Map);
+          } else {
+            member = Map<String, dynamic>.from(data);
+          }
+        } else if (body['member'] != null && body['member'] is Map) {
           // Structure: { member: {...} }
-          memberData = body['member'];
+          member = Map<String, dynamic>.from(body['member'] as Map);
         } else {
           // Fallback: use body directly if it contains member fields
-          memberData = body;
+          member = Map<String, dynamic>.from(body);
         }
-
-        final member = memberData is Map<String, dynamic>
-            ? memberData
-            : Map<String, dynamic>.from(memberData as Map);
         final token = result['token'];
 
         // Debug: Print what member data we got from login

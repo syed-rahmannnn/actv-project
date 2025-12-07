@@ -42,8 +42,14 @@ class _EditCompanyScreenState extends State<EditCompanyScreen> {
     super.initState();
     // Prefill form with company data
     _nameController = TextEditingController(text: widget.company.name);
-    _selectedBusinessType =
-        widget.company.industry; // Map industry to business type
+    
+    // ✅ FIX: Ensure selected business type exists in the dropdown list
+    if (widget.company.industry != null && _businessTypes.contains(widget.company.industry)) {
+      _selectedBusinessType = widget.company.industry;
+    } else {
+      _selectedBusinessType = null;
+    }
+    
     _locationController = TextEditingController(
       text: widget.company.location ?? '',
     );
@@ -131,6 +137,8 @@ class _EditCompanyScreenState extends State<EditCompanyScreen> {
                 result['message'] ?? 'Company updated successfully!',
               ),
               backgroundColor: Colors.green,
+              duration: const Duration(milliseconds: 1200),
+              behavior: SnackBarBehavior.floating,
             ),
           );
           Navigator.pop(context, true); // Return true to indicate success
@@ -158,16 +166,17 @@ class _EditCompanyScreenState extends State<EditCompanyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+    return ExcludeSemantics(
+      child: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+            ),
           ),
-        ),
-        child: SafeArea(
+          child: SafeArea(
           child: Column(
             children: [
               // Header
@@ -611,6 +620,7 @@ class _EditCompanyScreenState extends State<EditCompanyScreen> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

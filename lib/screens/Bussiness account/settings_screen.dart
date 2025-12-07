@@ -25,7 +25,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _productInquiriesNotification = true;
   bool _weeklySummaryNotification = true;
   String _verificationStatus = 'Pending Review';
-  bool _isDeletingAccount = false;
 
   // Show delete account confirmation dialog
   void _showDeleteAccountDialog() {
@@ -81,10 +80,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Delete account API call
   Future<void> _deleteAccount() async {
-    setState(() {
-      _isDeletingAccount = true;
-    });
-
     // Show loading indicator
     showDialog(
       context: context,
@@ -165,17 +160,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isDeletingAccount = false;
-        });
-      }
+      // Cleanup handled by dialog dismiss
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return ExcludeSemantics(
+      child: Scaffold(
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -192,31 +184,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               // Main Content
               Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Business Verification
-                        _buildVerificationSection(),
-                        const SizedBox(height: 20),
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    // Refresh settings if needed
+                    await Future.delayed(const Duration(milliseconds: 300));
+                    if (mounted) {
+                      setState(() {});
+                    }
+                  },
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Business Verification
+                          _buildVerificationSection(),
+                          const SizedBox(height: 20),
 
-                        // Visibility & Privacy
-                        _buildVisibilityPrivacySection(),
-                        const SizedBox(height: 20),
+                          // Visibility & Privacy
+                          _buildVisibilityPrivacySection(),
+                          const SizedBox(height: 20),
 
-                        // Notifications
-                        _buildNotificationsSection(),
-                        const SizedBox(height: 20),
+                          // Notifications
+                          _buildNotificationsSection(),
+                          const SizedBox(height: 20),
 
-                        // Account
-                        _buildAccountSection(),
-                        const SizedBox(height: 20),
+                          // Account
+                          _buildAccountSection(),
+                          const SizedBox(height: 20),
 
-                        // App Version
-                        _buildAppVersion(),
-                      ],
+                          // App Version
+                          _buildAppVersion(),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -226,6 +228,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
+      ),
     );
   }
 
@@ -730,26 +733,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? Colors.blue : Colors.grey[600],
-            size: 24,
+    return RepaintBoundary(
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 60,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? Colors.blue : Colors.grey[600],
+                size: 24,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.blue : Colors.grey[600],
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.blue : Colors.grey[600],
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

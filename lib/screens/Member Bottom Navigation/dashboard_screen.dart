@@ -9,6 +9,9 @@ import '../Bussiness account/businessaccount _dashboard_screen.dart';
 import '../../services/member_service.dart';
 import '../../services/api_service.dart';
 import '../../services/business_profile_service.dart';
+import '../../services/company_service.dart';
+import '../../models/business_profile_model.dart';
+import '../../models/company_model.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -74,84 +77,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
     print('📦 widget.userData: ${widget.userData}');
     print('🔑 userData keys: ${widget.userData.keys.toList()}');
 
-    // First, try to get name from userData passed from login
+    // ✅ OPTIMIZATION: Use login data immediately for instant UI
     final initialName =
         widget.userData['fullName'] ??
         widget.userData['member']?['fullName'] ??
         'Member';
+    
+    final initialCompany = 
+        widget.userData['companyName'] ??
+        widget.userData['organizationName'] ??
+        'Your Company';
 
-    print('📝 Initial name extracted: $initialName');
+    print('📝 Initial name: $initialName');
 
+    // ✅ OPTIMIZATION: Show UI immediately with login data
     setState(() {
       displayName = initialName;
+      companyName = initialCompany;
+      isLoading = false; // Stop loading immediately!
     });
 
-    print('=== DASHBOARD SCREEN INIT ===');
-    print('Initial name from userData: $displayName');
-    print('🌐 About to call MemberService.getMemberDetails()...');
+    print('✅ Dashboard UI shown instantly with login data');
 
-    // Then fetch fresh data from API
-    try {
-      final data = await MemberService.getMemberDetails();
+    // ✅ OPTIMIZATION: Fetch all API data in parallel (non-blocking)
+    final memberId =
+        widget.userData['_id'] ??
+        widget.userData['id'] ??
+        widget.userData['member']?['_id'];
 
-      print('📡 API Response received: ${data != null}');
-      print('📊 Full API response: $data');
+    // Run all fetches in parallel without blocking UI
+    Future.wait([
+      MemberService.getMemberDetails().then((data) {
+        if (data != null && data['success'] == true && mounted) {
+          final memberData = data['data'];
+          final personalDetails = memberData['personal_and_demographic_details'];
+          final businessInfo = memberData['business_information'];
 
-      if (data != null && data['success'] == true) {
-        final memberData = data['data'];
-        final personalDetails = memberData['personal_and_demographic_details'];
-        final businessInfo = memberData['business_information'];
-
-        print('👤 Personal details: $personalDetails');
-        print('🏢 Business info: $businessInfo');
-        print('📛 Extracted full_name: ${personalDetails?['full_name']}');
-        print(
-          '🏭 Extracted organization_name: ${businessInfo?['organization_name']}',
-        );
-
-        setState(() {
-          displayName = personalDetails?['full_name'] ?? displayName;
-          companyName = businessInfo?['organization_name'] ?? 'Your Company';
-          mobileNumber = personalDetails?['mobile_number']?.toString() ?? '';
-          isLoading = false;
-        });
-
-        print('✅ Dashboard data loaded from API');
-        print('✅ Final display name: $displayName');
-        print('✅ Final company name: $companyName');
-
-        // Fetch profile completion percentage and business account in parallel
-        // Use Future.wait with error handling for each future
-        await Future.wait([
-          _loadProfileCompletion().catchError((e) {
-            print('⚠️ Error loading profile completion: $e');
-            return null;
-          }),
-          _loadBusinessAccount().catchError((e) {
-            print('⚠️ Error loading business account: $e');
-            return null;
-          }),
-        ]);
-      } else {
-        setState(() => isLoading = false);
-        print('⚠️ Could not fetch fresh data, using login data');
-        print('⚠️ API response was: $data');
-
-        // Still try to load business account
+          setState(() {
+            displayName = personalDetails?['full_name'] ?? displayName;
+            companyName = businessInfo?['organization_name'] ?? companyName;
+            mobileNumber = personalDetails?['mobile_number']?.toString() ?? '';
+          });
+          print('✅ Dashboard data updated from API');
+        }
+      }).catchError((e) {
+        print('⚠️ Error loading member details: $e');
+      }),
+      
+      _loadProfileCompletion().catchError((e) {
+        print('⚠️ Error loading profile completion: $e');
+      }),
+      
+      if (memberId != null)
         _loadBusinessAccount().catchError((e) {
           print('⚠️ Error loading business account: $e');
-        });
-      }
-    } catch (e, stackTrace) {
-      setState(() => isLoading = false);
-      print('❌ Error loading dashboard data: $e');
-      print('❌ Stack trace: $stackTrace');
-
-      // Still try to load business account
-      _loadBusinessAccount().catchError((e) {
-        print('⚠️ Error loading business account: $e');
-      });
-    }
+        }),
+    ]);
   }
 
   // Load dashboard status from API
@@ -204,23 +185,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       print('🏢 Fetching business account for member: $memberId');
 
-      // Fetch business profile
-      final profile = await BusinessProfileService.getBusinessProfile(
-        memberId.toString(),
-      );
+      // ✅ CRITICAL: Clear caches before fetching to ensure fresh data
+      // This fixes the issue where newly created accounts show stale "no account" data
+      await BusinessProfileService.clearCache(memberId.toString());
+      await CompanyService.clearCache(memberId.toString());
+
+      // Fetch BOTH business profile AND companies in parallel
+      final results = await Future.wait([
+        BusinessProfileService.getBusinessProfile(memberId.toString()),
+        CompanyService.getCompanies(memberId.toString()),
+      ]);
 
       if (!mounted) return; // Don't update state if widget is disposed
 
-      if (profile != null) {
+      final profile = results[0] as BusinessProfile?;
+      final companies = results[1] as List<Company>;
+
+      // Business account is valid only if BOTH profile AND companies exist
+      if (profile != null && companies.isNotEmpty) {
         setState(() {
           hasBusinessAccount = true;
           businessId = profile.businessId;
           accountStatus = profile.status;
-          companyName = profile.name; // Use actual company name
+          companyName = companies[0].name; // Use first company name
         });
 
         print('✅ Business account found:');
-        print('   - Company: ${profile.name}');
+        print('   - Company: ${companies[0].name}');
+        print('   - Total Companies: ${companies.length}');
         print('   - Business ID: ${profile.businessId}');
         print('   - Status: ${profile.status}');
       } else {
@@ -230,7 +222,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           accountStatus = null;
         });
 
-        print('ℹ️ No business account found for this member');
+        if (profile == null) {
+          print('ℹ️ No business profile found for this member');
+        } else if (companies.isEmpty) {
+          print('⚠️ Business profile exists but no companies found - data mismatch!');
+        }
       }
     } catch (e) {
       print('❌ Error loading business account: $e');
@@ -285,11 +281,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // 🔹 Body starts
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  // 🔹 Full Blue Header
-                  Container(
+          : RefreshIndicator(
+              onRefresh: () async {
+                await _loadMemberData();
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  children: [
+                    // 🔹 Full Blue Header
+                    Container(
                     height: 200,
                     width: double.infinity,
                     decoration: BoxDecoration(
@@ -412,9 +413,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                   const SizedBox(height: 16),
 
-                  // 🔹 Create Business Account Card
-                  _buildBusinessAccountCard(context, widget.userData),
-                ],
+                    // 🔹 Create Business Account Card
+                    _buildBusinessAccountCard(context, widget.userData),
+                  ],
+                ),
               ),
             ),
     );
@@ -633,8 +635,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 BusinessProfileScreen(userData: userData),
                           ),
                         );
-                        // Reload business account after returning (account may have been created)
-                        print('🔄 Returned from onboarding, reloading data...');
+                        // ✅ Account was created! The user is now in BusinessDashboard
+                        // When they come back here, reload business account status
+                        print('🔄 User returned to member dashboard, reloading business account status...');
+                        // Wait a bit for any pending operations
+                        await Future.delayed(const Duration(milliseconds: 500));
                         await _loadBusinessAccount();
                       }
                     },

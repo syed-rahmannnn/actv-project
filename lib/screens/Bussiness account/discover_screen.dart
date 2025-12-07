@@ -6,8 +6,6 @@ import 'businessaccount _dashboard_screen.dart';
 import 'products/products_services_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_screen.dart';
-import 'business_profile_edit_screen.dart';
-import 'Products/add_product_new_screen.dart';
 
 class DiscoverScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -20,24 +18,22 @@ class DiscoverScreen extends StatefulWidget {
 }
 
 class _DiscoverScreenState extends State<DiscoverScreen> {
-  int _selectedTab = 0; // 0 for Companies, 1 for Products
   final TextEditingController _searchController = TextEditingController();
   late final Debouncer _debouncer;
+
+  String get _memberId {
+    return widget.userData['_id']?.toString() ??
+        widget.userData['id']?.toString() ??
+        widget.userData['memberId']?.toString() ?? '';
+  }
 
   @override
   void initState() {
     super.initState();
     _debouncer = Debouncer(milliseconds: 400);
-
-    // Load initial data with memberId
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final memberId = widget.userData['id'] ?? '';
-      if (memberId.isNotEmpty) {
-        final provider = context.read<DiscoverProvider>();
-        provider.loadCompanies(memberId: memberId);
-        provider.loadProducts(memberId: memberId);
-      }
-    });
+    
+    // Don't load any data initially - wait for user to search
+    print('🔍 Discover screen initialized - waiting for search query');
   }
 
   @override
@@ -48,250 +44,182 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   void _onSearchChanged(String value) {
-    final memberId = widget.userData['id'] ?? '';
-    if (memberId.isEmpty) return;
-
-    _debouncer.run(() {
-      final provider = context.read<DiscoverProvider>();
-      if (_selectedTab == 0) {
-        provider.loadCompanies(memberId: memberId, query: value);
-      } else {
-        provider.loadProducts(memberId: memberId, query: value);
-      }
-    });
-  }
-
-  void _onTabChanged(int index) {
-    setState(() {
-      _selectedTab = index;
-    });
-
-    // Trigger search with current query when switching tabs
-    final memberId = widget.userData['id'] ?? '';
-    if (memberId.isEmpty) return;
-
-    final query = _searchController.text;
     final provider = context.read<DiscoverProvider>();
-    if (index == 0) {
-      provider.loadCompanies(memberId: memberId, query: query);
-    } else {
-      provider.loadProducts(memberId: memberId, query: query);
+    
+    // If search is empty, clear results
+    if (value.trim().isEmpty) {
+      provider.clear();
+      return;
     }
+    
+    // Only search when user types something
+    _debouncer.run(() {
+      final memberId = _memberId;
+      if (memberId.isEmpty) return;
+      
+      // Search both companies and products simultaneously
+      provider.loadCompanies(memberId: memberId, query: value);
+      provider.loadProducts(memberId: memberId, query: value);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<DiscoverProvider>(
-      builder: (context, discoverProvider, child) {
-        final companies = discoverProvider.companies;
-        final products = discoverProvider.products;
-        final isLoadingCompanies = discoverProvider.isLoadingCompanies;
-        final isLoadingProducts = discoverProvider.isLoadingProducts;
+    return ExcludeSemantics(
+      child: RepaintBoundary(
+        child: Consumer<DiscoverProvider>(
+          builder: (context, discoverProvider, child) {
+            final companies = discoverProvider.companies;
+            final products = discoverProvider.products;
+            final isLoadingCompanies = discoverProvider.isLoadingCompanies;
+            final isLoadingProducts = discoverProvider.isLoadingProducts;
 
-        return Scaffold(
-          body: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+            return Scaffold(
+            body: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+                ),
               ),
-            ),
-            child: SafeArea(
-              child: Column(
-                children: [
-                  // Header
-                  _buildHeader(),
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    // Header with search bar
+                    _buildHeader(),
 
-                  // Tab Selector
-                  _buildTabSelector(companies.length, products.length),
-
-                  // Main Content
-                  Expanded(
-                    child: _buildContent(
-                      companies,
-                      products,
-                      isLoadingCompanies,
-                      isLoadingProducts,
-                      discoverProvider,
+                    // Main Content - Combined companies and products
+                    Expanded(
+                      child: _buildUnifiedContent(
+                        companies,
+                        products,
+                        isLoadingCompanies,
+                        isLoadingProducts,
+                        discoverProvider,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          bottomNavigationBar: _buildBottomNavigationBar(),
-        );
-      },
+            bottomNavigationBar: _buildBottomNavigationBar(),
+          );
+        },
+        ),
+      ),
     );
   }
 
-  Widget _buildContent(
+  Widget _buildUnifiedContent(
     List companies,
     List products,
     bool isLoadingCompanies,
     bool isLoadingProducts,
     DiscoverProvider provider,
   ) {
-    if (_selectedTab == 0) {
-      // Companies tab
-      if (isLoadingCompanies) {
-        return const Center(child: CircularProgressIndicator());
-      }
+    // Show loading if either is loading
+    if (isLoadingCompanies || isLoadingProducts) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-      if (provider.companiesError != null) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
-              const SizedBox(height: 16),
-              Text(
-                'Failed to load companies',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                provider.companiesError!,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () {
-                  final memberId = widget.userData['id'] ?? '';
-                  if (memberId.isNotEmpty) {
-                    provider.loadCompanies(
-                      memberId: memberId,
-                      query: _searchController.text,
-                    );
-                  }
-                },
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-              ),
-            ],
-          ),
-        );
-      }
-
-      if (companies.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.business_outlined,
-                size: 64,
-                color: Colors.grey.shade400,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No companies found',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-              ),
-              if (_searchController.text.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Try searching with different keywords',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
-              ],
-            ],
-          ),
-        );
-      }
-
-      return ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: companies.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16.0),
-            child: _buildCompanyCard(companies[index]),
-          );
-        },
-      );
-    } else {
-      // Products tab
-      if (isLoadingProducts) {
-        return const Center(child: CircularProgressIndicator());
-      }
-
-      if (provider.productsError != null) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
-              const SizedBox(height: 16),
-              Text(
-                'Failed to load products',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                provider.productsError!,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () {
-                  final memberId = widget.userData['id'] ?? '';
-                  if (memberId.isNotEmpty) {
-                    provider.loadProducts(
-                      memberId: memberId,
-                      query: _searchController.text,
-                    );
-                  }
-                },
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-              ),
-            ],
-          ),
-        );
-      }
-
-      if (products.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.inventory_2_outlined,
-                size: 64,
-                color: Colors.grey.shade400,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No products found',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-              ),
-              if (_searchController.text.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Try searching with different keywords',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
-              ],
-            ],
-          ),
-        );
-      }
-
-      return ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: products.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16.0),
-            child: _buildProductCard(products[index]),
-          );
-        },
+    // Show error if any error occurred
+    if (provider.companiesError != null || provider.productsError != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red.shade400),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load results',
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              provider.companiesError ?? provider.productsError!,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                final memberId = _memberId;
+                if (memberId.isNotEmpty) {
+                  provider.loadCompanies(memberId: memberId, query: _searchController.text);
+                  provider.loadProducts(memberId: memberId, query: _searchController.text);
+                }
+              },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
       );
     }
+
+    // Show empty state if no results
+    if (companies.isEmpty && products.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _searchController.text.isEmpty ? Icons.search : Icons.search_off,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _searchController.text.isEmpty 
+                  ? 'Search for companies and products'
+                  : 'No results found',
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _searchController.text.isEmpty
+                  ? 'Start typing to discover businesses'
+                  : 'Try searching with different keywords',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Build unified list with companies and products with pull-to-refresh
+    return RefreshIndicator(
+      key: const ValueKey('discover_refresh'),
+      onRefresh: () async {
+        // Force refresh data (bypass cache)
+        final memberId = _memberId;
+        final query = _searchController.text;
+        
+        if (memberId.isNotEmpty && query.isNotEmpty) {
+          await provider.refresh(memberId: memberId, query: query);
+        }
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16.0),
+        itemCount: companies.length + products.length,
+        itemBuilder: (context, index) {
+          // Show companies first, then products
+          if (index < companies.length) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: _buildCompanyCard(companies[index]),
+            );
+          } else {
+            final productIndex = index - companies.length;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: _buildProductCard(products[productIndex]),
+            );
+          }
+        },
+      ),
+    );
   }
 
   Widget _buildHeader() {
@@ -364,74 +292,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  Widget _buildTabSelector(int companiesCount, int productsCount) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () => _onTabChanged(0),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: _selectedTab == 0 ? Colors.blue : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Companies ($companiesCount)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: _selectedTab == 0 ? Colors.white : Colors.black87,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => _onTabChanged(1),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: _selectedTab == 1 ? Colors.blue : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Products ($productsCount)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: _selectedTab == 1 ? Colors.white : Colors.black87,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildCompanyCard(dynamic company) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => BusinessProfileEditScreen(
-              userData: widget.userData,
-              company: company,
-            ),
-          ),
-        );
+        // ✅ Show subscription required dialog
+        _showSubscriptionRequiredDialog('company');
       },
       child: Container(
         decoration: BoxDecoration(
@@ -567,15 +434,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   ),
                   TextButton.icon(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => BusinessProfileEditScreen(
-                            userData: widget.userData,
-                            company: company,
-                          ),
-                        ),
-                      );
+                      // ✅ Show subscription required dialog
+                      _showSubscriptionRequiredDialog('company');
                     },
                     icon: const Icon(Icons.arrow_forward, size: 16),
                     label: const Text('View Profile'),
@@ -599,16 +459,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Widget _buildProductCard(dynamic product) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AddProductNewScreen(
-              userData: widget.userData,
-              companyId: product.companyId ?? '',
-              discoverProduct: product,
-            ),
-          ),
-        );
+        // ✅ Show subscription required dialog
+        _showSubscriptionRequiredDialog('product');
       },
       child: Container(
         decoration: BoxDecoration(
@@ -736,16 +588,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AddProductNewScreen(
-                          userData: widget.userData,
-                          companyId: product.companyId ?? '',
-                          discoverProduct: product,
-                        ),
-                      ),
-                    );
+                    // ✅ Show subscription required dialog
+                    _showSubscriptionRequiredDialog('product');
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
@@ -765,6 +609,120 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showSubscriptionRequiredDialog(String type) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.lock_outline,
+                color: Colors.orange.shade700,
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Subscription Required',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                type == 'company'
+                    ? 'To view company details and connect with businesses, you need to:'
+                    : 'To view product details and contact sellers, you need to:',
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              _buildRequirementItem('✓', 'Complete your profile'),
+              _buildRequirementItem('✓', 'Get admin approval'),
+              _buildRequirementItem('✓', 'Activate your membership subscription'),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Once approved and subscribed, you\'ll access the full enhanced dashboard with networking features.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue.shade900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // TODO: Navigate to profile completion or subscription page
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Complete your profile to unlock all features'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Complete Profile'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildRequirementItem(String icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Text(
+            icon,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.green.shade600,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -862,26 +820,32 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? Colors.blue : Colors.grey[600],
-            size: 24,
+    return RepaintBoundary(
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 60,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? Colors.blue : Colors.grey[600],
+                size: 24,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.blue : Colors.grey[600],
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.blue : Colors.grey[600],
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

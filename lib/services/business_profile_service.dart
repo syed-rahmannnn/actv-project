@@ -3,8 +3,10 @@ import 'package:http/http.dart' as http;
 import 'dart:developer' as developer;
 import '../models/business_profile_model.dart';
 import 'api_service.dart';
+import '../utils/cache_manager.dart';
 
 class BusinessProfileService {
+  static final _cache = FastCacheManager();
   static final String baseUrl = ApiService.baseUrl;
 
   static Duration _requestTimeout() {
@@ -18,22 +20,44 @@ class BusinessProfileService {
 
   static dynamic _jsonDecodeSafe(String input) {
     try {
-      return input.isNotEmpty ? jsonDecode(input) : null;
+      return input.isNotEmpty ? jsonDecode(input) : {};
     } catch (e) {
       developer.log(
-        '_jsonDecodeSafe error: $e',
+        '_jsonDecodeSafe error: $e, input: $input',
         name: 'BusinessProfileService',
       );
-      return input;
+      return {'error': 'Invalid JSON response', 'raw': input};
     }
+  }
+
+  /// Clear cache for specific member
+  static Future<void> clearCache(String memberId) async {
+    final cacheKey = 'business_profile_$memberId';
+    _cache.remove(cacheKey);
+    developer.log(
+      '🗑️ Cleared business profile cache for: $memberId',
+      name: 'BusinessProfileService',
+    );
   }
 
   /// Get business profile by member ID
   static Future<BusinessProfile?> getBusinessProfile(String memberId) async {
     try {
+      final cacheKey = 'business_profile_$memberId';
+      
+      // Try cache first
+      final cached = _cache.get<BusinessProfile>(cacheKey);
+      if (cached != null) {
+        developer.log(
+          '✅ Loaded business profile from cache',
+          name: 'BusinessProfileService',
+        );
+        return cached;
+      }
+      
       final url = Uri.parse('$baseUrl/profile/business-info/$memberId');
       developer.log(
-        'Fetching business profile for: $memberId',
+        '🌐 Fetching business profile from API for: $memberId',
         name: 'BusinessProfileService',
       );
 
@@ -46,7 +70,10 @@ class BusinessProfileService {
         if (body['success'] == true && body['data'] != null) {
           final businessInfo = body['data']['businessInfo'];
           if (businessInfo != null) {
-            return BusinessProfile.fromJson(businessInfo);
+            final profile = BusinessProfile.fromJson(businessInfo);
+            // Cache for 3 minutes
+            _cache.set(cacheKey, profile);
+            return profile;
           }
         }
       } else if (response.statusCode == 404) {

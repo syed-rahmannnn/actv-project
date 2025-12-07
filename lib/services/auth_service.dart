@@ -72,5 +72,11 @@ class AuthService {
     await prefs.remove(_tokenKey);
     await prefs.remove(_userDataKey);
     await prefs.setBool(_isLoggedInKey, false);
+    
+    // ✅ FIX: Clear all company-related data to prevent showing wrong companies
+    await prefs.remove('current_company_id');
+    await prefs.remove('active_company');
+    
+    print('🔓 Logout: Cleared all user data including company selections');
   }
 }

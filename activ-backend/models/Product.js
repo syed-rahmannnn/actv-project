@@ -1,52 +1,59 @@
 const mongoose = require('mongoose');
 
 const productSchema = new mongoose.Schema({
-  companyId: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-    ref: 'Company'
-  },
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  description: {
-    type: String,
-    trim: true
-  },
-  category: {
-    type: String,
-    required: true,
-    enum: ['Software', 'Services', 'Education', 'Product', 'Other']
-  },
-  price: {
-    type: Number,
-    required: true
-  },
-  priceUnit: {
-    type: String,
-    enum: ['one-time', 'monthly', 'hourly', 'yearly'],
-    default: 'one-time'
-  },
-  currency: {
-    type: String,
-    default: 'INR'
-  },
-  featured: {
-    type: Boolean,
-    default: false
-  },
-  imageUrl: {
-    type: String
-  },
-  status: {
-    type: String,
-    enum: ['ACTIVE', 'INACTIVE', 'OUT_OF_STOCK'],
-    default: 'ACTIVE'
-  }
+    companyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'Company'
+    },
+    name: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    description: {
+        type: String,
+        trim: true
+    },
+    category: {
+        type: String,
+        required: true,
+        enum: ['Software', 'Services', 'Education', 'Product', 'Other']
+    },
+    price: {
+        type: Number,
+        required: true
+    },
+    priceUnit: {
+        type: String,
+        enum: ['one-time', 'monthly', 'hourly', 'yearly'],
+        default: 'one-time'
+    },
+    currency: {
+        type: String,
+        default: 'INR'
+    },
+    featured: {
+        type: Boolean,
+        default: false
+    },
+    imageUrl: {
+        type: String
+    },
+    status: {
+        type: String,
+        enum: ['ACTIVE', 'INACTIVE', 'OUT_OF_STOCK'],
+        default: 'ACTIVE'
+    }
 }, {
-  timestamps: true
+    timestamps: true
 });
+
+// ✅ OPTIMIZED: Add indexes for faster queries
+productSchema.index({ companyId: 1, createdAt: -1 }); // Get products by company
+productSchema.index({ name: 'text', description: 'text' }); // Text search
+productSchema.index({ category: 1 }); // Filter by category
+productSchema.index({ featured: 1, createdAt: -1 }); // Featured products first
+productSchema.index({ status: 1 }); // Filter by status
 
 module.exports = mongoose.model('Product', productSchema);

@@ -32,18 +32,18 @@ class BusinessDashboardScreen extends StatefulWidget {
 
 class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
   BusinessProfile? _businessProfile;
-  BusinessMetrics? _businessMetrics;
   List<BusinessAssociation> _associations = [];
   List<Company> _companies = [];
   Company? _activeCompany; // Currently active company
   bool _isLoading = true;
 
-  // Dynamic dashboard data
+  // Dynamic dashboard data (company-specific)
   int _profileViews = 0;
   int _productsCount = 0;
   String _profileViewsChange = 'No change';
   String _productsChange = 'No featured';
   List<Map<String, dynamic>> _recentActivities = [];
+  bool _statsLoaded = false;
 
   @override
   void initState() {
@@ -54,61 +54,69 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // ✅ FIX: Use read() instead of watch() to prevent infinite rebuild loop
     // Listen to active company changes from provider
-    final activeCompany = context
-        .watch<CompanySelectionProvider>()
-        .activeCompany;
-    if (activeCompany != null && activeCompany.id != _activeCompany?.id) {
-      setState(() {
-        _activeCompany = activeCompany;
-      });
-      print('✅ Active company updated from provider: ${activeCompany.name}');
-      // Reload company-specific data when company changes
-      _loadCompanySpecificData(activeCompany.id);
-    }
+    if (!mounted) return;
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final activeCompany = context
+          .read<CompanySelectionProvider>()
+          .activeCompany;
+      if (activeCompany != null && activeCompany.id != _activeCompany?.id) {
+        setState(() {
+          _activeCompany = activeCompany;
+        });
+        print('✅ Active company updated from provider: ${activeCompany.name}');
+        // Reload company-specific data when company changes
+        _loadCompanySpecificData(activeCompany.id);
+      }
+    });
   }
 
   Future<void> _loadCompanySpecificData(String companyId) async {
     try {
       print('🔄 Loading data for company: $companyId');
-      // Reload metrics and associations for the new company
-      if (_businessProfile != null) {
-        final results = await Future.wait([
-          BusinessProfileService.getBusinessMetrics(
-            _businessProfile!.businessId,
-          ),
-          BusinessProfileService.getBusinessAssociations(
-            _businessProfile!.businessId,
-          ),
-          DashboardService.getCompanyStats(companyId),
-          DashboardService.getRecentActivities(companyId, limit: 10),
-        ]);
+      
+      // Load dashboard stats and activities
+      final results = await Future.wait([
+        DashboardService.getCompanyStats(companyId),
+        DashboardService.getRecentActivities(companyId, limit: 10),
+      ]);
 
-        setState(() {
-          _businessMetrics = results[0] as BusinessMetrics;
-          _associations = results[1] as List<BusinessAssociation>;
+      setState(() {
+        // Update dynamic dashboard data
+        final stats = results[0] as Map<String, dynamic>;
+        _profileViews = stats['profileViews'] ?? 0;
+        _productsCount = stats['productsCount'] ?? 0;
+        _profileViewsChange = stats['profileViewsChange'] ?? 'No change';
+        _productsChange = stats['productsChange'] ?? 'No featured';
+        _statsLoaded = true;
 
-          // Update dynamic dashboard data
-          final stats = results[2] as Map<String, dynamic>;
-          _profileViews = stats['profileViews'] ?? 0;
-          _productsCount = stats['productsCount'] ?? 0;
-          _profileViewsChange = stats['profileViewsChange'] ?? 'No change';
-          _productsChange = stats['productsChange'] ?? 'No featured';
+        _recentActivities = results[1] as List<Map<String, dynamic>>;
 
-          _recentActivities = results[3] as List<Map<String, dynamic>>;
-
-          print('📊 Dashboard data loaded:');
-          print('   Profile Views: $_profileViews');
-          print('   Products Count: $_productsCount');
-          print('   Recent Activities: ${_recentActivities.length} items');
-          if (_recentActivities.isNotEmpty) {
-            print('   First activity: ${_recentActivities[0]['title']}');
-          }
-        });
-        print('✅ Reloaded metrics, associations, and dashboard data');
-      }
+        print('📊 Dashboard data loaded for company $companyId:');
+        print('   Profile Views: $_profileViews');
+        print('   Products Count: $_productsCount');
+        print('   Profile Views Change: $_profileViewsChange');
+        print('   Products Change: $_productsChange');
+        print('   Recent Activities: ${_recentActivities.length} items');
+        if (_recentActivities.isNotEmpty) {
+          print('   First activity: ${_recentActivities[0]['title']}');
+        }
+      });
+      print('✅ Company-specific data loaded successfully');
     } catch (e) {
-      print('❌ Error reloading company data: $e');
+      print('❌ Error loading company data: $e');
+      // Set default values on error
+      setState(() {
+        _profileViews = 0;
+        _productsCount = 0;
+        _profileViewsChange = 'No change';
+        _productsChange = 'No featured';
+        _recentActivities = [];
+        _statsLoaded = false;
+      });
     }
   }
 
@@ -130,6 +138,12 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
         return;
       }
 
+      // ✅ CRITICAL FIX: Clear caches FIRST to ensure fresh data
+      // This fixes the "just created but shows old data" issue
+      await BusinessProfileService.clearCache(memberId);
+      await CompanyService.clearCache(memberId);
+      print('🗑️ Cleared caches for fresh data load');
+
       // Fetch business profile
       final profile = await BusinessProfileService.getBusinessProfile(memberId);
 
@@ -147,9 +161,8 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
       );
       print('⏰ Profile loaded at: ${DateTime.now()}');
 
-      // Fetch metrics, associations, and companies in parallel
+      // Fetch associations and companies in parallel
       final results = await Future.wait([
-        BusinessProfileService.getBusinessMetrics(profile.businessId),
         BusinessProfileService.getBusinessAssociations(profile.businessId),
         CompanyService.getCompanies(
           memberId,
@@ -158,26 +171,52 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
 
       setState(() {
         _businessProfile = profile;
-        _businessMetrics = results[0] as BusinessMetrics;
-        _associations = results[1] as List<BusinessAssociation>;
-        _companies = results[2] as List<Company>;
+        _associations = results[0] as List<BusinessAssociation>;
+        _companies = results[1] as List<Company>;
         _isLoading = false;
       });
 
       print('✅ Loaded ${_companies.length} companies for dashboard');
       if (_companies.isNotEmpty) {
-        _companies.forEach((c) => print('   - ${c.name} (${c.id})'));
+        _companies.forEach((c) => print('   - ${c.name} (${c.id}) - Views: ${c.views}, Products: ${c.productsCount}'));
 
-        // Set first company as active if none is set
+        // Set first company as active if none is set OR if the active company doesn't belong to this member
         final companyProvider = context.read<CompanySelectionProvider>();
+        Company companyToLoad;
+        
         if (companyProvider.activeCompany == null) {
           companyProvider.setActiveCompany(_companies[0]);
-          _activeCompany = _companies[0];
+          companyToLoad = _companies[0];
           print('✅ Set first company as active: ${_companies[0].name}');
-
-          // Load dashboard data for the first company
-          await _loadCompanySpecificData(_companies[0].id);
+        } else {
+          // Validate that the active company from provider belongs to this member
+          final activeCompanyId = companyProvider.activeCompany!.id;
+          final companyIndex = _companies.indexWhere((c) => c.id == activeCompanyId);
+          
+          if (companyIndex != -1) {
+            // ✅ CRITICAL: Use the company object from the fresh list to get updated data
+            companyToLoad = _companies[companyIndex];
+            // Update provider with fresh company data
+            companyProvider.setActiveCompany(companyToLoad);
+            print('✅ Using active company from provider: ${companyToLoad.name}');
+            print('   📊 Fresh data - Views: ${companyToLoad.views}, Products: ${companyToLoad.productsCount}');
+          } else {
+            // Active company doesn't belong to this member - use first company instead
+            companyProvider.setActiveCompany(_companies[0]);
+            companyToLoad = _companies[0];
+            print('⚠️ Active company from provider doesn\'t belong to this member');
+            print('✅ Reset to first company: ${_companies[0].name}');
+          }
         }
+        
+        _activeCompany = companyToLoad;
+        // Load dashboard data for the active company
+        await _loadCompanySpecificData(companyToLoad.id);
+      } else {
+        print('⚠️ No companies found - stats will not be loaded');
+        setState(() {
+          _statsLoaded = false;
+        });
       }
     } catch (e) {
       print('❌ Error loading business data: $e');
@@ -196,18 +235,122 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
     print('✅ Dashboard refreshed');
   }
 
+  void _showDeleteCompanyDialog() {
+    if (_activeCompany == null) return;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+              SizedBox(width: 12),
+              Text('Delete Company'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Are you sure you want to delete "${_activeCompany!.name}"?',
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '⚠️ This action cannot be undone',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Once you delete your company, all associated data will be permanently removed:',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    SizedBox(height: 8),
+                    Text('• All products in this company', style: TextStyle(fontSize: 14)),
+                    Text('• Company profile and settings', style: TextStyle(fontSize: 14)),
+                    Text('• Business analytics and statistics', style: TextStyle(fontSize: 14)),
+                    Text('• All other company resources', style: TextStyle(fontSize: 14)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deleteCompany();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Delete Permanently'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteCompany() async {
+    if (_activeCompany == null) return;
+
+    try {
+      // TODO: Call the delete company API endpoint
+      // For now, show a message that this feature is being implemented
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Company deletion will be implemented soon'),
+          backgroundColor: Colors.orange,
+          duration: Duration(milliseconds: 1500),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      print('❌ Error deleting company: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete company: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
-          ),
-        ),
-        child: SafeArea(
+    return ExcludeSemantics(
+      child: RepaintBoundary(
+        child: Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+              ),
+            ),
+          child: SafeArea(
           child: Column(
             children: [
               // Header
@@ -220,6 +363,7 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
                     : _businessProfile == null
                     ? _buildEmptyState()
                     : RefreshIndicator(
+                        key: const ValueKey('business_dashboard_refresh'),
                         onRefresh: _refreshDashboard,
                         child: SingleChildScrollView(
                           physics: const AlwaysScrollableScrollPhysics(),
@@ -261,6 +405,8 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
             ],
           ),
         ),
+        ),
+      ),
       ),
     );
   }
@@ -282,68 +428,89 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                shape: BoxShape.circle,
+    return RefreshIndicator(
+      key: const ValueKey('business_empty_refresh'),
+      onRefresh: _loadBusinessData,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight,
               ),
-              child: Icon(
-                Icons.business_outlined,
-                size: 64,
-                color: Colors.blue.shade700,
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'No business profile found',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Complete onboarding to create your business profile',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.black54),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => BusinessProfileEditScreen(
-                      userData: widget.userData,
-                      existingProfile: _businessProfile,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.business_outlined,
+                      size: 64,
+                      color: Colors.blue.shade700,
                     ),
                   ),
-                ).then((_) => _loadBusinessData());
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Create Business Profile'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2196F3),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'No business profile found',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Complete onboarding to create your business profile',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Pull down to refresh',
+                    style: TextStyle(fontSize: 12, color: Colors.blue),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => BusinessProfileEditScreen(
+                            userData: widget.userData,
+                            existingProfile: _businessProfile,
+                          ),
+                        ),
+                      ).then((_) => _loadBusinessData());
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Create Business Profile'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2196F3),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -458,14 +625,46 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
             ),
           ),
         ),
-        onTap: () {
-          Navigator.push(
+        onTap: () async {
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) =>
                   ManageCompaniesScreen(userData: widget.userData),
             ),
-          ).then((_) => _loadBusinessData()); // Refresh data when returning
+          );
+          
+          // Refresh data when returning
+          if (result is Map && result['success'] == true) {
+            // Company was changed, get the new active company from provider
+            final companyProvider = context.read<CompanySelectionProvider>();
+            if (companyProvider.activeCompany != null) {
+              print('🔄 Active company changed to: ${companyProvider.activeCompany!.name}');
+              setState(() {
+                _activeCompany = companyProvider.activeCompany;
+              });
+              // Reload all data with new active company
+              await _loadBusinessData();
+              
+              // Show success message AFTER data is loaded
+              if (mounted && result['companyName'] != null) {
+                // Clear any lingering snackbars first
+                ScaffoldMessenger.of(context).clearSnackBars();
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${result['companyName']} set as active company'),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(milliseconds: 500),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            }
+          } else if (result != null) {
+            // Just refresh in case of edits
+            await _loadBusinessData();
+          }
         },
       ),
     );
@@ -583,165 +782,71 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 42,
-            child: OutlinedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        EditCompanyScreen(company: _activeCompany!),
-                  ),
-                ).then((_) => _loadBusinessData());
-              },
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: Colors.blue.shade300),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'Edit',
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMyBusinessCard() {
-    if (_businessProfile == null) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.business,
-                  color: Colors.blue.shade700,
-                  size: 24,
+              Expanded(
+                child: SizedBox(
+                  height: 42,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              EditCompanyScreen(company: _activeCompany!),
+                        ),
+                      ).then((_) => _loadBusinessData());
+                    },
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Colors.blue.shade300),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    icon: const Icon(Icons.edit, size: 18, color: Colors.blue),
+                    label: const Text(
+                      'Edit',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _businessProfile!.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                child: SizedBox(
+                  height: 42,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _showDeleteCompanyDialog(),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Colors.red.shade300),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    if (_businessProfile!.industry != null &&
-                        _businessProfile!.industry!.isNotEmpty)
-                      Text(
-                        _businessProfile!.industry!,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    // DEBUG: Always show mobile status
-                    Text(
-                      _businessProfile!.mobile?.isNotEmpty == true
-                          ? _businessProfile!.mobile!
-                          : 'Mobile: Not set',
+                    icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                    label: const Text(
+                      'Delete',
                       style: TextStyle(
-                        fontSize: 13,
-                        color: _businessProfile!.mobile?.isNotEmpty == true
-                            ? Colors.black87
-                            : Colors.red.shade400,
-                        fontWeight: FontWeight.w500,
+                        color: Colors.red,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              _buildStatusPill(_businessProfile!.status),
-            ],
-          ),
-          if (_businessProfile!.description != null &&
-              _businessProfile!.description!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              _businessProfile!.description!,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Colors.black54,
-                height: 1.4,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 42,
-            child: OutlinedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => BusinessProfileEditScreen(
-                      userData: widget.userData,
-                      existingProfile: _businessProfile,
                     ),
                   ),
-                ).then((_) => _loadBusinessData());
-              },
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: Colors.blue.shade300),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text(
-                'Edit Profile',
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+            ],
           ),
         ],
       ),
     );
   }
+
+
 
   Widget _buildStatusPill(String status) {
     Color bgColor;
@@ -797,7 +902,8 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
   }
 
   Widget _buildStatsRow() {
-    if (_businessMetrics == null) return const SizedBox.shrink();
+    // Show stats from active company (loaded via DashboardService)
+    if (!_statsLoaded && _activeCompany == null) return const SizedBox.shrink();
 
     return Row(
       children: [
@@ -1208,26 +1314,32 @@ class _BusinessDashboardScreenState extends State<BusinessDashboardScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? Colors.blue : Colors.grey[600],
-            size: 24,
+    return RepaintBoundary(
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 60,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? Colors.blue : Colors.grey[600],
+                size: 24,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.blue : Colors.grey[600],
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.blue : Colors.grey[600],
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -98,7 +98,8 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return ExcludeSemantics(
+      child: Scaffold(
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -195,6 +196,7 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -435,11 +437,7 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value:
-              _selectedBusinessType != null &&
-                  _businessTypes.contains(_selectedBusinessType)
-              ? _selectedBusinessType
-              : null,
+          initialValue: _selectedBusinessType,
           decoration: InputDecoration(
             hintText: 'Select business type',
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
@@ -595,26 +593,32 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? Colors.blue : Colors.grey[600],
-            size: 24,
+    return RepaintBoundary(
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 60,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? Colors.blue : Colors.grey[600],
+                size: 24,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.blue : Colors.grey[600],
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.blue : Colors.grey[600],
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -33,7 +33,7 @@ class BusinessProfile {
 
   factory BusinessProfile.fromJson(Map<String, dynamic> json) {
     return BusinessProfile(
-      businessId: json['_id']?.toString() ?? json['memberId']?.toString() ?? '',
+      businessId: json['memberId']?.toString() ?? json['_id']?.toString() ?? '',
       name: json['organizationName'] ?? json['name'] ?? '',
       tagline: json['tagline'],
       description: json['businessDescription'] ?? json['description'],
