@@ -83,25 +83,33 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
         throw Exception('Missing district admin id');
       }
 
-      // Fetch pending applications (Pending-District status)
-      final pending = await _svc.getDistrictInbox(districtId);
-
-      // Fetch approved applications
-      final approved = await _svc.getDistrictApplicationsByStatus(
-        districtAdminId: districtId,
-        status: 'Approved',
+      // Fetch ALL applications using the new endpoint
+      final allApps = await ApiService.getDistrictAdminAllApplications(
+        districtId,
       );
 
-      // Fetch rejected applications
-      final rejected = await _svc.getDistrictApplicationsByStatus(
-        districtAdminId: districtId,
-        status: 'Rejected',
-      );
+      // Filter by status
+      final allAppsList = List<Map<String, dynamic>>.from(allApps);
+
+      final pending = allAppsList.where((app) {
+        final status = (app['status'] ?? '').toString().toLowerCase();
+        return status == 'pending-district' || status == 'pending';
+      }).toList();
+
+      final approved = allAppsList.where((app) {
+        final status = (app['status'] ?? '').toString().toLowerCase();
+        return status == 'approved' || status == 'pending-state';
+      }).toList();
+
+      final rejected = allAppsList.where((app) {
+        final status = (app['status'] ?? '').toString().toLowerCase();
+        return status == 'rejected';
+      }).toList();
 
       setState(() {
-        _pending = List<Map<String, dynamic>>.from(pending);
-        _approved = List<Map<String, dynamic>>.from(approved);
-        _rejected = List<Map<String, dynamic>>.from(rejected);
+        _pending = pending;
+        _approved = approved;
+        _rejected = rejected;
       });
 
       debugPrint(

@@ -155,9 +155,8 @@ module.exports = (mongooseConnection) => {
             }
 
             const app = await Application.findById(req.params.appId)
-                .select('status reviewedBy userId')
-                .lean()
-                .maxTimeMS(500); // ✅ OPTIMIZED
+                .select('status reviewedBy userId assignedBlockAdmin')
+                .maxTimeMS(500); // ✅ OPTIMIZED - Removed .lean() to allow .save()
             if (!app) {
                 return res.status(404).json({
                     success: false,
@@ -229,9 +228,8 @@ module.exports = (mongooseConnection) => {
             }
 
             const app = await Application.findById(req.params.appId)
-                .select('status reviewedBy userId')
-                .lean()
-                .maxTimeMS(500); // ✅ OPTIMIZED
+                .select('status reviewedBy userId assignedDistrictAdmin')
+                .maxTimeMS(500); // ✅ OPTIMIZED - Removed .lean() to allow .save()
             if (!app) {
                 return res.status(404).json({
                     success: false,
@@ -291,7 +289,8 @@ module.exports = (mongooseConnection) => {
     });
 
     // ---------- GET APPLICATIONS FOR BLOCK ADMIN ----------
-    router.get("/block/:blockAdminId", async(req, res) => {
+    // Get ALL applications for Block Admin (for Members page - shows history)
+    router.get("/block-all/:blockAdminId", async(req, res) => {
         try {
             const _id = await resolveAdminObjectId('block', req.params.blockAdminId, { BlockAdmin, DistrictAdmin, StateAdmin });
             if (!_id) {
@@ -302,7 +301,7 @@ module.exports = (mongooseConnection) => {
                 });
             }
 
-            // Get all applications for this block admin, not just pending ones
+            // Get ALL applications for this block admin (all statuses)
             const apps = await Application.find({
                 assignedBlockAdmin: _id,
             }).sort({ createdAt: -1 });
@@ -425,33 +424,176 @@ module.exports = (mongooseConnection) => {
                     }
                 }
 
-                // Block-level status normalization (do NOT reflect district/state pending here)
-                // Simple logic:
-                // - If block admin rejected => "Rejected"
-                // - If block admin approved (forwarded) => "Approved"
-                // - If not yet reviewed by block admin => "Pending"
+                // Keep original status for Members page
+                appObj.status = String(app.status || 'Pending');
+
+                console.log('Final enhanced app for ID:', appObj._id, 'reviewedBy:', JSON.stringify(appObj.reviewedBy, null, 2));
+                return appObj;
+            }));
+
+            res.json(enhancedApps);
+        } catch (err) {
+            console.error("Get all block applications error:", err);
+            res.status(500).json({ success: false, message: "Server error" });
+        }
+    });
+
+    // Get PENDING applications for Block Admin (for Approvals page - only needs action)
+    router.get("/block/:blockAdminId", async(req, res) => {
+        try {
+            const _id = await resolveAdminObjectId('block', req.params.blockAdminId, { BlockAdmin, DistrictAdmin, StateAdmin });
+            if (!_id) {
+                console.error("resolveAdminObjectId failed for block admin:", req.params.blockAdminId);
+                return res.status(400).json({
+                    success: false,
+                    message: `Admin not found for role 'block' and ID '${req.params.blockAdminId}'`
+                });
+            }
+
+            // Get only applications that need Block Admin action (Pending-Block status)
+            const apps = await Application.find({
+                assignedBlockAdmin: _id,
+                status: 'Pending-Block'
+            }).sort({ createdAt: -1 });
+
+            // Enhance applications with member approval information and reviewedBy details
+            const enhancedApps = await Promise.all(apps.map(async(app) => {
+                const appObj = app.toObject();
+
+                console.log(`[ENRICHMENT DEBUG] Processing app ${appObj._id}, current gender:`, appObj.gender);
+
+                // If gender is missing, try to fetch from MemberDetails
+                if (!appObj.gender) {
+                    try {
+                        const memberDetails = await MemberDetails.findOne({
+                            email: app.email.toLowerCase().trim()
+                        }, 'gender');
+
+                        if (memberDetails && memberDetails.gender) {
+                            console.log(`[ENRICHMENT DEBUG] Found gender in MemberDetails for ${app.email}:`, memberDetails.gender);
+                            appObj.gender = memberDetails.gender;
+                        } else {
+                            console.log(`[ENRICHMENT DEBUG] No gender found in MemberDetails for ${app.email}`);
+                        }
+                    } catch (memberError) {
+                        console.error(`[ENRICHMENT DEBUG] Error fetching gender from MemberDetails for ${app.email}:`, memberError);
+                    }
+                } else {
+                    console.log(`[ENRICHMENT DEBUG] App ${appObj._id} already has gender:`, appObj.gender);
+                }
+
+                // For approved applications, get member approval details
+                if (app.status === 'Approved') {
+                    try {
+                        const memberDetails = await MemberDetails.findOne({
+                            email: app.email.toLowerCase().trim()
+                        });
+
+                        if (memberDetails) {
+                            appObj.approvedBy = memberDetails.approvedBy;
+                            appObj.approvedBlock = memberDetails.approvedBlock;
+                            appObj.approvedAt = memberDetails.approvedAt;
+                        }
+                    } catch (memberError) {
+                        console.error("Error fetching member details for app:", app._id, memberError);
+                        // Continue without member details if there's an error
+                    }
+                }
+
+                // Fetch reviewedBy admin data
+                if (appObj.reviewedBy) {
+                    console.log('Processing reviewedBy for app:', appObj._id, 'reviewedBy:', JSON.stringify(appObj.reviewedBy, null, 2));
+
+                    if (appObj.reviewedBy.blockAdmin) {
+                        try {
+                            const blockAdmin = await BlockAdmin.findById(appObj.reviewedBy.blockAdmin, 'fullName email adminId meta').lean();
+                            console.log('Found block admin:', blockAdmin);
+                            if (blockAdmin) {
+                                appObj.reviewedBy.blockAdmin = {
+                                    fullName: blockAdmin.fullName,
+                                    email: blockAdmin.email,
+                                    adminId: blockAdmin.adminId,
+                                    meta: {
+                                        blockName: (blockAdmin.meta && blockAdmin.meta.block) || (blockAdmin.meta && blockAdmin.meta.blockLc) || 'Unknown Block',
+                                        districtName: (blockAdmin.meta && blockAdmin.meta.district) || (blockAdmin.meta && blockAdmin.meta.districtLc) || 'Unknown District',
+                                        stateName: (blockAdmin.meta && blockAdmin.meta.state) || (blockAdmin.meta && blockAdmin.meta.stateLc) || 'Unknown State'
+                                    }
+                                };
+                                console.log('Enhanced blockAdmin:', JSON.stringify(appObj.reviewedBy.blockAdmin, null, 2));
+                            } else {
+                                console.log('Block admin not found for ID:', appObj.reviewedBy.blockAdmin);
+                                appObj.reviewedBy.blockAdmin = null;
+                            }
+                        } catch (err) {
+                            console.error('Error fetching reviewed by block admin:', err);
+                            appObj.reviewedBy.blockAdmin = null;
+                        }
+                    }
+
+                    if (appObj.reviewedBy.districtAdmin) {
+                        try {
+                            const districtAdmin = await DistrictAdmin.findById(appObj.reviewedBy.districtAdmin, 'fullName email adminId meta').lean();
+                            if (districtAdmin) {
+                                appObj.reviewedBy.districtAdmin = {
+                                    fullName: districtAdmin.fullName,
+                                    email: districtAdmin.email,
+                                    adminId: districtAdmin.adminId,
+                                    meta: {
+                                        districtName: (districtAdmin.meta && districtAdmin.meta.district) || (districtAdmin.meta && districtAdmin.meta.districtLc) || 'Unknown District',
+                                        stateName: (districtAdmin.meta && districtAdmin.meta.state) || (districtAdmin.meta && districtAdmin.meta.stateLc) || 'Unknown State'
+                                    }
+                                };
+                            } else {
+                                appObj.reviewedBy.districtAdmin = null;
+                            }
+                        } catch (err) {
+                            console.error('Error fetching reviewed by district admin:', err);
+                            appObj.reviewedBy.districtAdmin = null;
+                        }
+                    }
+
+                    if (appObj.reviewedBy.stateAdmin) {
+                        try {
+                            const stateAdmin = await StateAdmin.findById(appObj.reviewedBy.stateAdmin, 'fullName email adminId meta').lean();
+                            if (stateAdmin) {
+                                appObj.reviewedBy.stateAdmin = {
+                                    fullName: stateAdmin.fullName,
+                                    email: stateAdmin.email,
+                                    adminId: stateAdmin.adminId,
+                                    meta: {
+                                        stateName: (stateAdmin.meta && stateAdmin.meta.state) || (stateAdmin.meta && stateAdmin.meta.stateLc) || 'Unknown State'
+                                    }
+                                };
+                            } else {
+                                appObj.reviewedBy.stateAdmin = null;
+                            }
+                        } catch (err) {
+                            console.error('Error fetching reviewed by state admin:', err);
+                            appObj.reviewedBy.stateAdmin = null;
+                        }
+                    }
+                }
+
+                // Block-level status display for Block Admin UI
+                // Only show "Pending" if block admin hasn't reviewed yet
+                // Show "Approved" only if fully approved, otherwise show original status
                 try {
                     const rb = appObj.reviewedBy || {};
                     const hasBlockReview = !!rb.blockAdmin;
                     const originalStatus = String(app.status || '');
 
-                    if (!hasBlockReview) {
-                        // Not reviewed by block admin yet
+                    if (!hasBlockReview && originalStatus === 'Pending-Block') {
+                        // Not reviewed by block admin yet - show as Pending
                         appObj.status = 'Pending';
                     } else {
-                        // Block admin has reviewed
-                        // Check if rejected at block level (status is Rejected AND no higher-level reviews)
-                        if (originalStatus === 'Rejected' && !rb.districtAdmin && !rb.stateAdmin) {
-                            appObj.status = 'Rejected';
-                        } else {
-                            // Block approved (may be Pending-District, Pending-State, or Approved)
-                            appObj.status = 'Approved';
-                        }
+                        // Block admin has already reviewed - keep original status
+                        // This will show: Pending-District, Pending-State, Approved, or Rejected
+                        appObj.status = originalStatus;
                     }
                 } catch (e) {
                     console.error('Status normalization error:', e);
-                    // Fallback: keep original or default to Pending
-                    appObj.status = 'Pending';
+                    // Fallback: keep original status
+                    appObj.status = String(app.status || 'Pending');
                 }
 
                 console.log('Final enhanced app for ID:', appObj._id, 'reviewedBy:', JSON.stringify(appObj.reviewedBy, null, 2));
@@ -507,9 +649,10 @@ module.exports = (mongooseConnection) => {
                 });
             }
 
-            // Fetch all applications for this district admin, regardless of status
+            // Fetch only PENDING applications for district admin (Approvals page)
             const apps = await Application.find({
                 assignedDistrictAdmin: _id,
+                status: 'Pending-District'
             }).sort({ createdAt: -1 });
 
             // Enhance applications similarly to the block admin route with reviewedBy and member info
@@ -567,6 +710,66 @@ module.exports = (mongooseConnection) => {
             });
         } catch (err) {
             console.error("Fetch district applications error:", err);
+            res.status(500).json({ success: false, message: "Server error" });
+        }
+    });
+
+    // Get ALL applications for District Admin (for Members page)
+    router.get("/district-all/:districtAdminId", async(req, res) => {
+        try {
+            const _id = await resolveAdminObjectId('district', req.params.districtAdminId, { BlockAdmin, DistrictAdmin, StateAdmin });
+            if (!_id) {
+                console.error("resolveAdminObjectId failed for district admin:", req.params.districtAdminId);
+                return res.status(400).json({
+                    success: false,
+                    message: `Admin not found for role 'district' and ID '${req.params.districtAdminId}'`
+                });
+            }
+
+            // Get ALL applications (no status filter)
+            const apps = await Application.find({
+                assignedDistrictAdmin: _id,
+            }).sort({ createdAt: -1 });
+
+            const enhancedApps = apps.map(app => {
+                const appObj = app.toObject();
+                appObj.status = String(app.status || 'Pending');
+                return appObj;
+            });
+
+            res.json(enhancedApps);
+        } catch (err) {
+            console.error("Get all district applications error:", err);
+            res.status(500).json({ success: false, message: "Server error" });
+        }
+    });
+
+    // Get ALL applications for State Admin (for Members page)
+    router.get("/state-all/:stateAdminId", async(req, res) => {
+        try {
+            const _id = await resolveAdminObjectId('state', req.params.stateAdminId, { BlockAdmin, DistrictAdmin, StateAdmin });
+            if (!_id) {
+                console.error("resolveAdminObjectId failed for state admin:", req.params.stateAdminId);
+                return res.status(400).json({
+                    success: false,
+                    message: `Admin not found for role 'state' and ID '${req.params.stateAdminId}'`
+                });
+            }
+
+            // Get ALL applications (no status filter)
+            const apps = await Application.find({
+                assignedStateAdmin: _id,
+            }).sort({ createdAt: -1 });
+
+            const enhancedApps = apps.map(app => {
+                const appObj = app.toObject();
+                appObj.status = String(app.status || 'Pending');
+                return appObj;
+            });
+
+            res.json(enhancedApps);
+        } catch (err) {
+            console.error("Get all state applications error:", err);
             res.status(500).json({ success: false, message: "Server error" });
         }
     });
@@ -668,8 +871,7 @@ module.exports = (mongooseConnection) => {
             }
 
             const app = await Application.findById(req.params.appId)
-                .lean()
-                .maxTimeMS(500); // ✅ OPTIMIZED
+                .maxTimeMS(500); // ✅ OPTIMIZED - Removed .lean() to allow .save()
             if (!app) return res.status(404).json({ success: false, message: "Application not found" });
 
             if (app.status !== "Pending-State") {
@@ -849,7 +1051,7 @@ module.exports = (mongooseConnection) => {
                 });
             }
 
-            const appObj = app.toObject();
+            const appObj = app; // Already a plain object from .lean()
 
             // Manually fetch admin data
             if (appObj.assignedBlockAdmin) {

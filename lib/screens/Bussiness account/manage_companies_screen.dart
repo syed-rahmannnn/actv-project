@@ -93,7 +93,7 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
 
     // Clear any existing snackbars before navigating
     ScaffoldMessenger.of(context).clearSnackBars();
-    
+
     // Return to Business dashboard with company data
     Navigator.pop(context, {'success': true, 'companyName': company.name});
   }
@@ -111,46 +111,47 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
             ),
           ),
           child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              _buildHeader(),
+            child: Column(
+              children: [
+                // Header
+                _buildHeader(),
 
-              // Main Content
-              Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _companies.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        onRefresh: _loadCompanies,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16.0),
-                          itemCount: _companies.length + 1,
-                          itemBuilder: (context, index) {
-                            if (index == 0) {
+                // Main Content
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _companies.isEmpty
+                      ? _buildEmptyState()
+                      : RefreshIndicator(
+                          onRefresh: _loadCompanies,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16.0),
+                            itemCount: _companies.length + 1,
+                            itemBuilder: (context, index) {
+                              if (index == 0) {
+                                return Column(
+                                  children: [
+                                    _buildInfoCard(),
+                                    const SizedBox(height: 16),
+                                  ],
+                                );
+                              }
+                              final company = _companies[index - 1];
                               return Column(
                                 children: [
-                                  _buildInfoCard(),
+                                  _buildCompanyCard(company),
                                   const SizedBox(height: 16),
                                 ],
                               );
-                            }
-                            final company = _companies[index - 1];
-                            return Column(
-                              children: [
-                                _buildCompanyCard(company),
-                                const SizedBox(height: 16),
-                              ],
-                            );
-                          },
+                            },
+                          ),
                         ),
-                      ),
-              ),
+                ),
 
-              // Bottom Navigation Bar
-              _buildBottomNavigation(),
-            ],
+                // Bottom Navigation Bar
+                _buildBottomNavigation(),
+              ],
+            ),
           ),
         ),
       ),
@@ -218,10 +219,9 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-            ],
+            ),
           ),
-        ),
-        ),
+        ],
       ),
     );
   }
@@ -234,35 +234,33 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
           return SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: constraints.maxHeight,
-              ),
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.all(32.0),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                  Icon(
-                    Icons.business_outlined,
-                    size: 80,
-                    color: Colors.grey.shade400,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No companies yet',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black54,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Tap Add to create your first company',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: Colors.black45),
-                  ),
+                      Icon(
+                        Icons.business_outlined,
+                        size: 80,
+                        color: Colors.grey.shade400,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'No companies yet',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Tap Add to create your first company',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, color: Colors.black45),
+                      ),
                     ],
                   ),
                 ),

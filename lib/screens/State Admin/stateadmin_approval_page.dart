@@ -74,20 +74,26 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
         throw Exception('Missing state admin id');
       }
 
-      // Fetch pending applications (Pending-State status)
-      final pending = await _svc.getStateInbox(stateId);
+      // Fetch ALL applications using the new endpoint
+      final allApps = await ApiService.getStateAdminAllApplications(stateId);
 
-      // Fetch approved applications
-      final approved = await _svc.getStateApplicationsByStatus(
-        stateAdminId: stateId,
-        status: 'Approved',
-      );
+      // Filter by status
+      final allAppsList = List<Map<String, dynamic>>.from(allApps);
 
-      // Fetch rejected applications
-      final rejected = await _svc.getStateApplicationsByStatus(
-        stateAdminId: stateId,
-        status: 'Rejected',
-      );
+      final pending = allAppsList.where((app) {
+        final status = (app['status'] ?? '').toString().toLowerCase();
+        return status == 'pending-state' || status == 'pending';
+      }).toList();
+
+      final approved = allAppsList.where((app) {
+        final status = (app['status'] ?? '').toString().toLowerCase();
+        return status == 'approved';
+      }).toList();
+
+      final rejected = allAppsList.where((app) {
+        final status = (app['status'] ?? '').toString().toLowerCase();
+        return status == 'rejected';
+      }).toList();
 
       if (mounted) {
         setState(() {

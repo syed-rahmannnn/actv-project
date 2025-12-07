@@ -45,31 +45,12 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final token = widget.token;
-      if (token == null || token.isEmpty) {
-        throw Exception('No authentication token available');
-      }
-
-      // Import ApplicationService at the top if not already
-      final svc = ApplicationService(baseUrl: widget.apiBaseUrl, token: token);
-
-      // Fetch all three lists
-      final pending = await svc.getBlockInbox(widget.blockAdminId);
-      final approved = await svc.getBlockApplicationsByStatus(
-        blockAdminId: widget.blockAdminId,
-        status: 'Approved',
-      );
-      final rejected = await svc.getBlockApplicationsByStatus(
-        blockAdminId: widget.blockAdminId,
-        status: 'Rejected',
+      // Use the new API method that returns ALL applications (all statuses)
+      final allApps = await ApiService.getBlockAdminAllApplications(
+        widget.blockAdminId,
       );
 
-      // Combine all applications
-      _all = [
-        ...List<Map<String, dynamic>>.from(pending),
-        ...List<Map<String, dynamic>>.from(approved),
-        ...List<Map<String, dynamic>>.from(rejected),
-      ];
+      _all = List<Map<String, dynamic>>.from(allApps);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -40,6 +40,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Dashboard status state (for dynamic card display)
   int _profileCompletion = 0;
   bool _hasPendingApplication = false;
+  bool _hasBusinessProfile = false; // true after business details submitted
+  bool _hasApplication = false; // true after application created
   String _applicationStatus = 'NONE'; // NONE, PENDING, Pending-Block, etc.
   bool _isDashboardLoading = true;
 
@@ -82,8 +84,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         widget.userData['fullName'] ??
         widget.userData['member']?['fullName'] ??
         'Member';
-    
-    final initialCompany = 
+
+    final initialCompany =
         widget.userData['companyName'] ??
         widget.userData['organizationName'] ??
         'Your Company';
@@ -107,27 +109,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // Run all fetches in parallel without blocking UI
     Future.wait([
-      MemberService.getMemberDetails().then((data) {
-        if (data != null && data['success'] == true && mounted) {
-          final memberData = data['data'];
-          final personalDetails = memberData['personal_and_demographic_details'];
-          final businessInfo = memberData['business_information'];
+      MemberService.getMemberDetails()
+          .then((data) {
+            if (data != null && data['success'] == true && mounted) {
+              final memberData = data['data'];
+              final personalDetails =
+                  memberData['personal_and_demographic_details'];
+              final businessInfo = memberData['business_information'];
 
-          setState(() {
-            displayName = personalDetails?['full_name'] ?? displayName;
-            companyName = businessInfo?['organization_name'] ?? companyName;
-            mobileNumber = personalDetails?['mobile_number']?.toString() ?? '';
-          });
-          print('✅ Dashboard data updated from API');
-        }
-      }).catchError((e) {
-        print('⚠️ Error loading member details: $e');
-      }),
-      
+              setState(() {
+                displayName = personalDetails?['full_name'] ?? displayName;
+                companyName = businessInfo?['organization_name'] ?? companyName;
+                mobileNumber =
+                    personalDetails?['mobile_number']?.toString() ?? '';
+              });
+              print('✅ Dashboard data updated from API');
+            }
+          })
+          .catchError((e) {
+            print('⚠️ Error loading member details: $e');
+          }),
+
       _loadProfileCompletion().catchError((e) {
         print('⚠️ Error loading profile completion: $e');
       }),
-      
+
       if (memberId != null)
         _loadBusinessAccount().catchError((e) {
           print('⚠️ Error loading business account: $e');
@@ -145,13 +151,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         setState(() {
           _profileCompletion = status['profileCompletion'] ?? 0;
           _hasPendingApplication = status['hasPendingApplication'] ?? false;
+          _hasBusinessProfile = status['hasBusinessProfile'] ?? false;
+          _hasApplication = status['hasApplication'] ?? false;
           _applicationStatus = status['applicationStatus'] ?? 'NONE';
           _isDashboardLoading = false;
         });
 
         print('✅ Dashboard status loaded:');
         print('   - Profile completion: $_profileCompletion%');
-        print('   - Has application: $_hasPendingApplication');
+        print('   - Has business profile: $_hasBusinessProfile');
+        print('   - Has application: $_hasApplication');
         print('   - Application status: $_applicationStatus');
       } else {
         if (mounted) {
@@ -225,7 +234,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (profile == null) {
           print('ℹ️ No business profile found for this member');
         } else if (companies.isEmpty) {
-          print('⚠️ Business profile exists but no companies found - data mismatch!');
+          print(
+            '⚠️ Business profile exists but no companies found - data mismatch!',
+          );
         }
       }
     } catch (e) {
@@ -291,129 +302,131 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     // 🔹 Full Blue Header
                     Container(
-                    height: 200,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+                      height: 200,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+                        ),
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(20),
+                          bottomRight: Radius.circular(20),
+                        ),
                       ),
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(20),
-                        bottomRight: Radius.circular(20),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ProfileScreen(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ProfileScreen(),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(
+                                top: 50,
+                                left: 20,
+                                right: 20,
                               ),
-                            );
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(
-                              top: 50,
-                              left: 20,
-                              right: 20,
-                            ),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 25,
-                                  backgroundColor: Colors.blue.shade700,
-                                  child: Text(
-                                    _getInitials(displayName),
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 25,
+                                    backgroundColor: Colors.blue.shade700,
+                                    child: Text(
+                                      _getInitials(displayName),
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Welcome back, $displayName',
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                      if (mobileNumber.isNotEmpty)
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
                                         Text(
-                                          mobileNumber,
+                                          'Welcome back, $displayName',
                                           style: const TextStyle(
-                                            fontSize: 13,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                        if (mobileNumber.isNotEmpty)
+                                          Text(
+                                            mobileNumber,
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.black54,
+                                            ),
+                                          ),
+                                        Text(
+                                          companyName,
+                                          style: const TextStyle(
+                                            fontSize: 14,
                                             color: Colors.black54,
                                           ),
                                         ),
-                                      Text(
-                                        companyName,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.black54,
-                                        ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 20),
+                            child: TextField(
+                              decoration: InputDecoration(
+                                hintText: 'Search by location...',
+                                hintStyle: const TextStyle(
+                                  color: Colors.black54,
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 20),
-                          child: TextField(
-                            decoration: InputDecoration(
-                              hintText: 'Search by location...',
-                              hintStyle: const TextStyle(color: Colors.black54),
-                              prefixIcon: const Icon(
-                                Icons.search,
-                                color: Colors.black54,
-                              ),
-                              filled: true,
-                              fillColor: Color.lerp(
-                                const Color(0xFFE6D8FF),
-                                Colors.white,
-                                0.55,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(25),
-                                borderSide: BorderSide.none,
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 15,
+                                prefixIcon: const Icon(
+                                  Icons.search,
+                                  color: Colors.black54,
+                                ),
+                                filled: true,
+                                fillColor: Color.lerp(
+                                  const Color(0xFFE6D8FF),
+                                  Colors.white,
+                                  0.55,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(25),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 15,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
 
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                  // 🔹 Dynamic Card based on application status (fetched from backend)
-                  _isDashboardLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _buildProfileCard(context),
+                    // 🔹 Dynamic Card based on application status (fetched from backend)
+                    _isDashboardLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _buildTopCard(context),
 
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                    // 🔹 Create Business Account Card
+                    // 🔹 Business Account Card (always shown)
                     _buildBusinessAccountCard(context, widget.userData),
                   ],
                 ),
@@ -637,7 +650,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         );
                         // ✅ Account was created! The user is now in BusinessDashboard
                         // When they come back here, reload business account status
-                        print('🔄 User returned to member dashboard, reloading business account status...');
+                        print(
+                          '🔄 User returned to member dashboard, reloading business account status...',
+                        );
                         // Wait a bit for any pending operations
                         await Future.delayed(const Duration(milliseconds: 500));
                         await _loadBusinessAccount();
@@ -872,6 +887,258 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // 🔹 Build Profile Card - shows "Complete Profile" OR "View Status" based on application status
   Widget _buildProfileCard(BuildContext context) {
+    // This method is replaced by _buildTopCard - kept for backward compatibility
+    return _buildTopCard(context);
+  }
+
+  // 🔹 Build Top Card - Shows ONLY ONE card at a time
+  Widget _buildTopCard(BuildContext context) {
+    // Rule: ONLY check hasApplication flag from backend
+    // This ensures we show correct card based on actual database state
+
+    print(
+      '🔍 _buildTopCard: _hasApplication = $_hasApplication, _applicationStatus = $_applicationStatus',
+    );
+
+    if (_hasApplication) {
+      // Application exists in database - show "Your Application Status" card
+      print('✅ Showing Application Status card');
+      return _buildApplicationStatusCard(context);
+    } else {
+      // No application in database - show "Complete Profile" card
+      print('✅ Showing Complete Profile card');
+      return _buildCompleteProfileCard(context);
+    }
+  }
+
+  // 🔹 Build Application Status Card
+  Widget _buildApplicationStatusCard(BuildContext context) {
+    // Determine status label and color
+    String statusLabel;
+    Color statusColor;
+    Color statusBgColor;
+
+    switch (_applicationStatus) {
+      case 'PENDING':
+        statusLabel = 'Pending';
+        statusColor = const Color(0xFF856404);
+        statusBgColor = const Color(0xFFFFF3CD);
+        break;
+      case 'Pending-Block':
+        statusLabel = 'Block Review';
+        statusColor = const Color(0xFF856404);
+        statusBgColor = const Color(0xFFFFF3CD);
+        break;
+      case 'Pending-District':
+        statusLabel = 'District Review';
+        statusColor = const Color(0xFF856404);
+        statusBgColor = const Color(0xFFFFF3CD);
+        break;
+      case 'Pending-State':
+        statusLabel = 'State Review';
+        statusColor = const Color(0xFF856404);
+        statusBgColor = const Color(0xFFFFF3CD);
+        break;
+      case 'Approved':
+        statusLabel = 'Approved';
+        statusColor = const Color(0xFF155724);
+        statusBgColor = const Color(0xFFD4EDDA);
+        break;
+      case 'Rejected':
+        statusLabel = 'Rejected';
+        statusColor = const Color(0xFF721C24);
+        statusBgColor = const Color(0xFFF8D7DA);
+        break;
+      default:
+        statusLabel = 'In Review';
+        statusColor = const Color(0xFF856404);
+        statusBgColor = const Color(0xFFFFF3CD);
+    }
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Your Application Status',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusBgColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      statusLabel,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Your application is under review. Tap to see status updates.',
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () async {
+                      // Navigate to Application Status screen
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ApplicationStatusScreen(),
+                        ),
+                      );
+                      // Refresh dashboard when returning
+                      _loadDashboard();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'View Status',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            const Icon(
+              Icons.pending_actions,
+              size: 60,
+              color: Color(0xFFFFA726),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 🔹 Build Complete Profile Card (for users without application)
+  Widget _buildCompleteProfileCard(BuildContext context) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Complete Your Profile',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3CD),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      'Start setup',
+                      style: TextStyle(
+                        color: Color(0xFF856404),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Complete your profile to submit your membership application.',
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () async {
+                      print('🟢 COMPLETE PROFILE BUTTON CLICKED');
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              PersonalDetailsForm(userData: widget.userData),
+                        ),
+                      );
+                      // Refresh dashboard when returning
+                      if (result == true && mounted) {
+                        _loadDashboard();
+                        _loadProfileCompletion();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Complete Profile',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                'https://img.icons8.com/fluency/96/briefcase.png',
+                width: 60,
+                height: 60,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(
+                    Icons.business_center,
+                    size: 60,
+                    color: Color(0xFF00BCD4),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOldProfileCard(BuildContext context) {
     if (_applicationStatus == 'NONE') {
       // No application submitted - show "Complete Your Profile"
       return Card(

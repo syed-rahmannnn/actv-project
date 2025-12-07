@@ -773,7 +773,7 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
       };
 
       // Call aspirant submission API
-      final result = await ApiService.submitAspirantApplication(payload);
+      final result = await ApiService.submitApplication(payload);
 
       if (!mounted) return;
       Navigator.of(context).pop(); // Close loading

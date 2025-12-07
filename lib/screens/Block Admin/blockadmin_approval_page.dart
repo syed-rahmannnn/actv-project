@@ -79,23 +79,30 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
         } catch (_) {}
       }
 
-      // Fetch pending applications
-      final pendingList = await _svc!.getBlockInbox(widget.blockAdminId);
-      _pending = List<Map<String, dynamic>>.from(pendingList);
-
-      // Fetch approved applications
-      final approvedList = await _svc!.getBlockApplicationsByStatus(
-        blockAdminId: widget.blockAdminId,
-        status: 'Approved',
+      // Fetch ALL applications using the new endpoint
+      final allApps = await ApiService.getBlockAdminAllApplications(
+        widget.blockAdminId,
       );
-      _approved = List<Map<String, dynamic>>.from(approvedList);
 
-      // Fetch rejected applications
-      final rejectedList = await _svc!.getBlockApplicationsByStatus(
-        blockAdminId: widget.blockAdminId,
-        status: 'Rejected',
-      );
-      _rejected = List<Map<String, dynamic>>.from(rejectedList);
+      // Filter by status
+      final allAppsList = List<Map<String, dynamic>>.from(allApps);
+
+      _pending = allAppsList.where((app) {
+        final status = (app['status'] ?? '').toString().toLowerCase();
+        return status == 'pending-block' || status == 'pending';
+      }).toList();
+
+      _approved = allAppsList.where((app) {
+        final status = (app['status'] ?? '').toString().toLowerCase();
+        return status == 'approved' ||
+            status == 'pending-district' ||
+            status == 'pending-state';
+      }).toList();
+
+      _rejected = allAppsList.where((app) {
+        final status = (app['status'] ?? '').toString().toLowerCase();
+        return status == 'rejected';
+      }).toList();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -606,40 +613,77 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
     debugPrint('[FRONTEND DEBUG] App ${app['_id']}: normalized gender=$gender');
 
     // Simple tri-state status detection from backend
-    // Backend already normalizes to: Pending, Approved, or Rejected
+    // Backend returns: Pending-Block, Pending-District, Pending-State, Approved, or Rejected
     final statusLower = status.toLowerCase();
 
-    bool displayAsPending, displayAsApproved;
+    bool displayAsPending, displayAsApproved, displayAsRejected;
     String statusText;
 
-    if (_tab == ApprovalCategory.pending) {
-      // In pending tab, show as pending
+    // Determine display based on actual status
+    final isRejected = statusLower == 'rejected';
+    final isFullyApproved = statusLower == 'approved';
+    final isForwardedToDistrict = statusLower == 'pending-district';
+    final isForwardedToState = statusLower == 'pending-state';
+    final isPendingBlock =
+        statusLower == 'pending-block' || statusLower == 'pending';
+
+    if (_tab == ApprovalCategory.all) {
+      // In "All" tab, show actual status with proper colors
+      if (isRejected) {
+        displayAsPending = false;
+        displayAsApproved = false;
+        displayAsRejected = true;
+        statusText = 'Rejected';
+      } else if (isPendingBlock) {
+        displayAsPending = true;
+        displayAsApproved = false;
+        displayAsRejected = false;
+        statusText = 'Pending';
+      } else if (isForwardedToDistrict) {
+        displayAsPending = false;
+        displayAsApproved = true;
+        displayAsRejected = false;
+        statusText = 'Pending-District';
+      } else if (isForwardedToState) {
+        displayAsPending = false;
+        displayAsApproved = true;
+        displayAsRejected = false;
+        statusText = 'Pending-State';
+      } else if (isFullyApproved) {
+        displayAsPending = false;
+        displayAsApproved = true;
+        displayAsRejected = false;
+        statusText = 'Approved';
+      } else {
+        displayAsPending = true;
+        displayAsApproved = false;
+        displayAsRejected = false;
+        statusText = status;
+      }
+    } else if (_tab == ApprovalCategory.pending) {
+      // In pending tab, show as pending (yellow)
       displayAsPending = true;
       displayAsApproved = false;
+      displayAsRejected = false;
       statusText = 'Pending';
     } else if (_tab == ApprovalCategory.approved) {
-      // In approved tab, show as approved
+      // In approved tab, show as approved (green) with actual status text
       displayAsPending = false;
       displayAsApproved = true;
-      statusText = 'Approved';
-    } else if (_tab == ApprovalCategory.rejected) {
-      // In rejected tab, show as rejected
+      displayAsRejected = false;
+      if (isForwardedToDistrict) {
+        statusText = 'Pending-District';
+      } else if (isForwardedToState) {
+        statusText = 'Pending-State';
+      } else {
+        statusText = 'Approved';
+      }
+    } else {
+      // In rejected tab, show as rejected (red)
       displayAsPending = false;
       displayAsApproved = false;
+      displayAsRejected = true;
       statusText = 'Rejected';
-    } else {
-      // In "All" tab, use actual status from backend (already normalized)
-      final isApproved = statusLower == 'approved';
-      final isRejected = statusLower == 'rejected';
-      final isPending = !isApproved && !isRejected;
-
-      displayAsPending = isPending;
-      displayAsApproved = isApproved;
-      statusText = displayAsPending
-          ? 'Pending'
-          : displayAsApproved
-          ? 'Approved'
-          : 'Rejected';
     }
 
     return GestureDetector(
@@ -695,7 +739,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
                     ],
                   ),
                 ),
-                // Status pill styled like District Admin
+                // Status pill with proper colors
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -703,27 +747,27 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
                   ),
                   decoration: BoxDecoration(
                     color: displayAsPending
-                        ? const Color(0xFFFEF3C7)
+                        ? const Color(0xFFFEF3C7) // Yellow background
                         : displayAsApproved
-                        ? const Color(0xFFDCFCE7)
-                        : const Color(0xFFFEE2E2),
+                        ? const Color(0xFFDCFCE7) // Green background
+                        : const Color(0xFFFEE2E2), // Red background
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
                       color: displayAsPending
-                          ? const Color(0xFFF59E0B)
+                          ? const Color(0xFFF59E0B) // Yellow border
                           : displayAsApproved
-                          ? const Color(0xFF16A34A)
-                          : const Color(0xFFFF5C5C),
+                          ? const Color(0xFF16A34A) // Green border
+                          : const Color(0xFFFF5C5C), // Red border
                     ),
                   ),
                   child: Text(
                     statusText,
                     style: TextStyle(
                       color: displayAsPending
-                          ? const Color(0xFFF59E0B)
+                          ? const Color(0xFFF59E0B) // Yellow text
                           : displayAsApproved
-                          ? const Color(0xFF16A34A)
-                          : const Color(0xFFFF5C5C),
+                          ? const Color(0xFF16A34A) // Green text
+                          : const Color(0xFFFF5C5C), // Red text
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
                     ),

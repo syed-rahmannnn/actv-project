@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/payment_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/application_status_service.dart';
 import '../Payment/payment_webview_screen.dart';
 import '../Payment/payment_success_screen.dart';
 
@@ -25,6 +26,123 @@ class _CompleteMembershipScreenState extends State<CompleteMembershipScreen> {
   // Selected plan
   String _selectedPlan = 'Intermediate Plan';
 
+  // Lock status based on member type
+  bool _isLockedToAspirant = false;
+  bool _isLockedToCompany = false;
+  String? _memberType;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeMemberType();
+  }
+
+  Future<void> _initializeMemberType() async {
+    try {
+      // Fetch application status to determine member type
+      final result = await ApplicationStatusService.fetchApplicationStatus();
+
+      print('🔍 Application fetch result: ${result.success}');
+      print('🔍 Applications count: ${result.applications.length}');
+
+      if (result.success && result.applications.isNotEmpty) {
+        // Get the most recent application
+        final application = result.applications.first;
+        final formData = application.formData;
+
+        print('🔍 FormData: $formData');
+
+        // Check memberType - could be at root level or need to determine from data
+        String? memberType = formData['memberType']?.toString().toUpperCase();
+
+        // If memberType not explicitly set, determine from application data
+        if (memberType == null) {
+          // Check if business information exists (indicates COMPANY member)
+          final personalDetails = formData['personalDetails'];
+          final businessInfo = formData['businessInfo'];
+
+          if (personalDetails != null &&
+              personalDetails['doingBusiness'] == true) {
+            memberType = 'COMPANY';
+            print(
+              '✅ Detected COMPANY member from personalDetails.doingBusiness',
+            );
+          } else if (personalDetails != null &&
+              personalDetails['businessType'] != null) {
+            memberType = 'COMPANY';
+            print(
+              '✅ Detected COMPANY member from personalDetails.businessType',
+            );
+          } else if (businessInfo != null) {
+            memberType = 'COMPANY';
+            print('✅ Detected COMPANY member from businessInfo');
+          } else if (personalDetails != null &&
+              personalDetails['memberType'] == 'ASPIRANT') {
+            memberType = 'ASPIRANT';
+            print('✅ Detected ASPIRANT member from personalDetails.memberType');
+          } else {
+            print(
+              '⚠️ Cannot determine member type - defaulting to full access',
+            );
+          }
+        } else {
+          print('✅ Member Type explicitly set: $memberType');
+        }
+
+        _memberType = memberType;
+
+        if (memberType == 'ASPIRANT') {
+          print('🔒 Locking to ASPIRANT');
+          if (mounted) {
+            setState(() {
+              _isLockedToAspirant = true;
+              _isCompany = false;
+              _selectedPlan = 'Aspirant Plan';
+              _isLoading = false;
+            });
+          }
+          return;
+        } else if (memberType == 'COMPANY') {
+          print('🔒 Locking to COMPANY');
+          // Lock to Company plans only
+          if (mounted) {
+            setState(() {
+              _isLockedToAspirant = false;
+              _isLockedToCompany = true;
+              _isCompany = true;
+              _selectedPlan = 'Intermediate Plan';
+              _isLoading = false;
+            });
+          }
+          return;
+        }
+      } else {
+        print('❌ No applications found or fetch failed');
+      }
+
+      // If no application found or no memberType, allow full access
+      print('⚠️ No lock applied - allowing full access');
+      if (mounted) {
+        setState(() {
+          _isLockedToAspirant = false;
+          _isLockedToCompany = false;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error fetching application status: $e');
+      // On error, allow full access to avoid blocking users
+      if (mounted) {
+        setState(() {
+          _isLockedToAspirant = false;
+          _isLockedToCompany = false;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,38 +158,40 @@ class _CompleteMembershipScreenState extends State<CompleteMembershipScreen> {
             ],
           ),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildTopBar(),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 20),
-                      _buildHeader(),
-                      const SizedBox(height: 30),
-                      _buildUserTypeToggle(),
-                      const SizedBox(height: 30),
-                      _buildMembershipPlansSection(),
-                      const SizedBox(height: 30),
-                      _buildSecurePaymentSection(),
-                      const SizedBox(height: 20),
-                      _buildPaymentSummary(),
-                      const SizedBox(height: 20),
-                      _buildPayButton(),
-                      const SizedBox(height: 30),
-                      _buildAfterPaymentSection(),
-                      const SizedBox(height: 40),
-                    ],
-                  ),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SafeArea(
+                child: Column(
+                  children: [
+                    _buildTopBar(),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 20),
+                            _buildHeader(),
+                            const SizedBox(height: 30),
+                            _buildUserTypeToggle(),
+                            const SizedBox(height: 30),
+                            _buildMembershipPlansSection(),
+                            const SizedBox(height: 30),
+                            _buildSecurePaymentSection(),
+                            const SizedBox(height: 20),
+                            _buildPaymentSummary(),
+                            const SizedBox(height: 20),
+                            _buildPayButton(),
+                            const SizedBox(height: 30),
+                            _buildAfterPaymentSection(),
+                            const SizedBox(height: 40),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -132,6 +252,12 @@ class _CompleteMembershipScreenState extends State<CompleteMembershipScreen> {
   }
 
   Widget _buildUserTypeToggle() {
+    // If locked to either Aspirant or Company, don't show toggle buttons
+    if (_isLockedToAspirant || _isLockedToCompany) {
+      return const SizedBox.shrink(); // Return empty widget
+    }
+
+    // Show both options only if memberType is not determined
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

@@ -114,6 +114,90 @@ router.get('/:id/completion', async(req, res) => {
     }
 });
 
+// GET member dashboard status: /api/members/:id/status
+router.get('/:id/status', async(req, res) => {
+    try {
+        const { id } = req.params;
+        const mongoose = require('mongoose');
+        
+        // Find member
+        const member = await MemberDetails.findById(id).lean();
+        if (!member) {
+            return res.status(404).json({ success: false, message: 'Member not found' });
+        }
+
+        // Calculate profile completion
+        const fields = [
+            'fullName', 'email', 'phoneNumber', 'state', 'district', 'block', 'city',
+            'aadhaarNumber', 'streetName', 'educationalQualification', 'religion', 'socialCategory'
+        ];
+
+        let totalFields = fields.length;
+        let filledFields = 0;
+
+        fields.forEach(field => {
+            const value = member[field];
+            if (value !== null && value !== undefined && value !== '') {
+                filledFields++;
+            }
+        });
+
+        const profileCompletion = totalFields > 0 ?
+            Math.round((filledFields / totalFields) * 100) :
+            0;
+
+        // Find application status from applications collection
+        const Application = mongoose.model('Application');
+        const application = await Application.findOne({ userId: id })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        console.log(`🔍 DEBUG: Found application for user ${id}:`, application ? JSON.stringify(application, null, 2) : 'null');
+
+        // Check if business profile exists
+        const MemberBusinessInfo = mongoose.model('MemberBusinessInfo');
+        const businessProfile = await MemberBusinessInfo.findOne({ memberId: id }).lean();
+        const hasBusinessProfile = businessProfile !== null;
+
+        let applicationStatus = 'NONE';
+        if (application) {
+            console.log(`📋 Application found with status: ${application.status}`);
+            // Map status from application
+            if (application.status) {
+                applicationStatus = application.status;
+            } else if (application.stateApproved) {
+                applicationStatus = 'APPROVED';
+            } else if (application.stateRejected) {
+                applicationStatus = 'REJECTED';
+            } else if (application.districtApproved) {
+                applicationStatus = 'Pending-State';
+            } else if (application.districtRejected) {
+                applicationStatus = 'REJECTED';
+            } else if (application.blockApproved) {
+                applicationStatus = 'Pending-District';
+            } else if (application.blockRejected) {
+                applicationStatus = 'REJECTED';
+            } else {
+                applicationStatus = 'Pending-Block';
+            }
+        }
+
+        return res.json({
+            success: true,
+            data: {
+                profileCompletion,
+                hasBusinessProfile,
+                applicationStatus,
+                hasApplication: application !== null,
+                applicationId: application ? application._id : null
+            }
+        });
+    } catch (err) {
+        console.error('GET /api/members/:id/status err', err);
+        return res.status(500).json({ success: false, message: 'Server error', error: err.message });
+    }
+});
+
 // PUT update by id (create if not exists)
 router.put('/:id', async(req, res) => {
     try {

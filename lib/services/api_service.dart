@@ -18,7 +18,7 @@ class ApiService {
 
     // Use local backend during development
     if (kDebugMode) {
-      return 'http://10.23.116.109:3000/api';
+      return 'http://10.42.208.174:3000/api';
     }
 
     // Production backend
@@ -119,7 +119,7 @@ class ApiService {
   Future<Map<String, dynamic>> login(String email, String password) async {
     final url = Uri.parse('$baseUrl/auth/login');
     final payload = {'email': email.trim(), 'password': password};
-    
+
     developer.log('🔐 Attempting login to: $url', name: 'ApiService');
     developer.log('📧 Email: $email', name: 'ApiService');
 
@@ -128,12 +128,19 @@ class ApiService {
       resp = await http
           .post(url, headers: _headers(), body: jsonEncode(payload))
           .timeout(_requestTimeout());
-      
-      developer.log('📡 Response status: ${resp.statusCode}', name: 'ApiService');
+
+      developer.log(
+        '📡 Response status: ${resp.statusCode}',
+        name: 'ApiService',
+      );
       developer.log('📦 Response body: ${resp.body}', name: 'ApiService');
     } catch (e) {
       developer.log('❌ login request error: $e', name: 'ApiService');
-      return {'ok': false, 'body': null, 'error': 'Network error or timeout: $e'};
+      return {
+        'ok': false,
+        'body': null,
+        'error': 'Network error or timeout: $e',
+      };
     }
 
     final body = jsonDecodeSafe(resp.body);
@@ -143,7 +150,10 @@ class ApiService {
       developer.log('✅ Login successful, token received', name: 'ApiService');
       return {'ok': true, 'body': body, 'token': token};
     } else {
-      developer.log('❌ Login failed with status ${resp.statusCode}', name: 'ApiService');
+      developer.log(
+        '❌ Login failed with status ${resp.statusCode}',
+        name: 'ApiService',
+      );
       return {'ok': false, 'body': body, 'error': 'Login failed'};
     }
   }
@@ -363,14 +373,14 @@ class ApiService {
   // Static method to get member by email (used by multiple screens)
   static Future<Map<String, dynamic>> getMemberByEmail(String email) async {
     final cacheKey = 'member_by_email_$email';
-    
+
     // Try cache first
     final cached = _cache.get<Map<String, dynamic>>(cacheKey);
     if (cached != null) {
       developer.log('✅ Loaded member from cache', name: 'ApiService');
       return cached;
     }
-    
+
     final url = Uri.parse('$baseUrl/auth/member-by-email/$email');
     developer.log('🌐 Fetching member from API', name: 'ApiService');
 
@@ -400,14 +410,14 @@ class ApiService {
   // Static method to get complete member profile (used by profile detail screen)
   static Future<Map<String, dynamic>> getMemberProfile(String memberId) async {
     final cacheKey = 'member_profile_$memberId';
-    
+
     // Try cache first
     final cached = _cache.get<Map<String, dynamic>>(cacheKey);
     if (cached != null) {
       developer.log('✅ Loaded profile from cache', name: 'ApiService');
       return cached;
     }
-    
+
     final url = Uri.parse('$baseUrl/profile/$memberId');
     developer.log('🌐 Fetching profile from API', name: 'ApiService');
 
@@ -585,7 +595,10 @@ class ApiService {
       _cache.clearByPrefix('member_');
       _cache.clearByPrefix('business_profile_');
       _cache.clearByPrefix('companies_');
-      developer.log('✅ Cleared all business-related caches', name: 'ApiService');
+      developer.log(
+        '✅ Cleared all business-related caches',
+        name: 'ApiService',
+      );
       return {'success': true, 'data': body['data']};
     } else {
       return {
@@ -652,7 +665,7 @@ class ApiService {
   ) async {
     final h = {'Content-Type': 'application/json'};
     final r1 = await http.post(
-      _u('/api/applications$pathAfterBase'),
+      _u('/applications$pathAfterBase'),
       headers: h,
       body: jsonEncode(body),
     );
@@ -707,6 +720,7 @@ class ApiService {
   }
 
   // Get applications for block admin
+  // Get pending applications for Block Admin (for Approvals page)
   static Future<List<dynamic>> getBlockAdminApplications(
     String blockAdminId,
   ) async {
@@ -723,6 +737,80 @@ class ApiService {
     if (res.statusCode == 200) {
       final data = _jsonDecodeSafe(res.body);
       // Support both array and wrapped `{ applications: [...] }` shapes
+      if (data is List) return data;
+      if (data is Map) {
+        final apps = data['applications'];
+        if (apps is List) return apps;
+      }
+      return [];
+    }
+    throw _err(res);
+  }
+
+  // Get ALL applications for Block Admin (for Members page - includes all statuses)
+  static Future<List<dynamic>> getBlockAdminAllApplications(
+    String blockAdminId,
+  ) async {
+    final url = Uri.parse('$baseUrl/applications/block-all/$blockAdminId');
+    http.Response res;
+    try {
+      res = await http.get(url, headers: await _staticHeaders());
+    } catch (e) {
+      res = await _getWithFallback('/block-all/$blockAdminId');
+    }
+
+    if (res.statusCode == 200) {
+      final data = _jsonDecodeSafe(res.body);
+      if (data is List) return data;
+      if (data is Map) {
+        final apps = data['applications'];
+        if (apps is List) return apps;
+      }
+      return [];
+    }
+    throw _err(res);
+  }
+
+  // Get ALL applications for District Admin (for Members page - includes all statuses)
+  static Future<List<dynamic>> getDistrictAdminAllApplications(
+    String districtAdminId,
+  ) async {
+    final url = Uri.parse(
+      '$baseUrl/applications/district-all/$districtAdminId',
+    );
+    http.Response res;
+    try {
+      res = await http.get(url, headers: await _staticHeaders());
+    } catch (e) {
+      res = await _getWithFallback('/district-all/$districtAdminId');
+    }
+
+    if (res.statusCode == 200) {
+      final data = _jsonDecodeSafe(res.body);
+      if (data is List) return data;
+      if (data is Map) {
+        final apps = data['applications'];
+        if (apps is List) return apps;
+      }
+      return [];
+    }
+    throw _err(res);
+  }
+
+  // Get ALL applications for State Admin (for Members page - includes all statuses)
+  static Future<List<dynamic>> getStateAdminAllApplications(
+    String stateAdminId,
+  ) async {
+    final url = Uri.parse('$baseUrl/applications/state-all/$stateAdminId');
+    http.Response res;
+    try {
+      res = await http.get(url, headers: await _staticHeaders());
+    } catch (e) {
+      res = await _getWithFallback('/state-all/$stateAdminId');
+    }
+
+    if (res.statusCode == 200) {
+      final data = _jsonDecodeSafe(res.body);
       if (data is List) return data;
       if (data is Map) {
         final apps = data['applications'];
@@ -798,14 +886,14 @@ class ApiService {
   // Delete member account
   Future<Map<String, dynamic>> deleteMember(String memberId) async {
     final url = Uri.parse('$baseUrl/members/$memberId');
-    
+
     try {
       final resp = await http
           .delete(url, headers: _headers())
           .timeout(_requestTimeout());
 
       final body = jsonDecodeSafe(resp.body);
-      
+
       if (resp.statusCode >= 200 && resp.statusCode < 300) {
         return {
           'success': true,
