@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'api_service.dart';
 
 class DashboardService {
-  static const String baseUrl = 'http://10.42.208.174:3000/api';
+  static final String baseUrl = ApiService.baseUrl;
 
   /// Fetch dashboard statistics for a company
   static Future<Map<String, dynamic>> getCompanyStats(String companyId) async {

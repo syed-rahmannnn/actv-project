@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/discover_company.dart';
 import '../models/discover_product.dart';
 import '../services/api_service.dart';
+import '../services/cache_service.dart';
 
 class DiscoverProvider extends ChangeNotifier {
   List<DiscoverCompany> _companies = [];
@@ -23,24 +24,44 @@ class DiscoverProvider extends ChangeNotifier {
 
   /// Load companies with optional search query
   Future<void> loadCompanies({
+    required String memberId,
     String query = '',
     int page = 1,
     int limit = 20,
+    bool forceRefresh = false,
   }) async {
     _isLoadingCompanies = true;
     _companiesError = null;
     notifyListeners();
 
     try {
+      // Check cache first (unless force refresh)
+      if (!forceRefresh) {
+        final cacheKey = CacheKeys.discoverCompanies(memberId, query, page);
+        final cachedData = await CacheService.get(cacheKey);
+        
+        if (cachedData != null) {
+          final List<dynamic> data = cachedData as List<dynamic>;
+          _companies = data
+              .map((json) => DiscoverCompany.fromJson(json as Map<String, dynamic>))
+              .toList();
+          print('✅ Loaded ${_companies.length} companies from cache');
+          _isLoadingCompanies = false;
+          notifyListeners();
+          return;
+        }
+      }
+
       final uri = Uri.parse('${ApiService.baseUrl}/discover/companies').replace(
         queryParameters: {
+          'memberId': memberId,
           'query': query,
           'page': page.toString(),
           'limit': limit.toString(),
         },
       );
 
-      print('🔍 Loading companies: $uri');
+      print('🔍 Loading companies from API: $uri');
 
       final response = await http
           .get(uri)
@@ -61,7 +82,11 @@ class DiscoverProvider extends ChangeNotifier {
           _companies = data
               .map((json) => DiscoverCompany.fromJson(json))
               .toList();
-          print('✅ Loaded ${_companies.length} companies');
+          print('✅ Loaded ${_companies.length} companies from API');
+          
+          // Cache the response
+          final cacheKey = CacheKeys.discoverCompanies(memberId, query, page);
+          await CacheService.set(cacheKey, data, ttl: CacheTTL.medium);
         } else {
           throw Exception(jsonData['message'] ?? 'Failed to load companies');
         }
@@ -81,24 +106,44 @@ class DiscoverProvider extends ChangeNotifier {
 
   /// Load products with optional search query
   Future<void> loadProducts({
+    required String memberId,
     String query = '',
     int page = 1,
     int limit = 20,
+    bool forceRefresh = false,
   }) async {
     _isLoadingProducts = true;
     _productsError = null;
     notifyListeners();
 
     try {
+      // Check cache first (unless force refresh)
+      if (!forceRefresh) {
+        final cacheKey = CacheKeys.discoverProducts(memberId, query, page);
+        final cachedData = await CacheService.get(cacheKey);
+        
+        if (cachedData != null) {
+          final List<dynamic> data = cachedData as List<dynamic>;
+          _products = data
+              .map((json) => DiscoverProduct.fromJson(json as Map<String, dynamic>))
+              .toList();
+          print('✅ Loaded ${_products.length} products from cache');
+          _isLoadingProducts = false;
+          notifyListeners();
+          return;
+        }
+      }
+
       final uri = Uri.parse('${ApiService.baseUrl}/discover/products').replace(
         queryParameters: {
+          'memberId': memberId,
           'query': query,
           'page': page.toString(),
           'limit': limit.toString(),
         },
       );
 
-      print('🔍 Loading products: $uri');
+      print('🔍 Loading products from API: $uri');
 
       final response = await http
           .get(uri)
@@ -119,7 +164,11 @@ class DiscoverProvider extends ChangeNotifier {
           _products = data
               .map((json) => DiscoverProduct.fromJson(json))
               .toList();
-          print('✅ Loaded ${_products.length} products');
+          print('✅ Loaded ${_products.length} products from API');
+          
+          // Cache the response
+          final cacheKey = CacheKeys.discoverProducts(memberId, query, page);
+          await CacheService.set(cacheKey, data, ttl: CacheTTL.medium);
         } else {
           throw Exception(jsonData['message'] ?? 'Failed to load products');
         }
@@ -137,12 +186,20 @@ class DiscoverProvider extends ChangeNotifier {
     }
   }
 
-  /// Clear all data
+  /// Clear all data and cache
   void clear() {
     _companies = [];
     _products = [];
     _companiesError = null;
     _productsError = null;
     notifyListeners();
+  }
+  
+  /// Force refresh data (bypass cache)
+  Future<void> refresh({required String memberId, String query = ''}) async {
+    await Future.wait([
+      loadCompanies(memberId: memberId, query: query, forceRefresh: true),
+      loadProducts(memberId: memberId, query: query, forceRefresh: true),
+    ]);
   }
 }

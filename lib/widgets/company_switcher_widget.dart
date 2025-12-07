@@ -95,7 +95,22 @@ class _CompanySwitcherWidgetState extends State<CompanySwitcherWidget> {
           );
         }
 
-        final activeCompany = companyProvider.activeCompany ?? _companies[0];
+        // Validate that activeCompany belongs to current member's company list
+        Company activeCompany;
+        if (companyProvider.activeCompany != null) {
+          final activeId = companyProvider.activeCompany!.id;
+          final companyExists = _companies.any((c) => c.id == activeId);
+          
+          if (companyExists) {
+            activeCompany = companyProvider.activeCompany!;
+          } else {
+            // Active company doesn't belong to this member - use first but DON'T call setState
+            activeCompany = _companies[0];
+            print('⚠️ Active company not in list, displaying: ${activeCompany.name}');
+          }
+        } else {
+          activeCompany = _companies[0];
+        }
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

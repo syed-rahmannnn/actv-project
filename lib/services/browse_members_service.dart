@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
+import '../utils/cache_manager.dart';
 
 class BrowseMembersService {
+  static final _cache = FastCacheManager();
   // Using WiFi IP address
   static const String baseUrl = 'http://10.201.103.174:3000/api/browse-members';
 
@@ -20,16 +22,28 @@ class BrowseMembersService {
       final queryParams = {'page': page.toString(), 'limit': limit.toString()};
 
       if (state != null && state.isNotEmpty) queryParams['state'] = state;
-      if (district != null && district.isNotEmpty)
+      if (district != null && district.isNotEmpty) {
         queryParams['district'] = district;
+      }
       if (block != null && block.isNotEmpty) queryParams['block'] = block;
       if (search != null && search.isNotEmpty) queryParams['search'] = search;
-      if (excludeUserId != null && excludeUserId.isNotEmpty)
+      if (excludeUserId != null && excludeUserId.isNotEmpty) {
         queryParams['exclude_user_id'] = excludeUserId;
+      }
 
       final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
+      
+      // Create cache key from query params
+      final cacheKey = 'browse_members_${queryParams.entries.map((e) => '${e.key}=${e.value}').join('_')}';
+      
+      // Try cache first
+      final cached = _cache.get<Map<String, dynamic>>(cacheKey);
+      if (cached != null) {
+        print('✅ Loaded ${cached['data']?.length ?? 0} members from cache');
+        return cached;
+      }
 
-      print('\n🌐 === FETCHING APPROVED & PAID MEMBERS ===');
+      print('\n🌐 === FETCHING APPROVED & PAID MEMBERS FROM API ===');
       print('📍 API URL: $uri');
       print(
         '🔍 Filters: ${queryParams.entries.where((e) => !['page', 'limit'].contains(e.key)).map((e) => '${e.key}=${e.value}').join(', ')}',
@@ -57,7 +71,9 @@ class BrowseMembersService {
         final data = json.decode(response.body);
         final memberCount = data['data']?.length ?? 0;
 
-        print('✅ Successfully fetched $memberCount members');
+        print('✅ Successfully fetched $memberCount members from API');
+        // Cache for 3 minutes
+        _cache.set(cacheKey, data);
 
         if (memberCount == 0) {
           print('⚠️  No members found with criteria:');

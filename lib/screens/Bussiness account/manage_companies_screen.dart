@@ -39,9 +39,12 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
         throw Exception('Member ID not found in user data');
       }
 
+      // ✅ FIX: Enhanced debug logging to track which user's data is being loaded
       print('🔍 Loading companies for memberId: $memberId');
+      print('👤 User: ${widget.userData['fullName'] ?? 'Unknown'}');
+      print('📧 Email: ${widget.userData['email'] ?? 'Unknown'}');
+      print('📱 Phone: ${widget.userData['phoneNumber'] ?? 'Unknown'}');
       print('📋 Full userData keys: ${widget.userData.keys.toList()}');
-      print('📋 userData values: ${widget.userData}');
 
       final companies = await CompanyService.getCompanies(memberId);
 
@@ -88,31 +91,26 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
     // Reload analytics for new active company
     context.read<AnalyticsProvider>().loadAnalytics(company.id);
 
-    // Show confirmation
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${company.name} set as active company'),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-
-    // Return to Business dashboard
-    Navigator.pop(context);
+    // Clear any existing snackbars before navigating
+    ScaffoldMessenger.of(context).clearSnackBars();
+    
+    // Return to Business dashboard with company data
+    Navigator.pop(context, {'success': true, 'companyName': company.name});
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+    return ExcludeSemantics(
+      child: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+            ),
           ),
-        ),
-        child: SafeArea(
+          child: SafeArea(
           child: Column(
             children: [
               // Header
@@ -220,42 +218,58 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
+        ),
       ),
     );
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.business_outlined,
-              size: 80,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'No companies yet',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black54,
+    return RefreshIndicator(
+      onRefresh: _loadCompanies,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight,
+              ),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                  Icon(
+                    Icons.business_outlined,
+                    size: 80,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No companies yet',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tap Add to create your first company',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.black45),
+                  ),
+                    ],
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Tap Add to create your first company',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.black45),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -363,14 +377,17 @@ class _ManageCompaniesScreenState extends State<ManageCompaniesScreen> {
 
           const SizedBox(height: 16),
 
-          // Stats Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildMetricItem('Products', company.productsCount),
-              _buildMetricItem('Views', company.views),
-              _buildMetricItem('Connections', company.connections),
-            ],
+          // Stats Row - Display actual company metrics
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildMetricItem('Products', company.productsCount),
+                _buildMetricItem('Views', company.views),
+                _buildMetricItem('Connections', company.connections),
+              ],
+            ),
           ),
 
           const SizedBox(height: 16),

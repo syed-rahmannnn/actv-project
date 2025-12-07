@@ -154,17 +154,22 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
               ),
             );
 
+            // ✅ CRITICAL: Wait for backend company auto-creation + cache clearing
+            // Increased to 1500ms to ensure backend fully processes and clears cache
+            await Future.delayed(const Duration(milliseconds: 1500));
+
             // If creating company, pop with true to signal success
             if (widget.mode == 'createCompany') {
               Navigator.pop(context, true);
             } else {
-              // Navigate to Business Dashboard for profile mode
-              Navigator.pushReplacement(
-                context,
+              // Navigate to Business Dashboard - account just created!
+              // Pop all routes and go to business dashboard
+              Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (context) =>
                       BusinessDashboardScreen(userData: widget.userData),
                 ),
+                (route) => false, // Remove all previous routes
               );
             }
           } else {
@@ -201,16 +206,18 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
-          ),
-        ),
-        child: SafeArea(
+    return ExcludeSemantics(
+      child: RepaintBoundary(
+        child: Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+              ),
+            ),
+          child: SafeArea(
           child: Column(
             children: [
               // Header
@@ -329,7 +336,7 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
+                                color: Colors.black.withValues(alpha: 0.08),
                                 blurRadius: 20,
                                 offset: const Offset(0, 4),
                               ),
@@ -444,7 +451,7 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 DropdownButtonFormField<String>(
-                                  value: _selectedBusinessType,
+                                  initialValue: _selectedBusinessType,
                                   decoration: InputDecoration(
                                     hintText: 'Select business type',
                                     hintStyle: TextStyle(
@@ -728,6 +735,8 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
             ],
           ),
         ),
+        ),
+      ),
       ),
     );
   }
@@ -738,7 +747,7 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withValues(alpha: 0.2),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -825,26 +834,32 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isSelected ? Colors.blue : Colors.grey[600],
-            size: 24,
+    return RepaintBoundary(
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 60,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? Colors.blue : Colors.grey[600],
+                size: 24,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.blue : Colors.grey[600],
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.blue : Colors.grey[600],
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

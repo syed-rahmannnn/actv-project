@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
+import '../utils/cache_manager.dart';
 
 class MemberService {
+  static final _cache = FastCacheManager();
   // Backend URL Configuration
   // Using machine's local WiFi IP for device connectivity
   static const String baseUrl = 'http://10.201.103.174:3000/api';
@@ -54,89 +56,67 @@ class MemberService {
       }
 
       final encodedEmail = Uri.encodeComponent(email);
-      print('\n🔄 Fetching member details dynamically...');
+      final cacheKey = 'member_details_$email';
+      
+      // Try cache first
+      final cached = _cache.get<Map<String, dynamic>>(cacheKey);
+      if (cached != null) {
+        print('✅ Loaded member details from cache (${cached['data']?['personal_and_demographic_details']?['full_name'] ?? 'Member'})');
+        return cached;
+      }
+      
+      print('\n🔄 Fetching member details from API...');
       print('📧 User email from session: $email');
       print('🌐 API URL: $baseUrl/members/$encodedEmail/details');
 
-      // Try with faster timeout and retry logic
-      for (int attempt = 1; attempt <= 2; attempt++) {
-        try {
-          print('🔄 Attempt $attempt of 2...');
+      // ✅ OPTIMIZED: Single attempt with shorter timeout for faster failure
+      try {
+        final response = await http
+            .get(
+              Uri.parse('$baseUrl/members/$encodedEmail/details'),
+              headers: {'Content-Type': 'application/json'},
+            )
+            .timeout(
+              const Duration(seconds: 3), // Reduced from 5s
+              onTimeout: () {
+                print('⏱️ Request timeout (3s)');
+                throw TimeoutException('Request timed out after 3 seconds');
+              },
+            );
 
-          final response = await http
-              .get(
-                Uri.parse('$baseUrl/members/$encodedEmail/details'),
-                headers: {'Content-Type': 'application/json'},
-              )
-              .timeout(
-                const Duration(seconds: 5),
-                onTimeout: () {
-                  print('⏱️ Request timeout on attempt $attempt');
-                  throw TimeoutException('Request timed out after 5 seconds');
-                },
-              );
+        print('📡 Response status: ${response.statusCode}');
 
-          print('📡 Response status: ${response.statusCode}');
-          print('📦 Response body: ${response.body}');
-
-          if (response.statusCode == 200) {
-            print('✅ Member details fetched successfully');
-            return json.decode(response.body);
-          } else if (response.statusCode == 404) {
-            print('❌ Member not found in database');
+        if (response.statusCode == 200) {
+          print('✅ Member details fetched successfully from API');
+          final data = json.decode(response.body);
+          // Cache for 5 minutes (increased for better performance)
+          _cache.set(cacheKey, data);
+          return data;
+        } else if (response.statusCode == 404) {
+          print('❌ Member not found in database');
             return {
-              'success': false,
-              'message':
-                  'No member profile found. Please complete your registration.',
-            };
-          } else {
-            print('❌ Error fetching member details: ${response.statusCode}');
-            print('Response body: ${response.body}');
-
-            // Don't retry on 4xx errors (client errors)
-            if (response.statusCode >= 400 && response.statusCode < 500) {
-              return null;
-            }
-
-            // Retry on 5xx errors
-            if (attempt < 2) {
-              print('⏳ Waiting 1 second before retry...');
-              await Future.delayed(const Duration(seconds: 1));
-              continue;
-            }
-            return null;
-          }
-        } on TimeoutException catch (e) {
-          print('⏱️ Timeout on attempt $attempt: $e');
-          if (attempt < 2) {
-            print('⏳ Waiting 1 second before retry...');
-            await Future.delayed(const Duration(seconds: 1));
-            continue;
-          }
-          print('❌ All retry attempts failed due to timeout');
-          print('💡 Possible issues:');
-          print('   1. Backend server not running');
-          print('   2. Network connectivity issues');
-          print('   3. Emulator network configuration');
-          return {
             'success': false,
             'message':
-                'Connection timeout. Please check your network and try again.',
+                'No member profile found. Please complete your registration.',
           };
-        } catch (e) {
-          print('❌ Network/other error on attempt $attempt: $e');
-          if (attempt < 2) {
-            await Future.delayed(const Duration(seconds: 1));
-            continue;
-          }
-          return {
-            'success': false,
-            'message': 'Network error. Please check your connection.',
-          };
+        } else {
+          print('❌ Error fetching member details: ${response.statusCode}');
+          return null;
         }
+      } on TimeoutException catch (e) {
+        print('⏱️ Timeout: $e');
+        print('❌ Request failed due to timeout');
+        return {
+          'success': false,
+          'message': 'Connection timeout. Please check your network and try again.',
+        };
+      } catch (e) {
+        print('❌ Network/other error: $e');
+        return {
+          'success': false,
+          'message': 'Network error. Please check your connection.',
+        };
       }
-
-      return null;
     } catch (e) {
       print('❌ Exception fetching member details: $e');
       print('Stack trace: ${StackTrace.current}');
@@ -170,6 +150,8 @@ class MemberService {
 
       if (response.statusCode == 200) {
         print('✅ Member details updated successfully');
+        // Clear cache so next fetch gets fresh data
+        _cache.clearByPrefix('member_details_');
         return true;
       } else {
         print('❌ Failed to update member details: ${response.statusCode}');

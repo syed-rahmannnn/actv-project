@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import '../../../models/product_model.dart';
 import '../../../models/discover_product.dart';
+import '../../../services/api_service.dart';
 
 class AddProductNewScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -119,7 +120,8 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
           'imageUrl': null,
         };
 
-        final baseUrl = 'http://10.42.208.174:3000/api/products';
+        final baseUrl = '${ApiService.baseUrl}/products';
+        print('🌐 Using baseUrl: $baseUrl');
         http.Response response;
 
         if (widget.isEdit && widget.product != null) {
@@ -127,13 +129,23 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
           print('📦 Updating product ${widget.product!.id}');
           print('📦 Update payload: ${jsonEncode(productData)}');
 
-          response = await http
-              .put(
-                Uri.parse('$baseUrl/${widget.product!.id}'),
-                headers: {'Content-Type': 'application/json'},
-                body: jsonEncode(productData),
-              )
-              .timeout(const Duration(seconds: 10));
+          final client = http.Client();
+          try {
+            final request = http.Request('PUT', Uri.parse('$baseUrl/${widget.product!.id}'))
+              ..headers['Content-Type'] = 'application/json'
+              ..body = jsonEncode(productData);
+            
+            final streamedResponse = await client.send(request).timeout(
+              const Duration(seconds: 30),
+              onTimeout: () {
+                throw Exception('Request timed out after 30 seconds');
+              },
+            );
+            
+            response = await http.Response.fromStream(streamedResponse);
+          } finally {
+            client.close();
+          }
 
           print('📦 Update status: ${response.statusCode}');
           print('📦 Update response: ${response.body}');
@@ -142,13 +154,23 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
           print('📦 Creating new product');
           print('📦 Create payload: ${jsonEncode(productData)}');
 
-          response = await http
-              .post(
-                Uri.parse(baseUrl),
-                headers: {'Content-Type': 'application/json'},
-                body: jsonEncode(productData),
-              )
-              .timeout(const Duration(seconds: 10));
+          final client = http.Client();
+          try {
+            final request = http.Request('POST', Uri.parse(baseUrl))
+              ..headers['Content-Type'] = 'application/json'
+              ..body = jsonEncode(productData);
+            
+            final streamedResponse = await client.send(request).timeout(
+              const Duration(seconds: 30),
+              onTimeout: () {
+                throw Exception('Request timed out after 30 seconds');
+              },
+            );
+            
+            response = await http.Response.fromStream(streamedResponse);
+          } finally {
+            client.close();
+          }
 
           print('📦 Create status: ${response.statusCode}');
           print('📦 Create response: ${response.body}');
@@ -195,16 +217,17 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+    return ExcludeSemantics(
+      child: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFB3D4FF), Color(0xFFE6D8FF)],
+            ),
           ),
-        ),
-        child: SafeArea(
+          child: SafeArea(
           child: Column(
             children: [
               // Header
@@ -261,7 +284,7 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: Colors.black.withValues(alpha: 0.1),
                                 blurRadius: 15,
                                 offset: const Offset(0, 4),
                               ),
@@ -392,7 +415,7 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 DropdownButtonFormField<String>(
-                                  value: _selectedCategory,
+                                  initialValue: _selectedCategory,
                                   decoration: InputDecoration(
                                     hintText: 'Select category',
                                     filled: true,
@@ -580,6 +603,7 @@ class _AddProductNewScreenState extends State<AddProductNewScreen> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

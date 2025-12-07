@@ -3,8 +3,10 @@ import 'package:http/http.dart' as http;
 import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import 'auth_service.dart';
+import '../utils/cache_manager.dart';
 
 class ApiService {
+  static final _cache = FastCacheManager();
   // Replace with your Render domain (include https)
   // Make base URL configurable for device runs via --dart-define
   static final String baseUrl = _resolveBaseUrl();
@@ -16,7 +18,7 @@ class ApiService {
 
     // Use local backend during development
     if (kDebugMode) {
-      return 'http://10.42.208.174:3000/api';
+      return 'http://10.23.116.109:3000/api';
     }
 
     // Production backend
@@ -117,25 +119,31 @@ class ApiService {
   Future<Map<String, dynamic>> login(String email, String password) async {
     final url = Uri.parse('$baseUrl/auth/login');
     final payload = {'email': email.trim(), 'password': password};
-    // Logging removed for security - no longer exposing login credentials
+    
+    developer.log('🔐 Attempting login to: $url', name: 'ApiService');
+    developer.log('📧 Email: $email', name: 'ApiService');
 
     http.Response resp;
     try {
       resp = await http
           .post(url, headers: _headers(), body: jsonEncode(payload))
           .timeout(_requestTimeout());
+      
+      developer.log('📡 Response status: ${resp.statusCode}', name: 'ApiService');
+      developer.log('📦 Response body: ${resp.body}', name: 'ApiService');
     } catch (e) {
-      developer.log('login request error: $e', name: 'ApiService');
-      return {'ok': false, 'body': null, 'error': 'Network error or timeout'};
+      developer.log('❌ login request error: $e', name: 'ApiService');
+      return {'ok': false, 'body': null, 'error': 'Network error or timeout: $e'};
     }
-    // Response logging removed for security
 
     final body = jsonDecodeSafe(resp.body);
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
       final token = body['data']?['token'] ?? body['token'];
       if (token != null) setToken(token as String);
+      developer.log('✅ Login successful, token received', name: 'ApiService');
       return {'ok': true, 'body': body, 'token': token};
     } else {
+      developer.log('❌ Login failed with status ${resp.statusCode}', name: 'ApiService');
       return {'ok': false, 'body': body, 'error': 'Login failed'};
     }
   }
@@ -354,9 +362,17 @@ class ApiService {
 
   // Static method to get member by email (used by multiple screens)
   static Future<Map<String, dynamic>> getMemberByEmail(String email) async {
+    final cacheKey = 'member_by_email_$email';
+    
+    // Try cache first
+    final cached = _cache.get<Map<String, dynamic>>(cacheKey);
+    if (cached != null) {
+      developer.log('✅ Loaded member from cache', name: 'ApiService');
+      return cached;
+    }
+    
     final url = Uri.parse('$baseUrl/auth/member-by-email/$email');
-    // Logging removed for security - no longer exposing member lookup data
-    developer.log('ApiService: getMemberByEmail called', name: 'ApiService');
+    developer.log('🌐 Fetching member from API', name: 'ApiService');
 
     final resp = await http.get(
       url,
@@ -369,7 +385,10 @@ class ApiService {
       // Backend returns {success: true, data: {member: {...}}}
       // Extract the member data for compatibility
       final memberData = body['data']?['member'];
-      return {'success': true, 'data': memberData};
+      final result = {'success': true, 'data': memberData};
+      // Cache for 3 minutes
+      _cache.set(cacheKey, result);
+      return result;
     } else {
       return {
         'success': false,
@@ -380,9 +399,17 @@ class ApiService {
 
   // Static method to get complete member profile (used by profile detail screen)
   static Future<Map<String, dynamic>> getMemberProfile(String memberId) async {
+    final cacheKey = 'member_profile_$memberId';
+    
+    // Try cache first
+    final cached = _cache.get<Map<String, dynamic>>(cacheKey);
+    if (cached != null) {
+      developer.log('✅ Loaded profile from cache', name: 'ApiService');
+      return cached;
+    }
+    
     final url = Uri.parse('$baseUrl/profile/$memberId');
-    // Logging removed for security - no longer exposing profile lookup data
-    developer.log('ApiService: getMemberProfile called', name: 'ApiService');
+    developer.log('🌐 Fetching profile from API', name: 'ApiService');
 
     final resp = await http.get(
       url,
@@ -500,6 +527,8 @@ class ApiService {
 
     final body = _jsonDecodeSafe(resp.body);
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      // Clear member caches after declaration update
+      _cache.clearByPrefix('member_');
       return {'success': true, 'data': body['data']};
     } else {
       return {
@@ -552,6 +581,11 @@ class ApiService {
 
     final body = _jsonDecodeSafe(resp.body);
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      // ✅ CRITICAL: Clear ALL business-related caches after business info update
+      _cache.clearByPrefix('member_');
+      _cache.clearByPrefix('business_profile_');
+      _cache.clearByPrefix('companies_');
+      developer.log('✅ Cleared all business-related caches', name: 'ApiService');
       return {'success': true, 'data': body['data']};
     } else {
       return {
@@ -580,6 +614,8 @@ class ApiService {
 
     final body = _jsonDecodeSafe(resp.body);
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      // Clear member caches after financial info update
+      _cache.clearByPrefix('member_');
       return {'success': true, 'data': body['data']};
     } else {
       return {

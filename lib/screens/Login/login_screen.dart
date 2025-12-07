@@ -521,28 +521,31 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (result['ok'] == true) {
         // Member login successful
-        // Safely extract member data with type checking
+        // Safely extract member data with proper type checking
         final body = result['body'];
-        if (body is! Map) {
-          throw Exception('Invalid response format: body is not a Map');
+        if (body == null || body is! Map) {
+          throw Exception('Invalid response format: body is null or not a Map');
         }
         
         // Handle different possible response structures
-        dynamic memberData;
+        Map<String, dynamic> member;
+        
+        // Try to extract member data from different possible structures
         if (body['data'] != null && body['data'] is Map) {
           // Structure: { data: { member: {...} } }
-          memberData = body['data']['member'] ?? body['data'];
-        } else if (body['member'] != null) {
+          final data = body['data'] as Map;
+          if (data['member'] != null && data['member'] is Map) {
+            member = Map<String, dynamic>.from(data['member'] as Map);
+          } else {
+            member = Map<String, dynamic>.from(data);
+          }
+        } else if (body['member'] != null && body['member'] is Map) {
           // Structure: { member: {...} }
-          memberData = body['member'];
+          member = Map<String, dynamic>.from(body['member'] as Map);
         } else {
           // Fallback: use body directly if it contains member fields
-          memberData = body;
+          member = Map<String, dynamic>.from(body);
         }
-        
-        final member = memberData is Map<String, dynamic> 
-            ? memberData 
-            : Map<String, dynamic>.from(memberData as Map);
         final token = result['token'];
 
         // Debug: Print what member data we got from login
