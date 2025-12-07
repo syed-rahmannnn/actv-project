@@ -52,15 +52,33 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
     setState(() => _loading = true);
     try {
       debugPrint('DA[_load]: called');
-      debugPrint('[DA_API] GET /members?districtId=${widget.districtAdminId}');
-      final apps = await _svc.getDistrictApplications(
+
+      // Fetch pending applications (Pending-District status)
+      final pending = await _svc.getDistrictInbox(widget.districtAdminId);
+
+      // Fetch approved applications
+      final approved = await _svc.getDistrictApplicationsByStatus(
         districtAdminId: widget.districtAdminId,
-        status: 'all',
+        status: 'Approved',
       );
-      _all = List<Map<String, dynamic>>.from(apps);
+
+      // Fetch rejected applications
+      final rejected = await _svc.getDistrictApplicationsByStatus(
+        districtAdminId: widget.districtAdminId,
+        status: 'Rejected',
+      );
+
+      // Combine all lists
+      _all = [
+        ...List<Map<String, dynamic>>.from(pending),
+        ...List<Map<String, dynamic>>.from(approved),
+        ...List<Map<String, dynamic>>.from(rejected),
+      ];
+
       debugPrint('[DA_UI] users dropdown loaded: count=${_all.length}');
-      debugPrint('[DA_API] response 200 ${_all.length}');
-      debugPrint('DA[_load]: fetched applications count = ${_all.length}');
+      debugPrint(
+        '[DA_API] response 200 pending=${pending.length} approved=${approved.length} rejected=${rejected.length}',
+      );
     } catch (e) {
       debugPrint('[DA_API] error 500 ${e.toString()}');
       if (mounted) {
@@ -279,13 +297,13 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
         form['personalDetails'] is Map<String, dynamic>
         ? Map<String, dynamic>.from(form['personalDetails'])
         : null;
-    
+
     // Also check if personalDetails exists directly in member (not in formData)
     final Map<String, dynamic>? memberPersonalDetails =
         member['personalDetails'] is Map<String, dynamic>
         ? Map<String, dynamic>.from(member['personalDetails'])
         : null;
-    
+
     final dynamic rawGender =
         member['gender'] ??
         form['gender'] ??

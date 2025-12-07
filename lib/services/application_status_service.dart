@@ -155,12 +155,9 @@ class ApplicationData {
   }
 
   // Helper methods to determine status
-  bool get isBlockApproved =>
-      blockApprovedAt != null || status != 'Pending-Block';
-  bool get isDistrictApproved =>
-      districtApprovedAt != null ||
-      ['Pending-State', 'Approved'].contains(status);
-  bool get isStateApproved => stateApprovedAt != null || status == 'Approved';
+  bool get isBlockApproved => blockApprovedAt != null;
+  bool get isDistrictApproved => districtApprovedAt != null;
+  bool get isStateApproved => stateApprovedAt != null;
   bool get isRejected => status == 'Rejected';
 
   String get currentStage {

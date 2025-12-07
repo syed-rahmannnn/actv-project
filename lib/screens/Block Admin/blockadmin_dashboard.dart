@@ -48,6 +48,28 @@ class ApplicationService {
     }
   }
 
+  Future<List<dynamic>> getBlockApplicationsByStatus({
+    required String blockAdminId,
+    required String status, // Approved | Rejected
+  }) async {
+    final url =
+        '$baseUrl/applications/list-by-admin/$blockAdminId?role=block&status=$status';
+    final res = await http.get(Uri.parse(url), headers: headers);
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to fetch $status applications');
+    }
+
+    final data = jsonDecode(res.body);
+    if (data is List<dynamic>) {
+      return data
+          .map((app) => app is Map ? Map<String, dynamic>.from(app) : app)
+          .toList();
+    } else {
+      return [];
+    }
+  }
+
   Future<int> _getCountByStatus({
     required String blockAdminId,
     required String status, // Approved | Rejected
@@ -162,35 +184,22 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
   Future<void> _load() async {
     setState(() => _isLoading = true);
     try {
-      // Fetch applications once and derive counts locally to match Approvals tab
-      final allApplications = await ApiService.getBlockAdminApplications(
-        widget.blockAdminId,
-      );
+      final token = widget.authToken ?? widget.token;
+      if (token == null) {
+        throw Exception('No authentication token available');
+      }
 
-      // Filter pending applications (backend already normalizes status)
-      final pendingApps = allApplications.where((app) {
-        final status = (app['status'] ?? '').toString().toLowerCase();
-        return status == 'submitted' || status == 'pending' || status.isEmpty;
-      }).toList();
+      final svc = ApplicationService(baseUrl: widget.apiBaseUrl, token: token);
 
-      final approvedApps = allApplications.where((app) {
-        final status = (app['status'] ?? '').toString().toLowerCase();
-        return status == 'approved';
-      }).toList();
+      // Fetch stats using the service that calls proper backend endpoints
+      final stats = await svc.getBlockStats(widget.blockAdminId);
 
-      final rejectedApps = allApplications.where((app) {
-        final status = (app['status'] ?? '').toString().toLowerCase();
-        return status == 'rejected';
-      }).toList();
+      // Fetch pending applications list
+      final pendingApps = await svc.getBlockInbox(widget.blockAdminId);
 
       if (!mounted) return;
       setState(() {
-        _stats = {
-          'pending': pendingApps.length,
-          'approved': approvedApps.length,
-          'rejected': rejectedApps.length,
-          'total': allApplications.length,
-        };
+        _stats = stats;
         _pending = pendingApps;
         _isLoading = false;
       });

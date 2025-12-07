@@ -35,7 +35,9 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
   bool _loading = true;
   ApprovalCategory _tab = ApprovalCategory.pending;
 
-  List<Map<String, dynamic>> _all = [];
+  List<Map<String, dynamic>> _pending = [];
+  List<Map<String, dynamic>> _approved = [];
+  List<Map<String, dynamic>> _rejected = [];
   late ApplicationService _svc;
   String? _inFlightId;
   final DateFormat _fmt = DateFormat('dd/MM/yyyy');
@@ -76,19 +78,35 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
       final districtId = (widget.districtAdminId?.isNotEmpty == true)
           ? widget.districtAdminId!
           : (_resolvedDistrictAdminId ?? '');
-      debugPrint(
-        '[DA_API] GET /applications?districtId=$districtId&status=all',
-      );
+
       if (districtId.isEmpty) {
         throw Exception('Missing district admin id');
       }
-      final apps = await _svc.getDistrictApplications(
+
+      // Fetch pending applications (Pending-District status)
+      final pending = await _svc.getDistrictInbox(districtId);
+
+      // Fetch approved applications
+      final approved = await _svc.getDistrictApplicationsByStatus(
         districtAdminId: districtId,
-        status: 'all',
+        status: 'Approved',
       );
-      _all = List<Map<String, dynamic>>.from(apps);
-      debugPrint('[DA_API] response 200 count=${_all.length}');
-      debugPrint('DA[_load]: fetched applications count = ${_all.length}');
+
+      // Fetch rejected applications
+      final rejected = await _svc.getDistrictApplicationsByStatus(
+        districtAdminId: districtId,
+        status: 'Rejected',
+      );
+
+      setState(() {
+        _pending = List<Map<String, dynamic>>.from(pending);
+        _approved = List<Map<String, dynamic>>.from(approved);
+        _rejected = List<Map<String, dynamic>>.from(rejected);
+      });
+
+      debugPrint(
+        '[DA_API] response 200 pending=${_pending.length} approved=${_approved.length} rejected=${_rejected.length}',
+      );
     } catch (e) {
       debugPrint('[DA_API] error 500 ${e.toString()}');
       if (mounted) {
@@ -104,29 +122,13 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
   List<Map<String, dynamic>> get _filtered {
     switch (_tab) {
       case ApprovalCategory.pending:
-        return _all
-            .where((app) => app['status'] == 'Pending-District')
-            .toList();
+        return _pending;
       case ApprovalCategory.approved:
-        return _all
-            .where(
-              (app) =>
-                  (app['status'] == 'Pending-State') ||
-                  (app['status'] == 'Approved'),
-            )
-            .toList();
+        return _approved;
       case ApprovalCategory.rejected:
-        return _all.where((app) => app['status'] == 'Rejected').toList();
+        return _rejected;
       case ApprovalCategory.all:
-        // Show only items that fall into pending/approved/rejected buckets
-        return _all.where((app) {
-          final s = (app['status'] ?? '').toString();
-          final sLower = s.toLowerCase();
-          final isPending = sLower.contains('pending-district');
-          final isApproved = s == 'Pending-State' || s == 'Approved';
-          final isRejected = s == 'Rejected';
-          return isPending || isApproved || isRejected;
-        }).toList();
+        return [..._pending, ..._approved, ..._rejected];
     }
   }
 
@@ -144,9 +146,6 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
     String? reason,
   }) async {
     debugPrint('DA[handleAction]: action=$action on appId=$appId');
-    debugPrint(
-      'DA[handleAction]: before=${_all.map((a) => a['status']).toList()}',
-    );
     if (mounted) setState(() => _inFlightId = appId);
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -168,25 +167,31 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
         ),
       );
 
-      // Non-destructive local update: keep card in _all and update status
-      final i = _all.indexWhere((a) => (a['_id']?.toString() ?? '') == appId);
-      if (i != -1) {
-        final updated = Map<String, dynamic>.from(_all[i]);
-        updated['status'] = action == 'approve' ? 'Pending-State' : 'Rejected';
+      // Optimistic UI update: move application from pending to approved/rejected
+      final pendingIndex = _pending.indexWhere(
+        (a) => (a['_id']?.toString() ?? '') == appId,
+      );
+      if (pendingIndex != -1) {
+        final app = Map<String, dynamic>.from(_pending[pendingIndex]);
         setState(() {
-          _all[i] = updated;
+          _pending.removeAt(pendingIndex);
+          if (action == 'approve') {
+            app['status'] = 'Pending-State';
+            _approved.insert(0, app);
+          } else {
+            app['status'] = 'Rejected';
+            _rejected.insert(0, app);
+          }
         });
-        // Notify parent dashboard to refresh its stats and pending list
+        // Notify parent dashboard to refresh its stats
         widget.onRefreshRequested?.call();
       } else {
-        debugPrint('DA[handleAction]: appId not found locally; will refetch');
+        debugPrint(
+          'DA[handleAction]: appId not found in pending; will refetch',
+        );
         await _load();
-        // Still notify parent in case counts changed
         widget.onRefreshRequested?.call();
       }
-      debugPrint(
-        'DA[handleAction]: after=${_all.map((a) => a['status']).toList()}',
-      );
     } catch (e) {
       debugPrint('DA[handleAction]: error=${e.toString()}');
       if (mounted) {
@@ -341,24 +346,9 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
   }
 
   Widget _buildTabBar() {
-    final pendingCount = _all
-        .where(
-          (a) => (a['status'] ?? '').toString().toLowerCase().contains(
-            'pending-district',
-          ),
-        )
-        .length;
-    final approvedCount = _all
-        .where(
-          (a) =>
-              (a['status'] ?? '') == 'Pending-State' ||
-              (a['status'] ?? '') == 'Approved',
-        )
-        .length;
-    final rejectedCount = _all
-        .where((a) => (a['status'] ?? '') == 'Rejected')
-        .length;
-    // Make All equal to sum of category counts to avoid including other statuses
+    final pendingCount = _pending.length;
+    final approvedCount = _approved.length;
+    final rejectedCount = _rejected.length;
     final allCount = pendingCount + approvedCount + rejectedCount;
 
     Widget chip(String label, bool active, VoidCallback onTap) {
@@ -486,13 +476,13 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
         form['personalDetails'] is Map<String, dynamic>
         ? Map<String, dynamic>.from(form['personalDetails'])
         : null;
-    
+
     // Also check if personalDetails exists directly in app (not in formData)
     final Map<String, dynamic>? appPersonalDetails =
         app['personalDetails'] is Map<String, dynamic>
         ? Map<String, dynamic>.from(app['personalDetails'])
         : null;
-    
+
     final dynamic rawGender =
         app['gender'] ??
         form['gender'] ??

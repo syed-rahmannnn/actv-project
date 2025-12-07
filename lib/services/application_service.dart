@@ -69,6 +69,28 @@ class ApplicationService {
     }
   }
 
+  Future<List<dynamic>> getBlockApplicationsByStatus({
+    required String blockAdminId,
+    required String status, // Approved | Rejected
+  }) async {
+    final url =
+        '$baseUrl/applications/list-by-admin/$blockAdminId?role=block&status=$status';
+    final res = await http.get(Uri.parse(url), headers: _headers);
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to fetch $status applications');
+    }
+
+    final data = jsonDecode(res.body);
+    if (data is List<dynamic>) {
+      return data
+          .map((app) => app is Map ? Map<String, dynamic>.from(app) : app)
+          .toList();
+    } else {
+      return [];
+    }
+  }
+
   Future<List<dynamic>> getDistrictInbox(String districtAdminId) async {
     final res = await http.get(
       Uri.parse('$baseUrl/applications/district/$districtAdminId'),
@@ -82,6 +104,50 @@ class ApplicationService {
     }
 
     return (data['applications'] ?? []) as List<dynamic>;
+  }
+
+  Future<List<dynamic>> getDistrictApplicationsByStatus({
+    required String districtAdminId,
+    required String status, // Approved | Rejected
+  }) async {
+    final url =
+        '$baseUrl/applications/list-by-admin/$districtAdminId?role=district&status=$status';
+    final res = await http.get(Uri.parse(url), headers: _headers);
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to fetch $status applications');
+    }
+
+    final data = jsonDecode(res.body);
+    if (data is List<dynamic>) {
+      return data
+          .map((app) => app is Map ? Map<String, dynamic>.from(app) : app)
+          .toList();
+    } else {
+      return [];
+    }
+  }
+
+  Future<Map<String, int>> getDistrictStats(String districtAdminId) async {
+    try {
+      final pending = await getDistrictInbox(districtAdminId);
+      final approvedList = await getDistrictApplicationsByStatus(
+        districtAdminId: districtAdminId,
+        status: 'Approved',
+      );
+      final rejectedList = await getDistrictApplicationsByStatus(
+        districtAdminId: districtAdminId,
+        status: 'Rejected',
+      );
+      return {
+        'pending': pending.length,
+        'approved': approvedList.length,
+        'rejected': rejectedList.length,
+        'total': pending.length + approvedList.length + rejectedList.length,
+      };
+    } catch (e) {
+      rethrow;
+    }
   }
 
   /// Fetch ALL applications for a district admin.
@@ -129,6 +195,50 @@ class ApplicationService {
     }
 
     return (data['applications'] ?? []) as List<dynamic>;
+  }
+
+  Future<List<dynamic>> getStateApplicationsByStatus({
+    required String stateAdminId,
+    required String status, // Approved | Rejected
+  }) async {
+    final url =
+        '$baseUrl/applications/list-by-admin/$stateAdminId?role=state&status=$status';
+    final res = await http.get(Uri.parse(url), headers: _headers);
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to fetch $status applications');
+    }
+
+    final data = jsonDecode(res.body);
+    if (data is List<dynamic>) {
+      return data
+          .map((app) => app is Map ? Map<String, dynamic>.from(app) : app)
+          .toList();
+    } else {
+      return [];
+    }
+  }
+
+  Future<Map<String, int>> getStateStats(String stateAdminId) async {
+    try {
+      final pending = await getStateInbox(stateAdminId);
+      final approvedList = await getStateApplicationsByStatus(
+        stateAdminId: stateAdminId,
+        status: 'Approved',
+      );
+      final rejectedList = await getStateApplicationsByStatus(
+        stateAdminId: stateAdminId,
+        status: 'Rejected',
+      );
+      return {
+        'pending': pending.length,
+        'approved': approvedList.length,
+        'rejected': rejectedList.length,
+        'total': pending.length + approvedList.length + rejectedList.length,
+      };
+    } catch (e) {
+      rethrow;
+    }
   }
 
   /// Fetch ALL applications for a state admin.
@@ -269,113 +379,28 @@ class ApplicationService {
 
   Future<Map<String, int>> getBlockStats(String blockAdminId) async {
     try {
-      final allApplications = await getBlockInbox(blockAdminId);
+      // Fetch all lists to get real counts from backend
+      final pending = await getBlockInbox(blockAdminId);
 
-      // Filter pending applications (same logic as Dashboard)
-      final pendingApps = allApplications.where((app) {
-        final status = (app['status'] ?? '').toString().toLowerCase();
-        return status == 'pending-block' ||
-            status == 'submitted' ||
-            status == 'pending';
-      }).toList();
-
-      final approved = await _getCount(
-        adminId: blockAdminId,
-        role: 'block',
+      final approvedList = await getBlockApplicationsByStatus(
+        blockAdminId: blockAdminId,
         status: 'Approved',
       );
 
-      final rejected = await _getCount(
-        adminId: blockAdminId,
-        role: 'block',
+      final rejectedList = await getBlockApplicationsByStatus(
+        blockAdminId: blockAdminId,
         status: 'Rejected',
       );
 
-      final stats = {
-        'pending': pendingApps.length,
-        'approved': approved,
-        'rejected': rejected,
-        'total': pendingApps.length + approved + rejected,
+      return {
+        'pending': pending.length,
+        'approved': approvedList.length,
+        'rejected': rejectedList.length,
+        'total': pending.length + approvedList.length + rejectedList.length,
       };
-      return stats;
     } catch (e) {
       rethrow;
     }
-  }
-
-  Future<Map<String, int>> getDistrictStats(String districtAdminId) async {
-    // Fetch all applications and derive counts to ensure accuracy
-    final all = await getDistrictApplications(districtAdminId: districtAdminId);
-
-    // Pending at district stage
-    final pendingCount = all.where((app) {
-      final status = (app['status'] ?? app['applicationStatus'] ?? '')
-          .toString()
-          .trim()
-          .toLowerCase();
-      return status.contains('pending-district');
-    }).length;
-
-    // Approved by district (includes Pending-State and Approved per backend route)
-    final approved = await _getCount(
-      adminId: districtAdminId,
-      role: 'district',
-      status: 'Approved',
-    );
-
-    // Rejected (any stage) assigned to this district admin
-    // Align with approvals page which shows all 'Rejected' regardless of reviewer
-    final rejected = all.where((app) {
-      final status = (app['status'] ?? app['applicationStatus'] ?? '')
-          .toString()
-          .trim()
-          .toLowerCase();
-      return status == 'rejected' || status.contains('rejected');
-    }).length;
-
-    return {
-      'pending': pendingCount,
-      'approved': approved,
-      'rejected': rejected,
-      'total': pendingCount + approved + rejected,
-    };
-  }
-
-  Future<Map<String, int>> getStateStats(String stateAdminId) async {
-    // Fetch all applications and derive counts to ensure accuracy
-    final all = await getStateApplications(stateAdminId: stateAdminId);
-
-    // Pending at state stage
-    final pendingCount = all.where((app) {
-      final status = (app['status'] ?? app['applicationStatus'] ?? '')
-          .toString()
-          .trim()
-          .toLowerCase();
-      return status == 'pending-state' || status.contains('pending-state');
-    }).length;
-
-    // Approved by state
-    final approved = await _getCount(
-      adminId: stateAdminId,
-      role: 'state',
-      status: 'Approved',
-    );
-
-    // Rejected (any stage) assigned to this state admin
-    final rejected = all.where((app) {
-      final status = (app['status'] ?? app['applicationStatus'] ?? '')
-          .toString()
-          .trim()
-          .toLowerCase();
-      return status == 'rejected' || status.contains('rejected');
-    }).length;
-
-    return {
-      'pending': pendingCount,
-      'approved': approved,
-      'rejected': rejected,
-      'total': pendingCount + approved + rejected,
-    };
   }
 
   // ---------- ADMIN DETAILS ----------

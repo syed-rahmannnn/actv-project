@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 // Reuse the same dropdown you already created inside the dashboard file
-import 'blockadmin_dashboard.dart' show UserDetailsDropdown;
+import 'blockadmin_dashboard.dart' show UserDetailsDropdown, ApplicationService;
 
 class BlockAdminMembersPage extends StatefulWidget {
   final String apiBaseUrl;
@@ -45,10 +45,31 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final apps = await ApiService.getBlockAdminApplications(
-        widget.blockAdminId,
+      final token = widget.token;
+      if (token == null || token.isEmpty) {
+        throw Exception('No authentication token available');
+      }
+
+      // Import ApplicationService at the top if not already
+      final svc = ApplicationService(baseUrl: widget.apiBaseUrl, token: token);
+
+      // Fetch all three lists
+      final pending = await svc.getBlockInbox(widget.blockAdminId);
+      final approved = await svc.getBlockApplicationsByStatus(
+        blockAdminId: widget.blockAdminId,
+        status: 'Approved',
       );
-      _all = List<Map<String, dynamic>>.from(apps);
+      final rejected = await svc.getBlockApplicationsByStatus(
+        blockAdminId: widget.blockAdminId,
+        status: 'Rejected',
+      );
+
+      // Combine all applications
+      _all = [
+        ...List<Map<String, dynamic>>.from(pending),
+        ...List<Map<String, dynamic>>.from(approved),
+        ...List<Map<String, dynamic>>.from(rejected),
+      ];
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

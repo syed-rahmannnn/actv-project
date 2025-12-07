@@ -31,8 +31,10 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
   bool _loading = true;
   ApprovalCategory _tab = ApprovalCategory.pending;
 
-  // Raw list for this block admin (we’ll segment by status)
-  List<Map<String, dynamic>> _all = [];
+  // Separate lists for each category
+  List<Map<String, dynamic>> _pending = [];
+  List<Map<String, dynamic>> _approved = [];
+  List<Map<String, dynamic>> _rejected = [];
   String _resolvedBlockName = '';
   ApplicationService? _svc; // backend service for admin details
 
@@ -56,36 +58,44 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
               '';
         } catch (_) {}
       }
+
+      // Initialize service
+      final token = await AuthService.getToken();
+      if (token == null || token.isEmpty) {
+        throw Exception('No authentication token available');
+      }
+
+      _svc = ApplicationService(widget.apiBaseUrl, token: token);
+
       // If still unknown, resolve from backend like settings page does
       if (_resolvedBlockName.isEmpty) {
         try {
-          final token = await AuthService.getToken();
-          if (token != null && token.isNotEmpty) {
-            _svc = ApplicationService(widget.apiBaseUrl, token: token);
-            final details = await _svc!.getBlockAdminDetails(
-              widget.blockAdminId,
-            );
-            final meta = (details['meta'] ?? {}) as Map<String, dynamic>;
-            final candidate = (meta['blockName']?.toString() ?? '').trim();
-            if (candidate.isNotEmpty) {
-              _resolvedBlockName = candidate;
-            }
+          final details = await _svc!.getBlockAdminDetails(widget.blockAdminId);
+          final meta = (details['meta'] ?? {}) as Map<String, dynamic>;
+          final candidate = (meta['blockName']?.toString() ?? '').trim();
+          if (candidate.isNotEmpty) {
+            _resolvedBlockName = candidate;
           }
         } catch (_) {}
       }
-      // Fetch applications along with adminMeta in a single request
-      final resp = await ApiService.getBlockAdminApplicationsWithMeta(
-        widget.blockAdminId,
-      );
-      final apps = (resp['applications'] as List?) ?? const [];
-      _all = List<Map<String, dynamic>>.from(apps);
 
-      // Prefer adminMeta.blockName when present for the subtitle
-      final meta = (resp['adminMeta'] as Map?) ?? const {};
-      final bn = (meta['blockName']?.toString() ?? '').trim();
-      if (bn.isNotEmpty) {
-        _resolvedBlockName = bn;
-      }
+      // Fetch pending applications
+      final pendingList = await _svc!.getBlockInbox(widget.blockAdminId);
+      _pending = List<Map<String, dynamic>>.from(pendingList);
+
+      // Fetch approved applications
+      final approvedList = await _svc!.getBlockApplicationsByStatus(
+        blockAdminId: widget.blockAdminId,
+        status: 'Approved',
+      );
+      _approved = List<Map<String, dynamic>>.from(approvedList);
+
+      // Fetch rejected applications
+      final rejectedList = await _svc!.getBlockApplicationsByStatus(
+        blockAdminId: widget.blockAdminId,
+        status: 'Rejected',
+      );
+      _rejected = List<Map<String, dynamic>>.from(rejectedList);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -97,28 +107,6 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
     }
   }
 
-  // Helpers - backend already normalizes status to Pending/Approved/Rejected
-  List<Map<String, dynamic>> get _pending => _all.where((a) {
-    final status = (a['status'] ?? '').toString();
-    final statusLower = status.toLowerCase();
-
-    // Applications that are pending (not yet reviewed by block admin)
-    return statusLower == 'submitted' ||
-        statusLower == 'pending' ||
-        statusLower.isEmpty;
-  }).toList();
-
-  List<Map<String, dynamic>> get _approved => _all.where((a) {
-    final status = (a['status'] ?? '').toString();
-    // Applications that have been approved by block admin
-    return status.toLowerCase() == 'approved';
-  }).toList();
-
-  List<Map<String, dynamic>> get _rejected => _all.where((a) {
-    final status = (a['status'] ?? '').toString();
-    return status.toLowerCase() == 'rejected';
-  }).toList();
-
   List<Map<String, dynamic>> get _listForTab {
     switch (_tab) {
       case ApprovalCategory.pending:
@@ -128,7 +116,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
       case ApprovalCategory.rejected:
         return _rejected;
       case ApprovalCategory.all:
-        return _all;
+        return [..._pending, ..._approved, ..._rejected];
     }
   }
 
@@ -136,21 +124,20 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
     try {
       // Immediately update local state for instant UI feedback
       setState(() {
-        // Find and update the application in all relevant lists
-        for (var list in [_pending, _approved, _rejected, _all]) {
-          final index = list.indexWhere(
-            (app) => app['_id'].toString() == appId,
-          );
-          if (index != -1) {
-            list[index]['status'] = 'Approved';
-            list[index]['reviewedBy'] = {
-              'blockAdmin': {
-                'fullName': 'Block Admin',
-                'meta': {'blockName': widget.blockName},
-              },
-            };
-            break;
-          }
+        // Find and update the application in pending list
+        final index = _pending.indexWhere(
+          (app) => app['_id'].toString() == appId,
+        );
+        if (index != -1) {
+          final app = _pending.removeAt(index);
+          app['status'] = 'Approved';
+          app['reviewedBy'] = {
+            'blockAdmin': {
+              'fullName': 'Block Admin',
+              'meta': {'blockName': widget.blockName},
+            },
+          };
+          _approved.add(app);
         }
       });
 
@@ -239,24 +226,23 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
 
         // Immediately update local state for instant UI feedback
         setState(() {
-          // Find and update the application in all relevant lists
-          for (var list in [_pending, _approved, _rejected, _all]) {
-            final index = list.indexWhere(
-              (app) => app['_id'].toString() == appId,
-            );
-            if (index != -1) {
-              list[index]['status'] = 'Rejected';
-              list[index]['rejectionReason'] = rejectionReason.isEmpty
-                  ? null
-                  : rejectionReason;
-              list[index]['reviewedBy'] = {
-                'blockAdmin': {
-                  'fullName': 'Block Admin',
-                  'meta': {'blockName': widget.blockName},
-                },
-              };
-              break;
-            }
+          // Find and update the application in pending list
+          final index = _pending.indexWhere(
+            (app) => app['_id'].toString() == appId,
+          );
+          if (index != -1) {
+            final app = _pending.removeAt(index);
+            app['status'] = 'Rejected';
+            app['rejectionReason'] = rejectionReason.isEmpty
+                ? null
+                : rejectionReason;
+            app['reviewedBy'] = {
+              'blockAdmin': {
+                'fullName': 'Block Admin',
+                'meta': {'blockName': widget.blockName},
+              },
+            };
+            _rejected.add(app);
           }
         });
 
@@ -389,7 +375,7 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
     final pendingCount = _pending.length;
     final approvedCount = _approved.length;
     final rejectedCount = _rejected.length;
-    final allCount = _all.length;
+    final allCount = _pending.length + _approved.length + _rejected.length;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F6FF),

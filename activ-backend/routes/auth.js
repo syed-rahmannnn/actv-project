@@ -269,17 +269,17 @@ router.get('/member-by-email/:email', async (req, res) => {
     return res.status(200).json({
       success: true,
       data: {
-        member: {
-          id: member._id,
-          fullName: member.fullName,
-          email: member.email,
-          phoneNumber: member.phoneNumber,
-          state: member.state,
-          district: member.district,
-          block: member.block,
-          city: member.city,
-          profileCompleted: member.profileCompleted
-        }
+        id: member._id,
+        _id: member._id,
+        memberId: member.memberId,
+        fullName: member.fullName,
+        email: member.email,
+        phoneNumber: member.phoneNumber,
+        state: member.state,
+        district: member.district,
+        block: member.block,
+        city: member.city,
+        profileCompleted: member.profileCompleted
       }
     });
 

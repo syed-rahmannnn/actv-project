@@ -1,6 +1,7 @@
 const express = require('express');
 const MemberDetails = require('../models/MemberDetails');
 const MemberAuth = require('../models/MemberAuth');
+const Application = require('../models/applicationModel');
 
 const router = express.Router();
 
@@ -298,6 +299,75 @@ router.put('/approval/:email', async (req, res) => {
 
   } catch (error) {
     console.error('Update member approval error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+// GET dashboard status: /api/members/:id/status
+router.get('/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Try to find member by MemberDetails ID first (this is what Flutter uses)
+    let memberDetails = await MemberDetails.findById(id).lean();
+    let memberAuth = null;
+    
+    if (memberDetails) {
+      // Found by ID in MemberDetails, now find corresponding MemberAuth by email
+      memberAuth = await MemberAuth.findOne({ email: memberDetails.email.toLowerCase() }).lean();
+    } else {
+      // Try finding by MemberAuth ID
+      memberAuth = await MemberAuth.findById(id).lean();
+      if (memberAuth) {
+        memberDetails = await MemberDetails.findOne({ email: memberAuth.email.toLowerCase() }).lean();
+      }
+    }
+    
+    if (!memberDetails) {
+      return res.status(404).json({ success: false, message: 'Member not found' });
+    }
+    
+    // Calculate profile completion percentage
+    let profileCompletion = 0;
+    const fields = [
+      'fullName', 'email', 'phoneNumber', 'state', 'district', 'block', 'city',
+      'aadhaarNumber', 'streetName', 'educationalQualification', 'religion', 'socialCategory'
+    ];
+    const filledFields = fields.filter(field => {
+      const value = memberDetails[field];
+      return value !== null && value !== undefined && value !== '';
+    }).length;
+    profileCompletion = Math.round((filledFields / fields.length) * 100);
+
+    // Check if member has submitted any application (use MemberDetails ID)
+    const application = await Application.findOne({ userId: memberDetails._id.toString() }).sort({ createdAt: -1 }).lean();
+    
+    const hasPendingApplication = !!application;
+    const applicationStatus = application ? application.status : 'NONE';
+
+    console.log('📊 Dashboard Status Response:');
+    console.log('   - Member ID:', memberDetails._id.toString());
+    console.log('   - Email:', memberDetails.email);
+    console.log('   - Profile Completion:', profileCompletion + '%');
+    console.log('   - Has Application:', hasPendingApplication);
+    console.log('   - Application Status:', applicationStatus);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        profileCompletion,
+        hasPendingApplication,
+        applicationStatus, // NONE, PENDING, Pending-Block, Pending-District, Pending-State, Approved, Rejected
+        profileCompleted: memberAuth?.profileCompleted || false
+      }
+    });
+
+  } catch (error) {
+    console.error('GET /api/members/:id/status error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',

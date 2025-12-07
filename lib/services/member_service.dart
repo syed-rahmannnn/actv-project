@@ -6,7 +6,7 @@ import 'auth_service.dart';
 class MemberService {
   // Backend URL Configuration
   // Using machine's local WiFi IP for device connectivity
-  static const String baseUrl = 'http://10.201.103.174:3000/api';
+  static const String baseUrl = 'http://10.42.208.174:3000/api';
 
   // Get current user's identifier (email) from secure storage
   static Future<String?> _getCurrentUserIdentifier() async {
@@ -178,6 +178,49 @@ class MemberService {
     } catch (e) {
       print('❌ Exception updating member details: $e');
       return false;
+    }
+  }
+
+  // Fetch dashboard status for current user
+  static Future<Map<String, dynamic>?> getDashboardStatus() async {
+    try {
+      // Get user data to extract member ID
+      final userData = await AuthService.getUserData();
+      if (userData == null) {
+        print('⚠️ No user data found for dashboard status');
+        return null;
+      }
+
+      // Extract member ID (same logic as application_status_service.dart)
+      final memberId =
+          userData['_id'] ?? userData['member']?['_id'] ?? userData['id'];
+
+      if (memberId == null || (memberId as String).isEmpty) {
+        print('⚠️ No member ID found in user data');
+        return null;
+      }
+
+      print('🔄 Fetching dashboard status for member: $memberId');
+
+      final response = await http
+          .get(Uri.parse('$baseUrl/members/$memberId/status'))
+          .timeout(const Duration(seconds: 12));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          print('✅ Dashboard status fetched successfully');
+          print('📊 Profile completion: ${data['data']['profileCompletion']}%');
+          print('📋 Application status: ${data['data']['applicationStatus']}');
+          return data['data'];
+        }
+      }
+
+      print('❌ Failed to fetch dashboard status: ${response.statusCode}');
+      return null;
+    } catch (e) {
+      print('❌ Exception fetching dashboard status: $e');
+      return null;
     }
   }
 }

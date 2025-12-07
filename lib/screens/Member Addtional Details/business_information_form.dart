@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'financial_compliance_form.dart';
 import '../../services/api_service.dart';
+import '../Application Status/application_submitted_screen.dart';
 
 class BusinessInformationForm extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -376,6 +377,55 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
                               _selectedGovtOrganizations,
                               _govtOrganizations,
                             ),
+
+                            // Aspirant Summary when Doing Business = No
+                            if (_doingBusiness == false) ...[
+                              const SizedBox(height: 24),
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.blue.shade200,
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.school,
+                                          color: Colors.blue.shade700,
+                                          size: 24,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            'Registering as Aspirant',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.blue.shade900,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'You are registering as an Aspirant (Student / Non-business member). Steps 3 and 4 are not required.',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey.shade700,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -410,23 +460,61 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
                           Expanded(
                             child: SizedBox(
                               height: 50,
-                              child: ElevatedButton(
-                                onPressed: _proceedToNext,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Next >',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
+                              child: _doingBusiness == false
+                                  ? ElevatedButton(
+                                      onPressed: _submitAspirantApplication,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color.fromARGB(
+                                          255,
+                                          6,
+                                          139,
+                                          227,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                        ),
+                                      ),
+                                      child: const FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          '✓ Submit',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : ElevatedButton(
+                                      onPressed: _proceedToNext,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color.fromARGB(
+                                          255,
+                                          6,
+                                          139,
+                                          227,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Next >',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
                             ),
                           ),
                         ],
@@ -638,6 +726,113 @@ class _BusinessInformationFormState extends State<BusinessInformationForm> {
         const SizedBox(height: 16),
       ],
     );
+  }
+
+  // Submit application for Aspirants (Doing Business = No)
+  Future<void> _submitAspirantApplication() async {
+    try {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // Get member ID
+      final memberId =
+          widget.userData['memberId'] ??
+          widget.userData['id'] ??
+          widget.userData['_id'];
+
+      if (memberId == null) {
+        throw Exception('Member ID not found');
+      }
+
+      // Prepare aspirant application payload
+      final payload = {
+        'userId': memberId,
+        'fullName': widget.userData['fullName'] ?? widget.userData['name'],
+        'email': widget.userData['email'],
+        'phone': widget.userData['phoneNumber'] ?? widget.userData['mobile'],
+        'state': widget.userData['state'],
+        'district': widget.userData['district'],
+        'block': widget.userData['block'],
+        'formData': {
+          'memberType': 'ASPIRANT',
+          'doingBusiness': false,
+          'memberOfOtherChamber': _memberOfOtherChamber,
+          'otherChamber': _otherChamberController.text,
+          'registeredWithGovtOrganization': _selectedGovtOrganizations.toList(),
+          'gender': widget.userData['gender'],
+          'dateOfBirth': widget.userData['dateOfBirth'],
+          'addressLine1': widget.userData['addressLine1'],
+          'addressLine2': widget.userData['addressLine2'],
+          'city': widget.userData['city'],
+          'pincode': widget.userData['pincode'],
+        },
+      };
+
+      // Call aspirant submission API
+      final result = await ApiService.submitAspirantApplication(payload);
+
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading
+
+      if (result['success']) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Application submitted successfully as Aspirant!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        // Prepare userData for application submitted screen
+        final updatedUserData = Map<String, dynamic>.from(widget.userData);
+        updatedUserData['memberType'] = 'ASPIRANT';
+        updatedUserData['applicationSubmitted'] = true;
+
+        // Navigate to application submitted screen
+        await Future.delayed(const Duration(seconds: 1));
+        if (!mounted) return;
+
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (context) =>
+                ApplicationSubmittedScreen(userData: updatedUserData),
+          ),
+          (route) => false,
+        );
+      } else {
+        throw Exception(result['error'] ?? 'Failed to submit application');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Error: ${e.toString().replaceAll('Exception: ', '')}',
+                  softWrap: true,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _proceedToNext() async {

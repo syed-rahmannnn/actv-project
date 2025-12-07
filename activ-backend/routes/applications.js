@@ -46,6 +46,8 @@ module.exports = (mongooseConnection) => {
     try {
       const { userId, fullName, email, phone, state, district, block, formData } = req.body;
 
+      console.log('📋 Application submission received:', { userId, email, memberType: formData?.memberType });
+
       // Validate required fields
       if (!userId || !fullName || !email || !phone || !state || !district || !block || !formData) {
         return res.status(400).json({
@@ -54,57 +56,65 @@ module.exports = (mongooseConnection) => {
         });
       }
 
+      // Check if this is an Aspirant application
+      const isAspirant = formData.memberType === 'ASPIRANT' || formData.doingBusiness === false;
+
       // Normalize input
       const norm = (s) => (typeof s === 'string' ? s.trim() : s);
       const S = norm(state);
       const D = norm(district);
       const B = norm(block);
 
-      // helpers
-      const escapeRx = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const rx = (v) => new RegExp(`^${escapeRx(norm(v))}$`, 'i');
+      let blockAdmin, districtAdmin, stateAdmin;
 
-      // Prefer *_lc fields when present (new seeder will add these)
-      const blockAdmin = await BlockAdmin.findOne({
-        $or: [
-          { "meta.stateLc": S.toLowerCase(), "meta.districtLc": D.toLowerCase(), "meta.blockLc": B.toLowerCase() },
-          { "meta.state": rx(S), "meta.district": rx(D), "meta.block": rx(B) }
-        ],
-        active: true
-      });
+      // Only find admins if NOT an Aspirant (Aspirants don't need admin approval)
+      if (!isAspirant) {
+        // helpers
+        const escapeRx = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const rx = (v) => new RegExp(`^${escapeRx(norm(v))}$`, 'i');
 
-      const districtAdmin = await DistrictAdmin.findOne({
-        $or: [
-          { "meta.stateLc": S.toLowerCase(), "meta.districtLc": D.toLowerCase() },
-          { "meta.state": rx(S), "meta.district": rx(D) }
-        ],
-        active: true
-      });
-
-      const stateAdmin = await StateAdmin.findOne({
-        $or: [
-          { "meta.stateLc": S.toLowerCase() },
-          { "meta.state": rx(S) }
-        ],
-        active: true
-      });
-
-      if (!blockAdmin || !districtAdmin || !stateAdmin) {
-        return res.status(404).json({
-          success: false,
-          message: "No matching admins found for this location",
-          details: {
-            blockAdminFound: !!blockAdmin,
-            districtAdminFound: !!districtAdmin,
-            stateAdminFound: !!stateAdmin
-          }
+        // Prefer *_lc fields when present (new seeder will add these)
+        blockAdmin = await BlockAdmin.findOne({
+          $or: [
+            { "meta.stateLc": S.toLowerCase(), "meta.districtLc": D.toLowerCase(), "meta.blockLc": B.toLowerCase() },
+            { "meta.state": rx(S), "meta.district": rx(D), "meta.block": rx(B) }
+          ],
+          active: true
         });
+
+        districtAdmin = await DistrictAdmin.findOne({
+          $or: [
+            { "meta.stateLc": S.toLowerCase(), "meta.districtLc": D.toLowerCase() },
+            { "meta.state": rx(S), "meta.district": rx(D) }
+          ],
+          active: true
+        });
+
+        stateAdmin = await StateAdmin.findOne({
+          $or: [
+            { "meta.stateLc": S.toLowerCase() },
+            { "meta.state": rx(S) }
+          ],
+          active: true
+        });
+
+        if (!blockAdmin || !districtAdmin || !stateAdmin) {
+          return res.status(404).json({
+            success: false,
+            message: "No matching admins found for this location",
+            details: {
+              blockAdminFound: !!blockAdmin,
+              districtAdminFound: !!districtAdmin,
+              stateAdminFound: !!stateAdmin
+            }
+          });
+        }
       }
 
       // Check if user already has a pending application
       const existingApp = await Application.findOne({
         userId,
-        status: { $in: ["Pending-Block", "Pending-District", "Pending-State"] }
+        status: { $in: ["Pending-Block", "Pending-District", "Pending-State", "PENDING"] }
       });
 
       if (existingApp) {
@@ -115,7 +125,8 @@ module.exports = (mongooseConnection) => {
         });
       }
 
-      const newApp = await Application.create({
+      // Create application with conditional admin assignment
+      const appData = {
         userId,
         fullName,
         email,
@@ -124,20 +135,43 @@ module.exports = (mongooseConnection) => {
         district: D,
         block: B,
         formData,
-        assignedBlockAdmin: blockAdmin._id,
-        assignedDistrictAdmin: districtAdmin._id,
-        assignedStateAdmin: stateAdmin._id,
-        status: "Pending-Block",
+        status: isAspirant ? "PENDING" : "Pending-Block",
+      };
+
+      // Only add admin fields if not an Aspirant
+      if (!isAspirant) {
+        appData.assignedBlockAdmin = blockAdmin._id;
+        appData.assignedDistrictAdmin = districtAdmin._id;
+        appData.assignedStateAdmin = stateAdmin._id;
+      }
+
+      const newApp = await Application.create(appData);
+
+      console.log('✅ Application created:', { 
+        id: newApp._id, 
+        status: newApp.status, 
+        memberType: formData.memberType 
       });
+
+      // Update Member document to mark profile as completed
+      const Member = require('../models/MemberAuth');
+      await Member.findByIdAndUpdate(userId, {
+        profileCompleted: true,
+        'registrationForm.profileCompleted': true
+      });
+
+      console.log('✅ Member profile marked as completed');
 
       res.status(201).json({ 
         success: true, 
-        message: "Application submitted successfully",
+        message: isAspirant 
+          ? "Aspirant application submitted successfully" 
+          : "Application submitted successfully",
         application: newApp 
       });
     } catch (err) {
-      console.error("Application submission error:", err);
-      res.status(500).json({ success: false, message: "Server Error" });
+      console.error("❌ Application submission error:", err);
+      res.status(500).json({ success: false, message: "Server Error", error: err.message });
     }
   });
 
@@ -161,14 +195,15 @@ module.exports = (mongooseConnection) => {
         });
       }
 
-      if (app.status !== "Pending-Block") {
+      // Allow review if status is PENDING (Aspirant) or Pending-Block (Business)
+      if (!['PENDING', 'Pending-Block'].includes(app.status)) {
         return res.status(400).json({
           success: false,
-          message: "Application is not in Pending-Block status"
+          message: `Application is not pending Block approval (current status: ${app.status})`
         });
       }
 
-      // Verify the admin is authorized to review this application
+      // Verify the admin is authorized
       const resolved = await resolveAdminObjectId('block', adminId, { BlockAdmin, DistrictAdmin, StateAdmin });
       if (!resolved) {
         console.error("resolveAdminObjectId failed for block admin:", adminId);
@@ -178,7 +213,8 @@ module.exports = (mongooseConnection) => {
         });
       }
       
-      if (app.assignedBlockAdmin.toString() !== resolved) {
+      // For business members (Pending-Block), check if assigned to this admin
+      if (app.status === 'Pending-Block' && app.assignedBlockAdmin && app.assignedBlockAdmin.toString() !== resolved) {
         return res.status(403).json({
           success: false,
           message: "You are not authorized to review this application"
@@ -186,9 +222,37 @@ module.exports = (mongooseConnection) => {
       }
 
       if (action === "approve") {
+        // Move application to next stage
         app.status = "Pending-District";
         app.blockApprovedAt = new Date();
         app.reviewedBy.blockAdmin = resolved;
+        
+        // Assign district and state admins if not already assigned
+        if (!app.assignedDistrictAdmin) {
+          // Find district admin for this location
+          const districtAdmin = await DistrictAdmin.findOne({
+            $or: [
+              { 'meta.district': new RegExp(`^${app.district}$`, 'i') },
+              { email: new RegExp(app.district.replace(/\s+/g, '[-_]?'), 'i') }
+            ]
+          }).lean();
+          if (districtAdmin) {
+            app.assignedDistrictAdmin = districtAdmin._id;
+          }
+        }
+        
+        if (!app.assignedStateAdmin) {
+          // Find state admin for this location
+          const stateAdmin = await StateAdmin.findOne({
+            $or: [
+              { 'meta.state': new RegExp(`^${app.state}$`, 'i') },
+              { email: new RegExp(app.state.replace(/\s+/g, '[-_]?'), 'i') }
+            ]
+          }).lean();
+          if (stateAdmin) {
+            app.assignedStateAdmin = stateAdmin._id;
+          }
+        }
       } else if (action === "reject") {
         app.status = "Rejected";
         app.rejectionReason = reason || "No reason provided";
@@ -201,6 +265,9 @@ module.exports = (mongooseConnection) => {
       }
 
       await app.save();
+      
+      console.log(`✅ Block Admin ${adminId} ${action}d application ${app._id}. New status: ${app.status}`);
+      
       res.json({ 
         success: true, 
         message: `Application ${action}d successfully`,
@@ -286,7 +353,9 @@ module.exports = (mongooseConnection) => {
   // ---------- GET APPLICATIONS FOR BLOCK ADMIN ----------
   router.get("/block/:blockAdminId", async (req, res) => {
     try {
+      console.log(`🔍 Block Admin endpoint called with ID: ${req.params.blockAdminId}`);
       const _id = await resolveAdminObjectId('block', req.params.blockAdminId, { BlockAdmin, DistrictAdmin, StateAdmin });
+      console.log(`✅ Resolved to MongoDB _id: ${_id}`);
       if (!_id) {
         console.error("resolveAdminObjectId failed for block admin:", req.params.blockAdminId);
         return res.status(400).json({ 
@@ -295,10 +364,78 @@ module.exports = (mongooseConnection) => {
         });
       }
 
-      // Get all applications for this block admin, not just pending ones
-      const apps = await Application.find({
-        assignedBlockAdmin: _id,
-      }).sort({ createdAt: -1 });
+      // Get the Block Admin's location details
+      const blockAdmin = await BlockAdmin.findById(_id).lean();
+      if (!blockAdmin) {
+        return res.status(404).json({
+          success: false,
+          message: "Block Admin not found"
+        });
+      }
+
+      // Extract location from admin's metadata or email
+      // Email format: block.{blockName}.{districtName}.{stateName}@activ.com
+      let adminBlock = null, adminDistrict = null, adminState = null;
+      
+      if (blockAdmin.meta && blockAdmin.meta.block) {
+        adminBlock = blockAdmin.meta.block;
+        adminDistrict = blockAdmin.meta.district;
+        adminState = blockAdmin.meta.state;
+      } else if (blockAdmin.email && blockAdmin.email.startsWith('block.')) {
+        const parts = blockAdmin.email.replace('@activ.com', '').split('.');
+        if (parts.length >= 4) {
+          adminBlock = parts[1].replace(/[-_]/g, ' ');
+          adminDistrict = parts[2].replace(/[-_]/g, ' ');
+          adminState = parts[3].replace(/[-_]/g, ' ');
+        }
+      }
+
+      // Query applications for this Block Admin's jurisdiction
+      // Show ONLY applications with:
+      // 1. Status = "PENDING" (Aspirants) or "Pending-Block" (Business members)
+      // 2. Matching block/district/state location
+      const query = {
+        status: { $in: ['PENDING', 'Pending-Block'] },
+        $and: []
+      };
+
+      // Add location filters if admin has location data
+      if (adminBlock) {
+        query.$and.push({ 
+          $or: [
+            { block: new RegExp(`^${adminBlock}$`, 'i') },
+            { block: new RegExp(adminBlock.replace(/\s+/g, ''), 'i') }
+          ]
+        });
+      }
+      if (adminDistrict) {
+        query.$and.push({ 
+          $or: [
+            { district: new RegExp(`^${adminDistrict}$`, 'i') },
+            { district: new RegExp(adminDistrict.replace(/\s+/g, ''), 'i') }
+          ]
+        });
+      }
+      if (adminState) {
+        query.$and.push({ 
+          $or: [
+            { state: new RegExp(`^${adminState}$`, 'i') },
+            { state: new RegExp(adminState.replace(/\s+/g, ''), 'i') }
+          ]
+        });
+      }
+
+      // If no location data, fall back to showing all PENDING/Pending-Block applications
+      if (query.$and.length === 0) {
+        delete query.$and;
+      }
+
+      console.log(`🔎 Block Admin location: ${adminBlock}, ${adminDistrict}, ${adminState}`);
+      console.log(`🔎 Executing query:`, JSON.stringify(query, null, 2));
+      
+      const apps = await Application.find(query).sort({ createdAt: -1 });
+
+      console.log(`📊 Block Admin ${req.params.blockAdminId}: Found ${apps.length} applications (includes Aspirants)`);
 
       // Enhance applications with member approval information and reviewedBy details
       const enhancedApps = await Promise.all(apps.map(async (app) => {
@@ -500,58 +637,104 @@ module.exports = (mongooseConnection) => {
         });
       }
 
-      // Fetch all applications for this district admin, regardless of status
-      const apps = await Application.find({
-        assignedDistrictAdmin: _id,
-      }).sort({ createdAt: -1 });
+      // Get the District Admin's location details
+      const districtAdmin = await DistrictAdmin.findById(_id).lean();
+      if (!districtAdmin) {
+        return res.status(404).json({
+          success: false,
+          message: "District Admin not found"
+        });
+      }
 
-      // Enhance applications similarly to the block admin route with reviewedBy and member info
-      const enhancedApps = await Promise.all(apps.map(async (app) => {
-        const appObj = app.toObject();
+      // Extract location from admin's metadata or email
+      let adminDistrict = null, adminState = null;
+      
+      if (districtAdmin.meta && districtAdmin.meta.district) {
+        adminDistrict = districtAdmin.meta.district;
+        adminState = districtAdmin.meta.state;
+      } else if (districtAdmin.email && districtAdmin.email.startsWith('district.')) {
+        const parts = districtAdmin.email.replace('@activ.com', '').split('.');
+        if (parts.length >= 3) {
+          adminDistrict = parts[1].replace(/[-_]/g, ' ');
+          adminState = parts[2].replace(/[-_]/g, ' ');
+        }
+      }
 
-        console.log(`[DISTRICT ENRICHMENT DEBUG] Processing app ${appObj._id}, current gender:`, appObj.gender);
+      // Query: ONLY show applications with status Pending-District that match this district
+      const query = {
+        status: 'Pending-District',
+        $and: []
+      };
+
+      if (adminDistrict) {
+        query.$and.push({ 
+          $or: [
+            { district: new RegExp(`^${adminDistrict}$`, 'i') },
+            { district: new RegExp(adminDistrict.replace(/\s+/g, ''), 'i') }
+          ]
+        });
+      }
+      if (adminState) {
+        query.$and.push({ 
+          $or: [
+            { state: new RegExp(`^${adminState}$`, 'i') },
+            { state: new RegExp(adminState.replace(/\s+/g, ''), 'i') }
+          ]
+        });
+      }
+
+      if (query.$and.length === 0) {
+        delete query.$and;
+      }
+
+      console.log(`🔎 District Admin location: ${adminDistrict}, ${adminState}`);
+      console.log(`🔎 Executing query:`, JSON.stringify(query, null, 2));
+
+      const apps = await Application.find(query).sort({ createdAt: -1 }).lean();
+
+      // Batch fetch member details for all applications at once
+      const emails = apps.map(app => app.email?.toLowerCase().trim()).filter(Boolean);
+      const userIds = apps.map(app => app.userId).filter(Boolean);
+      
+      // Single query for all member details
+      const memberDetailsMap = new Map();
+      if (emails.length > 0 || userIds.length > 0) {
+        const members = await MemberDetails.find({
+          $or: [
+            { email: { $in: emails } },
+            { userId: { $in: userIds } }
+          ]
+        }, 'email userId gender approvedBy approvedAt').lean();
         
-        // If gender is missing, try to fetch from MemberDetails
-        if (!appObj.gender) {
-          try {
-            const memberDetails = await MemberDetails.findOne({ 
-              email: app.email.toLowerCase().trim() 
-            }, 'gender');
-            
-            if (memberDetails && memberDetails.gender) {
-              console.log(`[DISTRICT ENRICHMENT DEBUG] Found gender in MemberDetails for ${app.email}:`, memberDetails.gender);
-              appObj.gender = memberDetails.gender;
-            } else {
-              console.log(`[DISTRICT ENRICHMENT DEBUG] No gender found in MemberDetails for ${app.email}`);
-            }
-          } catch (memberError) {
-            console.error(`[DISTRICT ENRICHMENT DEBUG] Error fetching gender from MemberDetails for ${app.email}:`, memberError);
+        members.forEach(member => {
+          if (member.email) memberDetailsMap.set(member.email.toLowerCase(), member);
+          if (member.userId) memberDetailsMap.set(member.userId, member);
+        });
+      }
+
+      // Enhance applications with batched data
+      const enhancedApps = apps.map(appObj => {
+        // Add gender if missing
+        if (!appObj.gender && appObj.email) {
+          const memberByEmail = memberDetailsMap.get(appObj.email.toLowerCase().trim());
+          if (memberByEmail && memberByEmail.gender) {
+            appObj.gender = memberByEmail.gender;
           }
-        } else {
-          console.log(`[DISTRICT ENRICHMENT DEBUG] App ${appObj._id} already has gender:`, appObj.gender);
         }
 
-        // ReviewedBy safety checks are handled in the GET /:appId route, but we add basic references here
-        // (Keep lightweight to avoid extra DB calls unless necessary)
-        // You can expand with DistrictAdmin/StateAdmin hydration if needed, matching the GET /:appId behavior.
-
-        // Attach simple member approval info if present
-        try {
-          const member = await MemberDetails.findOne({ userId: appObj.userId }).lean();
-          if (member && member.approvedBy) {
-            appObj.memberApprovedBy = {
-              blockAdmin: member.approvedBy.blockAdmin || null,
-              districtAdmin: member.approvedBy.districtAdmin || null,
-              stateAdmin: member.approvedBy.stateAdmin || null,
-            };
-            appObj.memberApprovedAt = member.approvedAt || null;
-          }
-        } catch (err) {
-          console.error('Error fetching member details for app', appObj._id, err);
+        // Add member approval info
+        const member = memberDetailsMap.get(appObj.userId);
+        if (member && member.approvedBy) {
+          appObj.memberApprovedBy = {
+            blockAdmin: member.approvedBy.blockAdmin || null,
+            districtAdmin: member.approvedBy.districtAdmin || null,
+            stateAdmin: member.approvedBy.stateAdmin || null,
+          };
+          appObj.memberApprovedAt = member.approvedAt || null;
         }
 
         return appObj;
-      }));
+      });
 
       res.json({ 
         success: true, 
@@ -576,74 +759,87 @@ module.exports = (mongooseConnection) => {
         });
       }
 
-      // Only fetch applications relevant to State Admin members page:
-      // - Pending at state level ("Pending-State")
-      // - Approved by state ("Approved")
-      // - Rejected ("Rejected")
-      // Excludes block-pending and district-pending applications.
-      const statusParam = (req.query.status || '').toString().trim();
-      let statusFilter;
-      if (statusParam) {
-        // Optional filtering by a single status when provided
-        const allowed = ["Pending-State", "Approved", "Rejected"];
-        if (allowed.includes(statusParam)) {
-          statusFilter = statusParam;
-        } else {
-          // If an unsupported status is requested, default to allowed set
-          statusFilter = { $in: allowed };
-        }
-      } else {
-        statusFilter = { $in: ["Pending-State", "Approved", "Rejected"] };
+      // Get the State Admin's location details
+      const stateAdmin = await StateAdmin.findById(_id).lean();
+      if (!stateAdmin) {
+        return res.status(404).json({
+          success: false,
+          message: "State Admin not found"
+        });
       }
 
-      const apps = await Application.find({
-        assignedStateAdmin: _id,
-        status: statusFilter,
-      }).sort({ createdAt: -1 });
+      // Extract location from admin's metadata or email
+      let adminState = null;
+      
+      if (stateAdmin.meta && stateAdmin.meta.state) {
+        adminState = stateAdmin.meta.state;
+      } else if (stateAdmin.email && stateAdmin.email.startsWith('state.')) {
+        const parts = stateAdmin.email.replace('@activ.com', '').split('.');
+        if (parts.length >= 2) {
+          adminState = parts[1].replace(/[-_]/g, ' ');
+        }
+      }
 
-      // Enhance applications similarly to the district admin route with member info
-      const enhancedApps = await Promise.all(apps.map(async (app) => {
-        const appObj = app.toObject();
+      // Query: ONLY show applications with status Pending-State that match this state
+      const query = {
+        status: 'Pending-State'
+      };
 
-        console.log(`[STATE ENRICHMENT DEBUG] Processing app ${appObj._id}, current gender:`, appObj.gender);
+      if (adminState) {
+        query.$or = [
+          { state: new RegExp(`^${adminState}$`, 'i') },
+          { state: new RegExp(adminState.replace(/\s+/g, ''), 'i') }
+        ];
+      }
+
+      console.log(`🔎 State Admin location: ${adminState}`);
+      console.log(`🔎 Executing query:`, JSON.stringify(query, null, 2));
+
+      const apps = await Application.find(query).sort({ createdAt: -1 }).lean();
+
+      // Batch fetch member details for all applications at once
+      const emails = apps.map(app => app.email?.toLowerCase().trim()).filter(Boolean);
+      const userIds = apps.map(app => app.userId).filter(Boolean);
+      
+      // Single query for all member details
+      const memberDetailsMap = new Map();
+      if (emails.length > 0 || userIds.length > 0) {
+        const members = await MemberDetails.find({
+          $or: [
+            { email: { $in: emails } },
+            { userId: { $in: userIds } }
+          ]
+        }, 'email userId gender approvedBy approvedAt').lean();
         
-        // If gender is missing, try to fetch from MemberDetails
-        if (!appObj.gender) {
-          try {
-            const memberDetails = await MemberDetails.findOne({ 
-              email: app.email.toLowerCase().trim() 
-            }, 'gender');
-            
-            if (memberDetails && memberDetails.gender) {
-              console.log(`[STATE ENRICHMENT DEBUG] Found gender in MemberDetails for ${app.email}:`, memberDetails.gender);
-              appObj.gender = memberDetails.gender;
-            } else {
-              console.log(`[STATE ENRICHMENT DEBUG] No gender found in MemberDetails for ${app.email}`);
-            }
-          } catch (memberError) {
-            console.error(`[STATE ENRICHMENT DEBUG] Error fetching gender from MemberDetails for ${app.email}:`, memberError);
+        members.forEach(member => {
+          if (member.email) memberDetailsMap.set(member.email.toLowerCase(), member);
+          if (member.userId) memberDetailsMap.set(member.userId, member);
+        });
+      }
+
+      // Enhance applications with batched data
+      const enhancedApps = apps.map(appObj => {
+        // Add gender if missing
+        if (!appObj.gender && appObj.email) {
+          const memberByEmail = memberDetailsMap.get(appObj.email.toLowerCase().trim());
+          if (memberByEmail && memberByEmail.gender) {
+            appObj.gender = memberByEmail.gender;
           }
-        } else {
-          console.log(`[STATE ENRICHMENT DEBUG] App ${appObj._id} already has gender:`, appObj.gender);
         }
 
-        // Attach simple member approval info if present
-        try {
-          const member = await MemberDetails.findOne({ userId: appObj.userId }).lean();
-          if (member && member.approvedBy) {
-            appObj.memberApprovedBy = {
-              blockAdmin: member.approvedBy.blockAdmin || null,
-              districtAdmin: member.approvedBy.districtAdmin || null,
-              stateAdmin: member.approvedBy.stateAdmin || null,
-            };
-            appObj.memberApprovedAt = member.approvedAt || null;
-          }
-        } catch (err) {
-          console.error('Error fetching member details for app', appObj._id, err);
+        // Add member approval info
+        const member = memberDetailsMap.get(appObj.userId);
+        if (member && member.approvedBy) {
+          appObj.memberApprovedBy = {
+            blockAdmin: member.approvedBy.blockAdmin || null,
+            districtAdmin: member.approvedBy.districtAdmin || null,
+            stateAdmin: member.approvedBy.stateAdmin || null,
+          };
+          appObj.memberApprovedAt = member.approvedAt || null;
         }
 
         return appObj;
-      }));
+      });
 
       res.json({ success: true, applications: enhancedApps, count: enhancedApps.length });
     } catch (err) {
@@ -783,7 +979,6 @@ module.exports = (mongooseConnection) => {
   router.get("/by-admin/:adminId", async (req, res) => {
     try {
       const { role, status } = req.query;
-      let adminObjId = await resolveAdminObjectId(role, req.params.adminId, { BlockAdmin, DistrictAdmin, StateAdmin });
       
       if (!role || !status) {
         return res.status(400).json({ 
@@ -791,6 +986,8 @@ module.exports = (mongooseConnection) => {
           message: "Role and status query parameters are required" 
         });
       }
+
+      let adminObjId = await resolveAdminObjectId(role, req.params.adminId, { BlockAdmin, DistrictAdmin, StateAdmin });
       
       if (!adminObjId) {
         console.error("resolveAdminObjectId failed for:", role, req.params.adminId);
@@ -800,27 +997,319 @@ module.exports = (mongooseConnection) => {
         });
       }
 
-      const q = {};
-      if (role === 'block') q.assignedBlockAdmin = adminObjId;
-      if (role === 'district') q.assignedDistrictAdmin = adminObjId;
-      if (role === 'state') q.assignedStateAdmin = adminObjId;
-
-      if (status === 'Approved') {
-        if (role === 'block') q.status = { $in: ['Pending-District','Pending-State','Approved'] }, q['reviewedBy.blockAdmin'] = { $exists:true };
-        if (role === 'district') q.status = { $in: ['Pending-State','Approved'] }, q['reviewedBy.districtAdmin'] = { $exists:true };
-        if (role === 'state') q.status = 'Approved', q['reviewedBy.stateAdmin'] = { $exists:true };
-      } else if (status === 'Rejected') {
-        q.status = 'Rejected';
-        if (role === 'block') q['reviewedBy.blockAdmin'] = { $exists:true };
-        if (role === 'district') q['reviewedBy.districtAdmin'] = { $exists:true };
-        if (role === 'state') q['reviewedBy.stateAdmin'] = { $exists:true };
+      // Get admin location for filtering
+      let Admin, adminDoc, locationQuery = {};
+      if (role === 'block') {
+        Admin = BlockAdmin;
+        adminDoc = await Admin.findById(adminObjId).lean();
+        if (adminDoc) {
+          const { meta, email } = adminDoc;
+          let block, district, state;
+          
+          if (meta && meta.block) {
+            block = meta.block;
+            district = meta.district;
+            state = meta.state;
+          } else if (email && email.startsWith('block.')) {
+            const parts = email.replace('@activ.com', '').split('.');
+            if (parts.length >= 4) {
+              block = parts[1].replace(/[-_]/g, ' ');
+              district = parts[2].replace(/[-_]/g, ' ');
+              state = parts[3].replace(/[-_]/g, ' ');
+            }
+          }
+          
+          if (block && district && state) {
+            locationQuery = {
+              $and: [
+                { $or: [
+                  { block: new RegExp(`^${block}$`, 'i') },
+                  { block: new RegExp(block.replace(/\s+/g, ''), 'i') }
+                ]},
+                { $or: [
+                  { district: new RegExp(`^${district}$`, 'i') },
+                  { district: new RegExp(district.replace(/\s+/g, ''), 'i') }
+                ]},
+                { $or: [
+                  { state: new RegExp(`^${state}$`, 'i') },
+                  { state: new RegExp(state.replace(/\s+/g, ''), 'i') }
+                ]}
+              ]
+            };
+          }
+        }
+      } else if (role === 'district') {
+        Admin = DistrictAdmin;
+        adminDoc = await Admin.findById(adminObjId).lean();
+        if (adminDoc) {
+          const { meta, email } = adminDoc;
+          let district, state;
+          
+          if (meta && meta.district) {
+            district = meta.district;
+            state = meta.state;
+          } else if (email && email.startsWith('district.')) {
+            const parts = email.replace('@activ.com', '').split('.');
+            if (parts.length >= 3) {
+              district = parts[1].replace(/[-_]/g, ' ');
+              state = parts[2].replace(/[-_]/g, ' ');
+            }
+          }
+          
+          if (district && state) {
+            locationQuery = {
+              $and: [
+                { $or: [
+                  { district: new RegExp(`^${district}$`, 'i') },
+                  { district: new RegExp(district.replace(/\s+/g, ''), 'i') }
+                ]},
+                { $or: [
+                  { state: new RegExp(`^${state}$`, 'i') },
+                  { state: new RegExp(state.replace(/\s+/g, ''), 'i') }
+                ]}
+              ]
+            };
+          }
+        }
+      } else if (role === 'state') {
+        Admin = StateAdmin;
+        adminDoc = await Admin.findById(adminObjId).lean();
+        if (adminDoc) {
+          const { meta, email } = adminDoc;
+          let state;
+          
+          if (meta && meta.state) {
+            state = meta.state;
+          } else if (email && email.startsWith('state.')) {
+            const parts = email.replace('@activ.com', '').split('.');
+            if (parts.length >= 2) {
+              state = parts[1].replace(/[-_]/g, ' ');
+            }
+          }
+          
+          if (state) {
+            locationQuery = {
+              $or: [
+                { state: new RegExp(`^${state}$`, 'i') },
+                { state: new RegExp(state.replace(/\s+/g, ''), 'i') }
+              ]
+            };
+          }
+        }
       }
 
+      // Build query based on status
+      const q = { ...locationQuery };
+      
+      if (status === 'Approved') {
+        if (role === 'block') {
+          q.status = { $in: ['Pending-District', 'Pending-State', 'Approved'] };
+          q['reviewedBy.blockAdmin'] = { $exists: true };
+        } else if (role === 'district') {
+          q.status = { $in: ['Pending-State', 'Approved'] };
+          q['reviewedBy.districtAdmin'] = { $exists: true };
+        } else if (role === 'state') {
+          q.status = 'Approved';
+          q['reviewedBy.stateAdmin'] = { $exists: true };
+        }
+      } else if (status === 'Rejected') {
+        q.status = 'Rejected';
+        if (role === 'block') q['reviewedBy.blockAdmin'] = { $exists: true };
+        else if (role === 'district') q['reviewedBy.districtAdmin'] = { $exists: true };
+        else if (role === 'state') q['reviewedBy.stateAdmin'] = { $exists: true };
+      }
+
+      console.log(`📊 Count query for ${role} admin ${status}:`, JSON.stringify(q, null, 2));
       const count = await Application.countDocuments(q);
-      res.json({ success:true, count, role, status });
+      
+      res.json({ success: true, count, role, status });
     } catch (err) {
       console.error("Get applications by admin error:", err);
-      res.status(500).json({ success:false, message:"Server error" });
+      res.status(500).json({ success: false, message: "Server error" });
+    }
+  });
+
+  // ---------- GET APPROVED/REJECTED APPLICATIONS LIST ----------
+  router.get("/list-by-admin/:adminId", async (req, res) => {
+    try {
+      const { role, status } = req.query;
+      
+      if (!role || !status) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Role and status query parameters are required" 
+        });
+      }
+
+      let adminObjId = await resolveAdminObjectId(role, req.params.adminId, { BlockAdmin, DistrictAdmin, StateAdmin });
+      
+      if (!adminObjId) {
+        console.error("resolveAdminObjectId failed for:", role, req.params.adminId);
+        return res.status(400).json({ 
+          success: false, 
+          message: `Admin not found for role '${role}' and ID '${req.params.adminId}'` 
+        });
+      }
+
+      // Get admin location for filtering
+      let Admin, adminDoc, locationQuery = {};
+      if (role === 'block') {
+        Admin = BlockAdmin;
+        adminDoc = await Admin.findById(adminObjId).lean();
+        if (adminDoc) {
+          const { meta, email } = adminDoc;
+          let block, district, state;
+          
+          if (meta && meta.block) {
+            block = meta.block;
+            district = meta.district;
+            state = meta.state;
+          } else if (email && email.startsWith('block.')) {
+            const parts = email.replace('@activ.com', '').split('.');
+            if (parts.length >= 4) {
+              block = parts[1].replace(/[-_]/g, ' ');
+              district = parts[2].replace(/[-_]/g, ' ');
+              state = parts[3].replace(/[-_]/g, ' ');
+            }
+          }
+          
+          if (block && district && state) {
+            locationQuery = {
+              $and: [
+                { $or: [
+                  { block: new RegExp(`^${block}$`, 'i') },
+                  { block: new RegExp(block.replace(/\s+/g, ''), 'i') }
+                ]},
+                { $or: [
+                  { district: new RegExp(`^${district}$`, 'i') },
+                  { district: new RegExp(district.replace(/\s+/g, ''), 'i') }
+                ]},
+                { $or: [
+                  { state: new RegExp(`^${state}$`, 'i') },
+                  { state: new RegExp(state.replace(/\s+/g, ''), 'i') }
+                ]}
+              ]
+            };
+          }
+        }
+      } else if (role === 'district') {
+        Admin = DistrictAdmin;
+        adminDoc = await Admin.findById(adminObjId).lean();
+        if (adminDoc) {
+          const { meta, email } = adminDoc;
+          let district, state;
+          
+          if (meta && meta.district) {
+            district = meta.district;
+            state = meta.state;
+          } else if (email && email.startsWith('district.')) {
+            const parts = email.replace('@activ.com', '').split('.');
+            if (parts.length >= 3) {
+              district = parts[1].replace(/[-_]/g, ' ');
+              state = parts[2].replace(/[-_]/g, ' ');
+            }
+          }
+          
+          if (district && state) {
+            locationQuery = {
+              $and: [
+                { $or: [
+                  { district: new RegExp(`^${district}$`, 'i') },
+                  { district: new RegExp(district.replace(/\s+/g, ''), 'i') }
+                ]},
+                { $or: [
+                  { state: new RegExp(`^${state}$`, 'i') },
+                  { state: new RegExp(state.replace(/\s+/g, ''), 'i') }
+                ]}
+              ]
+            };
+          }
+        }
+      } else if (role === 'state') {
+        Admin = StateAdmin;
+        adminDoc = await Admin.findById(adminObjId).lean();
+        if (adminDoc) {
+          const { meta, email } = adminDoc;
+          let state;
+          
+          if (meta && meta.state) {
+            state = meta.state;
+          } else if (email && email.startsWith('state.')) {
+            const parts = email.replace('@activ.com', '').split('.');
+            if (parts.length >= 2) {
+              state = parts[1].replace(/[-_]/g, ' ');
+            }
+          }
+          
+          if (state) {
+            locationQuery = {
+              $or: [
+                { state: new RegExp(`^${state}$`, 'i') },
+                { state: new RegExp(state.replace(/\s+/g, ''), 'i') }
+              ]
+            };
+          }
+        }
+      }
+
+      // Build query based on status
+      const q = { ...locationQuery };
+      
+      if (status === 'Approved') {
+        if (role === 'block') {
+          q.status = { $in: ['Pending-District', 'Pending-State', 'Approved'] };
+          q['reviewedBy.blockAdmin'] = { $exists: true };
+        } else if (role === 'district') {
+          q.status = { $in: ['Pending-State', 'Approved'] };
+          q['reviewedBy.districtAdmin'] = { $exists: true };
+        } else if (role === 'state') {
+          q.status = 'Approved';
+          q['reviewedBy.stateAdmin'] = { $exists: true };
+        }
+      } else if (status === 'Rejected') {
+        q.status = 'Rejected';
+        if (role === 'block') q['reviewedBy.blockAdmin'] = { $exists: true };
+        else if (role === 'district') q['reviewedBy.districtAdmin'] = { $exists: true };
+        else if (role === 'state') q['reviewedBy.stateAdmin'] = { $exists: true };
+      }
+
+      console.log(`📋 List query for ${role} admin ${status}:`, JSON.stringify(q, null, 2));
+      const apps = await Application.find(q).sort({ createdAt: -1 }).lean();
+
+      // Batch fetch gender from MemberDetails if missing
+      const emailsNeedingGender = apps
+        .filter(app => !app.gender && app.email)
+        .map(app => app.email.toLowerCase().trim());
+      
+      let genderMap = new Map();
+      if (emailsNeedingGender.length > 0) {
+        const memberDetails = await MemberDetails.find(
+          { email: { $in: emailsNeedingGender } },
+          'email gender'
+        ).lean();
+        
+        memberDetails.forEach(member => {
+          if (member.email) {
+            genderMap.set(member.email.toLowerCase(), member.gender);
+          }
+        });
+      }
+
+      // Enhance apps with gender data
+      const enhancedApps = apps.map(appObj => {
+        if (!appObj.gender && appObj.email) {
+          const gender = genderMap.get(appObj.email.toLowerCase().trim());
+          if (gender) {
+            appObj.gender = gender;
+          }
+        }
+        return appObj;
+      });
+      
+      res.json(enhancedApps);
+    } catch (err) {
+      console.error("Get applications list by admin error:", err);
+      res.status(500).json({ success: false, message: "Server error" });
     }
   });
 

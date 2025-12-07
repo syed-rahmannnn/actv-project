@@ -34,21 +34,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String? businessId;
   String? accountStatus;
 
+  // Dashboard status state (for dynamic card display)
+  int _profileCompletion = 0;
+  bool _hasPendingApplication = false;
+  String _applicationStatus = 'NONE'; // NONE, PENDING, Pending-Block, etc.
+  bool _isDashboardLoading = true;
+
   bool _hasLoadedOnce = false;
 
   @override
   void initState() {
     super.initState();
     _loadMemberData();
+    _loadDashboard(); // Load dashboard status on init
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Reload business account when returning to this screen
+    // Reload business account and dashboard status when returning to this screen
     if (_hasLoadedOnce) {
-      print('🔄 Dashboard became active again, reloading business account...');
+      print('🔄 Dashboard became active again, reloading data...');
       _loadBusinessAccount();
+      _loadDashboard(); // Refresh dashboard status when returning
     } else {
       _hasLoadedOnce = true;
     }
@@ -143,6 +151,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _loadBusinessAccount().catchError((e) {
         print('⚠️ Error loading business account: $e');
       });
+    }
+  }
+
+  // Load dashboard status from API
+  Future<void> _loadDashboard() async {
+    try {
+      print('🔄 Loading dashboard status...');
+      final status = await MemberService.getDashboardStatus();
+
+      if (status != null && mounted) {
+        setState(() {
+          _profileCompletion = status['profileCompletion'] ?? 0;
+          _hasPendingApplication = status['hasPendingApplication'] ?? false;
+          _applicationStatus = status['applicationStatus'] ?? 'NONE';
+          _isDashboardLoading = false;
+        });
+
+        print('✅ Dashboard status loaded:');
+        print('   - Profile completion: $_profileCompletion%');
+        print('   - Has application: $_hasPendingApplication');
+        print('   - Application status: $_applicationStatus');
+      } else {
+        if (mounted) {
+          setState(() {
+            _isDashboardLoading = false;
+          });
+        }
+        print('⚠️ Could not load dashboard status');
+      }
+    } catch (e) {
+      print('❌ Error loading dashboard status: $e');
+      if (mounted) {
+        setState(() {
+          _isDashboardLoading = false;
+        });
+      }
     }
   }
 
@@ -361,8 +405,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                   const SizedBox(height: 20),
 
-                  // 🔹 Dynamic Card based on registration progress
-                  _buildProgressCard(context, widget.userData),
+                  // 🔹 Dynamic Card based on application status (fetched from backend)
+                  _isDashboardLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : _buildProfileCard(context),
 
                   const SizedBox(height: 16),
 
@@ -819,88 +865,202 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return ((filledFields / totalFields) * 100).round();
   }
 
-  Widget _buildProgressCard(
-    BuildContext context,
-    Map<String, dynamic> userData,
-  ) {
-    if (_isFullProfileCompleted(userData)) {
-      // Show Image 2 state - Profile Status card
-      return _buildStatusCard(context, userData);
-    } else if (_isBasicRegistrationCompleted(userData)) {
-      // Show Image 1 state - Complete Profile card
-      return _buildCompletionCard(context, userData);
-    } else {
-      // Fallback to completion card for incomplete registration
-      return _buildCompletionCard(context, userData);
-    }
-  }
-
-  Widget _buildStatusCard(BuildContext context, Map<String, dynamic> userData) {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Profile Status',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+  // 🔹 Build Profile Card - shows "Complete Profile" OR "View Status" based on application status
+  Widget _buildProfileCard(BuildContext context) {
+    if (_applicationStatus == 'NONE') {
+      // No application submitted - show "Complete Your Profile"
+      return Card(
+        elevation: 2,
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Complete Your Profile',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF3CD),
-                      borderRadius: BorderRadius.circular(20),
+                    const SizedBox(height: 8),
+                    Text(
+                      '$_profileCompletion% completed',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
                     ),
-                    child: const Text(
-                      'In review',
-                      style: TextStyle(color: Color(0xFF856404), fontSize: 12),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Unlock all features by completing your profile.',
+                      style: TextStyle(fontSize: 12, color: Colors.black54),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Your profile is under review. Tap to see status updates',
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ApplicationStatusScreen(),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                PersonalDetailsForm(userData: widget.userData),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0D6EFD),
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(120, 40),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'Complete Profile',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
-                    child: const Text('View Status'),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            SizedBox(
-              height: 72,
-              width: 96,
-              child: Image.asset('assets/images/Box2.png', fit: BoxFit.contain),
-            ),
-          ],
+              const SizedBox(width: 16),
+              const Icon(Icons.search, size: 60, color: Color(0xFF00BCD4)),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      // Application exists - show "Your Application Status"
+      // Determine status label and color
+      String statusLabel;
+      Color statusColor;
+      Color statusBgColor;
+
+      switch (_applicationStatus) {
+        case 'PENDING':
+          statusLabel = 'Pending';
+          statusColor = const Color(0xFF856404);
+          statusBgColor = const Color(0xFFFFF3CD);
+          break;
+        case 'Pending-Block':
+          statusLabel = 'Block Review';
+          statusColor = const Color(0xFF856404);
+          statusBgColor = const Color(0xFFFFF3CD);
+          break;
+        case 'Pending-District':
+          statusLabel = 'District Review';
+          statusColor = const Color(0xFF856404);
+          statusBgColor = const Color(0xFFFFF3CD);
+          break;
+        case 'Pending-State':
+          statusLabel = 'State Review';
+          statusColor = const Color(0xFF856404);
+          statusBgColor = const Color(0xFFFFF3CD);
+          break;
+        case 'Approved':
+          statusLabel = 'Approved';
+          statusColor = const Color(0xFF155724);
+          statusBgColor = const Color(0xFFD4EDDA);
+          break;
+        case 'Rejected':
+          statusLabel = 'Rejected';
+          statusColor = const Color(0xFF721C24);
+          statusBgColor = const Color(0xFFF8D7DA);
+          break;
+        default:
+          statusLabel = 'In Review';
+          statusColor = const Color(0xFF856404);
+          statusBgColor = const Color(0xFFFFF3CD);
+      }
+
+      return Card(
+        elevation: 2,
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Your Application Status',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusBgColor,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        statusLabel,
+                        style: TextStyle(color: statusColor, fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Your application is under review. Tap to see status updates.',
+                      style: TextStyle(fontSize: 12, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () async {
+                        // Navigate to Application Status screen
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const ApplicationStatusScreen(),
+                          ),
+                        );
+                        // Refresh dashboard when returning
+                        _loadDashboard();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text(
+                        'View Status',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Icon(
+                Icons.pending_actions,
+                size: 60,
+                color: Color(0xFFFFA726),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 }

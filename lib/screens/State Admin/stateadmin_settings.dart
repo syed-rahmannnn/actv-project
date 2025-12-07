@@ -11,9 +11,7 @@ class AuthProvider {
   String? token;
   AdminData? currentAdmin;
 
-  AuthProvider() {
-    _loadAuthData();
-  }
+  AuthProvider(); // Remove automatic loading from constructor
 
   Future<void> _loadAuthData() async {
     final prefs = await SharedPreferences.getInstance();
@@ -118,7 +116,7 @@ class _StateAdminSettingsPageState extends State<StateAdminSettingsPage> {
   bool active = true;
 
   final _config = AppConfig();
-  final _auth = AuthProvider();
+  AuthProvider? _auth; // Make it nullable and initialize only when needed
 
   @override
   void initState() {
@@ -156,9 +154,12 @@ class _StateAdminSettingsPageState extends State<StateAdminSettingsPage> {
   }
 
   Future<void> _initFromAuth() async {
-    await _auth._loadAuthData();
-    if (_auth.currentAdmin != null) {
-      final a = _auth.currentAdmin!;
+    // Initialize AuthProvider only when needed and load data once
+    _auth = AuthProvider();
+    await _auth!._loadAuthData();
+
+    if (_auth!.currentAdmin != null) {
+      final a = _auth!.currentAdmin!;
       adminId = a.adminId;
 
       email = a.email.isNotEmpty ? a.email : '';
@@ -169,7 +170,7 @@ class _StateAdminSettingsPageState extends State<StateAdminSettingsPage> {
           : (a.meta.stateName.isNotEmpty ? a.meta.stateName : '');
 
       active = a.active;
-      _svc = ApplicationService(_config.apiBaseUrl, token: _auth.token);
+      _svc = ApplicationService(_config.apiBaseUrl, token: _auth!.token);
       await _loadFromParams();
     } else {
       try {

@@ -11,7 +11,7 @@ const applicationSchema = new mongoose.Schema({
   formData: { type: Object, required: true }, // all data submitted from declaration form
   status: {
     type: String,
-    enum: ["Pending-Block", "Pending-District", "Pending-State", "Approved", "Rejected"],
+    enum: ["PENDING", "Pending-Block", "Pending-District", "Pending-State", "Approved", "Rejected"],
     default: "Pending-Block",
   },
   assignedBlockAdmin: {

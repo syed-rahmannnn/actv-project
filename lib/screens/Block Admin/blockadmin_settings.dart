@@ -162,15 +162,23 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
     setState(() => _loading = true);
 
     try {
-      // Compute counts client-side to match Approvals/Dashboard logic
-      final apps = await ApiService.getBlockAdminApplications(adminId);
-      final stats = _deriveStatsFromList(apps);
+      // Use the service to fetch stats properly
+      if (widget.token != null && widget.token!.isNotEmpty) {
+        _svc = ApplicationService(widget.apiBaseUrl!, token: widget.token!);
+        final stats = await _svc.getBlockStats(adminId);
 
-      if (!mounted) return;
-      setState(() {
-        _stats = stats;
-        _loading = false;
-      });
+        if (!mounted) return;
+        setState(() {
+          _stats = stats;
+          _loading = false;
+        });
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _stats = {'total': 0, 'pending': 0, 'approved': 0, 'rejected': 0};
+          _loading = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -420,9 +428,16 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
           'rejected': widget.statsOverride!['rejected'] ?? 0,
         };
       } else {
-        // Otherwise compute from the current block admin applications
-        final apps = await ApiService.getBlockAdminApplications(adminId);
-        stats = _deriveStatsFromList(apps);
+        // Fetch stats using the service that calls proper backend endpoints
+        if (_auth.token != null && _auth.token!.isNotEmpty) {
+          final svc = ApplicationService(
+            _config.apiBaseUrl,
+            token: _auth.token!,
+          );
+          stats = await svc.getBlockStats(adminId);
+        } else {
+          stats = {'total': 0, 'pending': 0, 'approved': 0, 'rejected': 0};
+        }
       }
 
       // Validate stats structure

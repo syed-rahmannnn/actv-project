@@ -11,9 +11,7 @@ class AuthProvider {
   String? token;
   AdminData? currentAdmin;
 
-  AuthProvider() {
-    _loadAuthData();
-  }
+  AuthProvider(); // Remove automatic loading from constructor
 
   Future<void> _loadAuthData() async {
     final prefs = await SharedPreferences.getInstance();
@@ -119,7 +117,7 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
   bool active = true;
 
   final _config = AppConfig();
-  final _auth = AuthProvider();
+  AuthProvider? _auth; // Make it nullable and initialize only when needed
 
   @override
   void initState() {
@@ -159,9 +157,12 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
   }
 
   Future<void> _initFromAuth() async {
-    await _auth._loadAuthData();
-    if (_auth.currentAdmin != null) {
-      final a = _auth.currentAdmin!;
+    // Initialize AuthProvider only when needed and load data once
+    _auth = AuthProvider();
+    await _auth!._loadAuthData();
+
+    if (_auth!.currentAdmin != null) {
+      final a = _auth!.currentAdmin!;
       adminId = a.adminId;
 
       // Enhanced email handling with fallback
@@ -171,7 +172,7 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
       districtName = a.meta.district.isNotEmpty ? a.meta.district : '';
 
       active = a.active;
-      _svc = ApplicationService(_config.apiBaseUrl, token: _auth.token);
+      _svc = ApplicationService(_config.apiBaseUrl, token: _auth!.token);
       await _loadFromParams();
     } else {
       // If no admin data is available, try to load from AuthService directly

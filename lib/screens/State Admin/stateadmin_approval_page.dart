@@ -8,11 +8,6 @@ import '../District Admin/districtadmin_dashboard.dart'
 
 enum ApprovalCategory { pending, approved, rejected, all }
 
-// Persist state admin approvals/rejections across navigation within app session
-class _StateApprovalMemory {
-  static final Map<String, Map<String, dynamic>> acted = {};
-}
-
 class StateAdminApprovalPage extends StatefulWidget {
   final String? apiBaseUrl;
   final String? stateAdminId;
@@ -39,47 +34,14 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
   bool _loading = true;
   ApprovalCategory _tab = ApprovalCategory.pending;
 
-  List<Map<String, dynamic>> _all = [];
+  List<Map<String, dynamic>> _pending = [];
+  List<Map<String, dynamic>> _approved = [];
+  List<Map<String, dynamic>> _rejected = [];
   late ApplicationService _svc;
   String? _inFlightId;
   final DateFormat _fmt = DateFormat('dd/MM/yyyy');
   String? _resolvedStateAdminId;
   String _resolvedStateName = '';
-
-  // --- Debug helpers ---
-  String _normStatus(Map<String, dynamic> a) {
-    final sRaw = (a['status'] ?? a['applicationStatus'] ?? '')
-        .toString()
-        .trim();
-    final sLower = sRaw.toLowerCase();
-    if (sLower.contains('pending-state')) return 'pending-state';
-    if (sRaw == 'Approved') return 'approved';
-    if (sLower.contains('rejected')) return 'rejected';
-    return sRaw.isEmpty ? 'unknown' : sLower;
-  }
-
-  Map<String, int> _bucketCounts(List<Map<String, dynamic>> list) {
-    final buckets = <String, int>{
-      'pending-state': 0,
-      'approved': 0,
-      'rejected': 0,
-      'unknown': 0,
-    };
-    for (final a in list) {
-      final b = _normStatus(a);
-      buckets[b] = (buckets[b] ?? 0) + 1;
-    }
-    return buckets;
-  }
-
-  void _logSummary(String where, {List<Map<String, dynamic>>? list}) {
-    final src = list ?? _all;
-    final buckets = _bucketCounts(src);
-    final ids = src.take(10).map((a) => a['_id']?.toString() ?? '').toList();
-    debugPrint(
-      '[StateAdminApproval] $where: total=${src.length} buckets=$buckets ids(sample)=$ids',
-    );
-  }
 
   @override
   void initState() {
@@ -94,9 +56,6 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
 
   Future<void> _load() async {
     if (mounted) setState(() => _loading = true);
-    debugPrint(
-      '[StateAdminApproval] _load() start: tab=$_tab props: stateAdminId=${widget.stateAdminId} token=${widget.token != null} apiBaseUrl=${widget.apiBaseUrl}',
-    );
     try {
       // Resolve admin context
       if (widget.stateAdminId?.isNotEmpty == true) {
@@ -110,104 +69,67 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
             '';
       }
 
-      debugPrint(
-        '[StateAdminApproval] resolved adminId=$_resolvedStateAdminId stateName=${_resolvedStateName.isNotEmpty ? _resolvedStateName : widget.stateName}',
-      );
-
       final stateId = (_resolvedStateAdminId ?? '').toString();
       if (stateId.isEmpty) {
         throw Exception('Missing state admin id');
       }
 
-      // Fetch applications for state admin (backend may return pending-only)
-      final apps = await _svc.getStateApplications(stateAdminId: stateId);
-      final fetched = List<Map<String, dynamic>>.from(
-        apps.map((e) => Map<String, dynamic>.from(e as Map)),
+      // Fetch pending applications (Pending-State status)
+      final pending = await _svc.getStateInbox(stateId);
+
+      // Fetch approved applications
+      final approved = await _svc.getStateApplicationsByStatus(
+        stateAdminId: stateId,
+        status: 'Approved',
       );
 
-      // Preserve locally approved/rejected items across reloads (backend often omits them)
-      final preserve = _all.where((a) {
-        final s = _normStatus(a);
-        return s == 'approved' || s == 'rejected';
-      }).toList();
+      // Fetch rejected applications
+      final rejected = await _svc.getStateApplicationsByStatus(
+        stateAdminId: stateId,
+        status: 'Rejected',
+      );
 
-      // Merge and dedupe by _id, favor fetched data for pending items
-      final byId = <String, Map<String, dynamic>>{};
-      for (final a in [...fetched, ...preserve]) {
-        final id = (a['_id']?.toString() ?? '').trim();
-        if (id.isEmpty) continue;
-        // If both exist, prefer the one with a non-pending terminal status
-        if (!byId.containsKey(id)) {
-          byId[id] = a;
-        } else {
-          final existing = byId[id]!;
-          final sNew = _normStatus(a);
-          final sOld = _normStatus(existing);
-          // Prefer approved/rejected over pending-state
-          if (sOld == 'pending-state' &&
-              (sNew == 'approved' || sNew == 'rejected')) {
-            byId[id] = a;
-          }
-        }
+      if (mounted) {
+        setState(() {
+          _pending = List<Map<String, dynamic>>.from(pending);
+          _approved = List<Map<String, dynamic>>.from(approved);
+          _rejected = List<Map<String, dynamic>>.from(rejected);
+        });
       }
-      // Merge with session cache (items approved/rejected earlier in this run)
-      final cached = _StateApprovalMemory.acted.values.toList();
-      for (final a in cached) {
-        final id = (a['_id']?.toString() ?? '').trim();
-        if (id.isEmpty) continue;
-        final s = _normStatus(a);
-        if (s == 'approved' || s == 'rejected') {
-          if (!byId.containsKey(id)) {
-            byId[id] = a;
-          } else {
-            final existing = byId[id]!;
-            final sOld = _normStatus(existing);
-            if (sOld == 'pending-state') byId[id] = a;
-          }
-        }
-      }
-      _all = byId.values.toList();
-      _logSummary('after _load fetch');
+
+      debugPrint(
+        '[SA_API] response 200 pending=${_pending.length} approved=${_approved.length} rejected=${_rejected.length}',
+      );
     } catch (e) {
+      debugPrint('[SA_API] error: ${e.toString()}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading applications: $e')),
         );
-        debugPrint('[StateAdminApproval] _load() error: $e');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
-      debugPrint('[StateAdminApproval] _load() done, loading=$_loading');
     }
   }
 
   List<Map<String, dynamic>> get _filtered {
     switch (_tab) {
       case ApprovalCategory.pending:
-        return _all
-            .where((app) => _normStatus(app) == 'pending-state')
-            .toList();
+        return _pending;
       case ApprovalCategory.approved:
-        return _all.where((app) => _normStatus(app) == 'approved').toList();
+        return _approved;
       case ApprovalCategory.rejected:
-        return _all.where((app) => _normStatus(app) == 'rejected').toList();
+        return _rejected;
       case ApprovalCategory.all:
-        return _all.where((app) {
-          final s = _normStatus(app);
-          return s == 'pending-state' || s == 'approved' || s == 'rejected';
-        }).toList();
+        return [..._pending, ..._approved, ..._rejected];
     }
   }
 
   Future<void> _approve(String appId) async {
-    debugPrint('[StateAdminApproval] approve tapped: $appId');
     await _handleAction(appId, 'approve');
   }
 
   Future<void> _reject(String appId, {String? reason}) async {
-    debugPrint(
-      '[StateAdminApproval] reject tapped: $appId reason=${reason ?? ''}',
-    );
     await _handleAction(appId, 'reject', reason: reason);
   }
 
@@ -217,15 +139,6 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
     String? reason,
   }) async {
     if (mounted) setState(() => _inFlightId = appId);
-    final beforeIdx = _all.indexWhere(
-      (a) => (a['_id']?.toString() ?? '') == appId,
-    );
-    final beforeStatus = beforeIdx != -1
-        ? _normStatus(_all[beforeIdx])
-        : 'not-found';
-    debugPrint(
-      '[StateAdminApproval] action start: $action appId=$appId beforeStatus=$beforeStatus reason=${reason ?? ''}',
-    );
     final messenger = ScaffoldMessenger.of(context);
     try {
       final res = await _svc.stateReview(
@@ -246,30 +159,25 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
         ),
       );
 
-      final i = _all.indexWhere((a) => (a['_id']?.toString() ?? '') == appId);
-      if (i != -1) {
-        final updated = Map<String, dynamic>.from(_all[i]);
-        updated['status'] = action == 'approve' ? 'Approved' : 'Rejected';
+      // Optimistic UI update: move application from pending to approved/rejected
+      final pendingIndex = _pending.indexWhere(
+        (a) => (a['_id']?.toString() ?? '') == appId,
+      );
+      if (pendingIndex != -1) {
+        final app = Map<String, dynamic>.from(_pending[pendingIndex]);
         setState(() {
-          _all[i] = updated;
+          _pending.removeAt(pendingIndex);
+          if (action == 'approve') {
+            app['status'] = 'Approved';
+            _approved.insert(0, app);
+          } else {
+            app['status'] = 'Rejected';
+            _rejected.insert(0, app);
+          }
         });
-        // Persist in session cache to survive navigation reloads
-        _StateApprovalMemory.acted[appId] = updated;
-        debugPrint(
-          '[StateAdminApproval] local update: appId=$appId newStatus=${_normStatus(updated)}',
-        );
-        _logSummary('after local update');
         widget.onRefreshRequested?.call();
       } else {
         await _load();
-        debugPrint(
-          '[StateAdminApproval] app not found locally, refetched list',
-        );
-        // Also persist into cache using minimal data so it remains visible post-reload
-        _StateApprovalMemory.acted[appId] = {
-          '_id': appId,
-          'status': action == 'approve' ? 'Approved' : 'Rejected',
-        };
         widget.onRefreshRequested?.call();
       }
     } catch (e) {
@@ -429,10 +337,10 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
 
   @override
   Widget build(BuildContext context) {
+    final totalCount = _pending.length + _approved.length + _rejected.length;
     debugPrint(
-      '[StateAdminApproval] build() start: loading=$_loading tab=$_tab total=${_all.length}',
+      '[StateAdminApproval] build() start: loading=$_loading tab=$_tab total=$totalCount',
     );
-    _logSummary('build start');
     return Scaffold(
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -531,15 +439,9 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
   }
 
   Widget _buildTabBar() {
-    final pendingCount = _all
-        .where((a) => _normStatus(a) == 'pending-state')
-        .length;
-    final approvedCount = _all
-        .where((a) => _normStatus(a) == 'approved')
-        .length;
-    final rejectedCount = _all
-        .where((a) => _normStatus(a) == 'rejected')
-        .length;
+    final pendingCount = _pending.length;
+    final approvedCount = _approved.length;
+    final rejectedCount = _rejected.length;
     final allCount = pendingCount + approvedCount + rejectedCount;
 
     Widget chip(String label, bool active, VoidCallback onTap) {
@@ -582,7 +484,6 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
               debugPrint(
                 '[StateAdminApproval] tab switch → pending; filtered=${_filtered.length}',
               );
-              _logSummary('tab pending filtered', list: _filtered);
             }),
             const SizedBox(width: 8),
             chip(
@@ -593,7 +494,6 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
                 debugPrint(
                   '[StateAdminApproval] tab switch → approved; filtered=${_filtered.length}',
                 );
-                _logSummary('tab approved filtered', list: _filtered);
               },
             ),
             const SizedBox(width: 8),
@@ -605,7 +505,6 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
                 debugPrint(
                   '[StateAdminApproval] tab switch → rejected; filtered=${_filtered.length}',
                 );
-                _logSummary('tab rejected filtered', list: _filtered);
               },
             ),
             const SizedBox(width: 8),
@@ -614,7 +513,6 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
               debugPrint(
                 '[StateAdminApproval] tab switch → all; filtered=${_filtered.length}',
               );
-              _logSummary('tab all filtered', list: _filtered);
             }),
           ],
         ),
@@ -624,7 +522,7 @@ class _StateAdminApprovalPageState extends State<StateAdminApprovalPage> {
 
   Widget _buildApplicationCard(Map<String, dynamic> app) {
     final status = (app['status'] ?? app['applicationStatus'] ?? '').toString();
-    final isPending = _normStatus(app) == 'pending-state';
+    final isPending = status.toLowerCase().contains('pending-state');
     final id = app['_id']?.toString() ?? '';
     final fullName =
         (app['fullName'] ?? app['name'] ?? app['memberName'] ?? 'Unknown')

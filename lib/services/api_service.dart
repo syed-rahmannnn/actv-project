@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
@@ -354,27 +355,57 @@ class ApiService {
 
   // Static method to get member by email (used by multiple screens)
   static Future<Map<String, dynamic>> getMemberByEmail(String email) async {
-    final url = Uri.parse('$baseUrl/auth/member-by-email/$email');
-    // Logging removed for security - no longer exposing member lookup data
-    developer.log('ApiService: getMemberByEmail called', name: 'ApiService');
-
-    final resp = await http.get(
-      url,
-      headers: {'Content-Type': 'application/json'},
+    final url = Uri.parse(
+      '$baseUrl/auth/member-by-email/${Uri.encodeComponent(email)}',
     );
-    // Response logging removed for security
+    developer.log('🌐 getMemberByEmail: $url', name: 'ApiService');
 
-    final body = _jsonDecodeSafe(resp.body);
-    if (resp.statusCode >= 200 && resp.statusCode < 300) {
-      // Backend returns {success: true, data: {member: {...}}}
-      // Extract the member data for compatibility
-      final memberData = body['data']?['member'];
-      return {'success': true, 'data': memberData};
-    } else {
+    try {
+      final resp = await http
+          .get(url, headers: {'Content-Type': 'application/json'})
+          .timeout(
+            _requestTimeout(),
+            onTimeout: () {
+              developer.log(
+                '⏱️ getMemberByEmail TIMEOUT after ${_requestTimeout().inSeconds}s',
+                name: 'ApiService',
+              );
+              throw TimeoutException('Member lookup timed out');
+            },
+          );
+
+      developer.log(
+        '📡 getMemberByEmail status: ${resp.statusCode}',
+        name: 'ApiService',
+      );
+      developer.log(
+        '📡 getMemberByEmail body: ${resp.body}',
+        name: 'ApiService',
+      );
+
+      if (resp.statusCode == 404) {
+        return {'success': false, 'error': 'Member not found with this email'};
+      }
+
+      final body = _jsonDecodeSafe(resp.body);
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        developer.log('✅ getMemberByEmail success', name: 'ApiService');
+        return body; // Backend now returns data directly
+      } else {
+        return {
+          'success': false,
+          'error': body['message'] ?? 'Failed to get member by email',
+        };
+      }
+    } on TimeoutException catch (e) {
+      developer.log('⏱️ getMemberByEmail timeout: $e', name: 'ApiService');
       return {
         'success': false,
-        'error': body['message'] ?? 'Failed to get member by email',
+        'error': 'Request timed out. Please check your internet connection.',
       };
+    } catch (e) {
+      developer.log('❌ getMemberByEmail error: $e', name: 'ApiService');
+      return {'success': false, 'error': 'Network error: ${e.toString()}'};
     }
   }
 
@@ -529,6 +560,33 @@ class ApiService {
       return {
         'success': false,
         'error': body['message'] ?? 'Failed to submit application',
+      };
+    }
+  }
+
+  // Submit aspirant application (for non-business members)
+  static Future<Map<String, dynamic>> submitAspirantApplication(
+    Map<String, dynamic> payload,
+  ) async {
+    final url = Uri.parse('$baseUrl/applications/submit');
+    developer.log(
+      'ApiService: submitAspirantApplication called',
+      name: 'ApiService',
+    );
+
+    final resp = await http.post(
+      url,
+      headers: await _staticHeaders(),
+      body: jsonEncode(payload),
+    );
+
+    final body = _jsonDecodeSafe(resp.body);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'success': true, 'data': body};
+    } else {
+      return {
+        'success': false,
+        'error': body['message'] ?? 'Failed to submit aspirant application',
       };
     }
   }
@@ -762,14 +820,14 @@ class ApiService {
   // Delete member account
   Future<Map<String, dynamic>> deleteMember(String memberId) async {
     final url = Uri.parse('$baseUrl/members/$memberId');
-    
+
     try {
       final resp = await http
           .delete(url, headers: _headers())
           .timeout(_requestTimeout());
 
       final body = jsonDecodeSafe(resp.body);
-      
+
       if (resp.statusCode >= 200 && resp.statusCode < 300) {
         return {
           'success': true,

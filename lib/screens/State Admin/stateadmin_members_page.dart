@@ -52,15 +52,33 @@ class _StateAdminMembersPageState extends State<StateAdminMembersPage> {
     setState(() => _loading = true);
     try {
       debugPrint('SA[_load]: called');
-      debugPrint('[SA_API] GET /applications/state/${widget.stateAdminId}');
-      final apps = await _svc.getStateApplications(
+
+      // Fetch pending applications (Pending-State status)
+      final pending = await _svc.getStateInbox(widget.stateAdminId);
+
+      // Fetch approved applications
+      final approved = await _svc.getStateApplicationsByStatus(
         stateAdminId: widget.stateAdminId,
-        status: 'all',
+        status: 'Approved',
       );
-      _all = List<Map<String, dynamic>>.from(apps);
+
+      // Fetch rejected applications
+      final rejected = await _svc.getStateApplicationsByStatus(
+        stateAdminId: widget.stateAdminId,
+        status: 'Rejected',
+      );
+
+      // Combine all lists
+      _all = [
+        ...List<Map<String, dynamic>>.from(pending),
+        ...List<Map<String, dynamic>>.from(approved),
+        ...List<Map<String, dynamic>>.from(rejected),
+      ];
+
       debugPrint('[SA_UI] users dropdown loaded: count=${_all.length}');
-      debugPrint('[SA_API] response 200 ${_all.length}');
-      debugPrint('SA[_load]: fetched applications count = ${_all.length}');
+      debugPrint(
+        '[SA_API] response 200 pending=${pending.length} approved=${approved.length} rejected=${rejected.length}',
+      );
     } catch (e) {
       debugPrint('[SA_API] error 500 ${e.toString()}');
       if (mounted) {
