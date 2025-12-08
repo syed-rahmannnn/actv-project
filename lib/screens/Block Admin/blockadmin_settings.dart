@@ -93,6 +93,8 @@ class BlockAdminSettingsPage extends StatefulWidget {
   // When provided, these counts take precedence and keep Settings in sync
   // with the Dashboard tab.
   final Map<String, int>? statsOverride;
+  // Callback to navigate back to Dashboard tab (bottom nav index 0)
+  final VoidCallback? onBackToDashboard;
 
   const BlockAdminSettingsPage({
     super.key,
@@ -103,6 +105,7 @@ class BlockAdminSettingsPage extends StatefulWidget {
     this.blockEmail,
     this.isActive,
     this.statsOverride,
+    this.onBackToDashboard,
   });
 
   @override
@@ -483,27 +486,44 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
     }
   }
 
+  void _handleBackNavigation() {
+    // If callback is provided (from bottom nav), use it to switch back to Dashboard tab
+    // Otherwise fall back to Navigator.pop for standalone navigation
+    if (widget.onBackToDashboard != null) {
+      widget.onBackToDashboard!();
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F6FF),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: const Color(0xFF0F172A),
-        title: const Text(
-          'Settings',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-            color: Color(0xFF0F172A),
+    return PopScope(
+      canPop: false, // Prevent default pop behavior
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _handleBackNavigation();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF1F6FF),
+        appBar: AppBar(
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          foregroundColor: const Color(0xFF0F172A),
+          title: const Text(
+            'Settings',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios, size: 20),
+            onPressed: _handleBackNavigation,
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, size: 20),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : FutureBuilder<Map<String, dynamic>?>(
@@ -565,6 +585,7 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
                 );
               },
             ),
+      ), // PopScope
     );
   }
 

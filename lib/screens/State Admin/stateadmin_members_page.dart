@@ -10,6 +10,7 @@ class StateAdminMembersPage extends StatefulWidget {
   final String stateAdminId;
   final String? stateName;
   final String? token;
+  final VoidCallback? onNavigateToSettings;
 
   const StateAdminMembersPage({
     super.key,
@@ -17,6 +18,7 @@ class StateAdminMembersPage extends StatefulWidget {
     required this.stateAdminId,
     this.stateName,
     this.token,
+    this.onNavigateToSettings,
   });
 
   @override
@@ -123,11 +125,20 @@ class _StateAdminMembersPageState extends State<StateAdminMembersPage> {
       final name = (app['fullName'] ?? app['name'] ?? '')
           .toString()
           .toLowerCase();
-      final phone = (app['phone'] ?? '').toString().toLowerCase();
+      final email = (app['email'] ?? app['memberEmail'] ?? '').toString().toLowerCase();
+      final phone = (app['phone'] ?? app['phoneNumber'] ?? '').toString().toLowerCase();
       final district = (app['district'] ?? '').toString().toLowerCase();
+      final block = (app['block'] ?? '').toString().toLowerCase();
+      final status = (app['status'] ?? app['applicationStatus'] ?? '').toString().toLowerCase();
+      final appliedOn = (app['appliedOn'] ?? app['createdAt'] ?? '').toString().toLowerCase();
+      
       return name.contains(_query) ||
+          email.contains(_query) ||
           phone.contains(_query) ||
-          district.contains(_query);
+          district.contains(_query) ||
+          block.contains(_query) ||
+          status.contains(_query) ||
+          appliedOn.contains(_query);
     }).toList();
   }
 
@@ -186,21 +197,24 @@ class _StateAdminMembersPageState extends State<StateAdminMembersPage> {
                   ],
                 ),
               ),
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha((0.1 * 255).toInt()),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+              GestureDetector(
+                onTap: widget.onNavigateToSettings,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha((0.1 * 255).toInt()),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.person, color: Colors.white, size: 20),
                 ),
-                child: const Icon(Icons.group, color: Colors.white, size: 20),
               ),
             ],
           ),
@@ -488,24 +502,6 @@ class _StateAdminMembersPageState extends State<StateAdminMembersPage> {
                             color: Color(0xFF374151),
                           ),
                           overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.person,
-                        size: 16,
-                        color: Color(0xFF6B7280),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Gender: $gender',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF374151),
                         ),
                       ),
                     ],

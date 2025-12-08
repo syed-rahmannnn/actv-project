@@ -2,6 +2,9 @@ const express = require("express");
 const router = express.Router();
 const Application = require("../models/applicationModel");
 const MemberDetails = require("../models/MemberDetails");
+const MemberBusinessInfo = require("../models/MemberBusinessInfo");
+const MemberFinancialInfo = require("../models/MemberFinancialInfo");
+const MemberDeclaration = require("../models/MemberDeclaration");
 const getAdminModels = require("../models/adminModels");
 
 module.exports = (mongooseConnection) => {
@@ -192,6 +195,22 @@ module.exports = (mongooseConnection) => {
                 app.status = "Pending-District";
                 app.blockApprovedAt = new Date();
                 app.reviewedBy.blockAdmin = resolved;
+                
+                // ✅ FIX: Assign to District Admin when Block Admin approves
+                const blockAdminDoc = await BlockAdmin.findById(resolved);
+                if (blockAdminDoc && blockAdminDoc.districtName) {
+                    const districtAdmin = await DistrictAdmin.findOne({ 
+                        districtName: blockAdminDoc.districtName 
+                    });
+                    if (districtAdmin) {
+                        app.assignedDistrictAdmin = districtAdmin._id;
+                        console.log(`✅ Assigned application ${app._id} to District Admin ${districtAdmin._id} (${districtAdmin.districtName})`);
+                    } else {
+                        console.warn(`⚠️ No District Admin found for district: ${blockAdminDoc.districtName}`);
+                    }
+                } else {
+                    console.warn(`⚠️ Block Admin ${resolved} has no districtName`);
+                }
             } else if (action === "reject") {
                 app.status = "Rejected";
                 app.rejectionReason = reason || "No reason provided";
@@ -211,6 +230,105 @@ module.exports = (mongooseConnection) => {
             });
         } catch (err) {
             console.error("Block review error:", err);
+            res.status(500).json({ success: false, message: "Server error" });
+        }
+    });
+
+    // ---------- FIX EXISTING PENDING-DISTRICT APPLICATIONS ----------
+    router.post("/fix-pending-district", async(req, res) => {
+        try {
+            const unfixedApps = await Application.find({
+                status: "Pending-District",
+                $or: [
+                    { assignedDistrictAdmin: null },
+                    { assignedDistrictAdmin: { $exists: false } }
+                ]
+            });
+
+            console.log(`Found ${unfixedApps.length} Pending-District apps without District Admin`);
+
+            const results = [];
+            for (const app of unfixedApps) {
+                const blockAdmin = await BlockAdmin.findById(app.assignedBlockAdmin);
+                if (blockAdmin && blockAdmin.districtName) {
+                    const districtAdmin = await DistrictAdmin.findOne({ 
+                        districtName: blockAdmin.districtName 
+                    });
+                    if (districtAdmin) {
+                        app.assignedDistrictAdmin = districtAdmin._id;
+                        await app.save();
+                        results.push({
+                            appId: app._id,
+                            fullName: app.fullName,
+                            district: blockAdmin.districtName,
+                            assignedTo: districtAdmin._id
+                        });
+                        console.log(`✅ Fixed ${app.fullName} -> District Admin ${districtAdmin._id}`);
+                    }
+                }
+            }
+
+            res.json({
+                success: true,
+                message: `Fixed ${results.length} applications`,
+                results
+            });
+        } catch (err) {
+            console.error("Fix pending-district error:", err);
+            res.status(500).json({ success: false, message: "Server error" });
+        }
+    });
+
+    // ---------- DEBUG: CHECK ALL PENDING-DISTRICT APPLICATIONS ----------
+    router.get("/debug-pending-district", async(req, res) => {
+        try {
+            const allPending = await Application.find({
+                status: "Pending-District"
+            }).select('_id fullName email district assignedDistrictAdmin assignedBlockAdmin');
+
+            const details = [];
+            for (const app of allPending) {
+                let districtAdminInfo = null;
+                let blockAdminInfo = null;
+
+                if (app.assignedDistrictAdmin) {
+                    const da = await DistrictAdmin.findById(app.assignedDistrictAdmin);
+                    districtAdminInfo = da ? {
+                        id: da._id,
+                        email: da.email,
+                        district: da.districtName
+                    } : 'NOT_FOUND';
+                }
+
+                if (app.assignedBlockAdmin) {
+                    const ba = await BlockAdmin.findById(app.assignedBlockAdmin);
+                    blockAdminInfo = ba ? {
+                        id: ba._id,
+                        email: ba.email,
+                        block: ba.blockName,
+                        district: ba.districtName
+                    } : 'NOT_FOUND';
+                }
+
+                details.push({
+                    appId: app._id,
+                    fullName: app.fullName,
+                    email: app.email,
+                    district: app.district,
+                    assignedDistrictAdmin: app.assignedDistrictAdmin,
+                    districtAdminInfo,
+                    assignedBlockAdmin: app.assignedBlockAdmin,
+                    blockAdminInfo
+                });
+            }
+
+            res.json({
+                success: true,
+                totalPending: allPending.length,
+                applications: details
+            });
+        } catch (err) {
+            console.error("Debug pending-district error:", err);
             res.status(500).json({ success: false, message: "Server error" });
         }
     });
@@ -655,49 +773,105 @@ module.exports = (mongooseConnection) => {
                 status: 'Pending-District'
             }).sort({ createdAt: -1 });
 
-            // Enhance applications similarly to the block admin route with reviewedBy and member info
+            // Enhance applications with complete member registration data from all collections
             const enhancedApps = await Promise.all(apps.map(async(app) => {
                 const appObj = app.toObject();
 
-                console.log(`[DISTRICT ENRICHMENT DEBUG] Processing app ${appObj._id}, current gender:`, appObj.gender);
+                console.log(`[DISTRICT ENRICHMENT DEBUG] Processing app ${appObj._id}, fetching complete member data`);
 
-                // If gender is missing, try to fetch from MemberDetails
-                if (!appObj.gender) {
-                    try {
-                        const memberDetails = await MemberDetails.findOne({
-                            email: app.email.toLowerCase().trim()
-                        }, 'gender');
-
-                        if (memberDetails && memberDetails.gender) {
-                            console.log(`[DISTRICT ENRICHMENT DEBUG] Found gender in MemberDetails for ${app.email}:`, memberDetails.gender);
-                            appObj.gender = memberDetails.gender;
-                        } else {
-                            console.log(`[DISTRICT ENRICHMENT DEBUG] No gender found in MemberDetails for ${app.email}`);
-                        }
-                    } catch (memberError) {
-                        console.error(`[DISTRICT ENRICHMENT DEBUG] Error fetching gender from MemberDetails for ${app.email}:`, memberError);
-                    }
-                } else {
-                    console.log(`[DISTRICT ENRICHMENT DEBUG] App ${appObj._id} already has gender:`, appObj.gender);
-                }
-
-                // ReviewedBy safety checks are handled in the GET /:appId route, but we add basic references here
-                // (Keep lightweight to avoid extra DB calls unless necessary)
-                // You can expand with DistrictAdmin/StateAdmin hydration if needed, matching the GET /:appId behavior.
-
-                // Attach simple member approval info if present
                 try {
-                    const member = await MemberDetails.findOne({ userId: appObj.userId }).lean();
-                    if (member && member.approvedBy) {
-                        appObj.memberApprovedBy = {
-                            blockAdmin: member.approvedBy.blockAdmin || null,
-                            districtAdmin: member.approvedBy.districtAdmin || null,
-                            stateAdmin: member.approvedBy.stateAdmin || null,
+                    // Fetch complete member data from all collections
+                    const memberDetails = await MemberDetails.findOne({
+                        email: app.email.toLowerCase().trim()
+                    }).lean();
+
+                    const memberBusinessInfo = await MemberBusinessInfo.findOne({
+                        email: app.email.toLowerCase().trim()
+                    }).lean();
+
+                    const memberFinancialInfo = await MemberFinancialInfo.findOne({
+                        email: app.email.toLowerCase().trim()
+                    }).lean();
+
+                    const memberDeclaration = await MemberDeclaration.findOne({
+                        email: app.email.toLowerCase().trim()
+                    }).lean();
+
+                    // Enrich formData with complete registration data
+                    if (memberDetails || memberBusinessInfo || memberFinancialInfo || memberDeclaration) {
+                        appObj.formData = {
+                            // Preserve existing formData
+                            ...appObj.formData,
+                            // Member Details (Demographic)
+                            fullName: memberDetails?.fullName || appObj.fullName,
+                            email: memberDetails?.email || appObj.email,
+                            phoneNumber: memberDetails?.phoneNumber || appObj.phone,
+                            state: memberDetails?.state || appObj.state,
+                            district: memberDetails?.district || appObj.district,
+                            block: memberDetails?.block || appObj.block,
+                            city: memberDetails?.city || appObj.formData?.city,
+                            aadhaarNumber: memberDetails?.aadhaarNumber,
+                            streetName: memberDetails?.streetName,
+                            educationalQualification: memberDetails?.educationalQualification,
+                            religion: memberDetails?.religion,
+                            socialCategory: memberDetails?.socialCategory,
+                            gender: memberDetails?.gender,
+                            dateOfBirth: memberDetails?.dateOfBirth,
+                            // Business Information
+                            businessInfo: memberBusinessInfo ? {
+                                doingBusiness: memberBusinessInfo.doingBusiness,
+                                organizationName: memberBusinessInfo.organizationName,
+                                constitutionType: memberBusinessInfo.constitutionType,
+                                businessType: memberBusinessInfo.businessType,
+                                businessActivities: memberBusinessInfo.businessActivities,
+                                businessCommencementYear: memberBusinessInfo.businessCommencementYear,
+                                numberOfEmployees: memberBusinessInfo.numberOfEmployees,
+                                memberOfOtherChamber: memberBusinessInfo.memberOfOtherChamber,
+                                otherChamber: memberBusinessInfo.otherChamber,
+                                registeredWithGovtOrganization: memberBusinessInfo.registeredWithGovtOrganization,
+                            } : appObj.formData?.businessInfo || {},
+                            // Financial Information
+                            financialInfo: memberFinancialInfo ? {
+                                panNumber: memberFinancialInfo.panNumber,
+                                gstNumber: memberFinancialInfo.gstNumber,
+                                udyamNumber: memberFinancialInfo.udyamNumber,
+                                filedITR: memberFinancialInfo.filedITR,
+                                itrYears: memberFinancialInfo.itrYears,
+                                turnoverRange: memberFinancialInfo.turnoverRange,
+                                fy2021: memberFinancialInfo.fy2021,
+                                fy2020: memberFinancialInfo.fy2020,
+                                fy2019: memberFinancialInfo.fy2019,
+                                govtSchemeBenefit: memberFinancialInfo.govtSchemeBenefit,
+                                scheme1: memberFinancialInfo.scheme1,
+                                scheme2: memberFinancialInfo.scheme2,
+                                scheme3: memberFinancialInfo.scheme3,
+                            } : appObj.formData?.financialInfo || {},
+                            // Declaration
+                            declaration: memberDeclaration ? {
+                                sisterConcerns: memberDeclaration.sisterConcerns,
+                                companyNames: memberDeclaration.companyNames,
+                                showOneFieldPerName: memberDeclaration.showOneFieldPerName,
+                                agreeToDeclaration: memberDeclaration.agreeToDeclaration,
+                                profileCompleted: memberDeclaration.profileCompleted,
+                                submissionDate: memberDeclaration.submissionDate,
+                                status: memberDeclaration.status,
+                            } : appObj.formData?.declaration || {},
                         };
-                        appObj.memberApprovedAt = member.approvedAt || null;
+
+                        console.log(`[DISTRICT ENRICHMENT DEBUG] Enhanced app ${appObj._id} with complete member data`);
+                    }
+
+                    // Attach member approval info if present
+                    if (memberDetails && memberDetails.approvedBy) {
+                        appObj.memberApprovedBy = {
+                            blockAdmin: memberDetails.approvedBy.blockAdmin || null,
+                            districtAdmin: memberDetails.approvedBy.districtAdmin || null,
+                            stateAdmin: memberDetails.approvedBy.stateAdmin || null,
+                        };
+                        appObj.memberApprovedAt = memberDetails.approvedAt || null;
                     }
                 } catch (err) {
-                    console.error('Error fetching member details for app', appObj._id, err);
+                    console.error(`[DISTRICT ENRICHMENT ERROR] Error fetching member data for app ${appObj._id}:`, err);
                 }
 
                 return appObj;
@@ -988,6 +1162,74 @@ module.exports = (mongooseConnection) => {
             });
         } catch (err) {
             console.error("Fetch user applications error:", err);
+            res.status(500).json({ success: false, message: "Server error" });
+        }
+    });
+
+    // ---------- GET APPLICATIONS LIST BY ADMIN (full list with Approved/Rejected) ----------
+    router.get("/list-by-admin/:adminId", async(req, res) => {
+        try {
+            const { role, status } = req.query;
+            let adminObjId = await resolveAdminObjectId(role, req.params.adminId, { BlockAdmin, DistrictAdmin, StateAdmin });
+
+            if (!role || !status) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Role and status query parameters are required"
+                });
+            }
+
+            if (!adminObjId) {
+                console.error("resolveAdminObjectId failed for:", role, req.params.adminId);
+                return res.status(400).json({
+                    success: false,
+                    message: `Admin not found for role '${role}' and ID '${req.params.adminId}'`
+                });
+            }
+
+            const q = {};
+            if (role === 'block') q.assignedBlockAdmin = adminObjId;
+            if (role === 'district') q.assignedDistrictAdmin = adminObjId;
+            if (role === 'state') q.assignedStateAdmin = adminObjId;
+
+            if (status === 'Approved') {
+                if (role === 'block') {
+                    q.status = { $in: ['Pending-District', 'Pending-State', 'Approved'] };
+                    q['reviewedBy.blockAdmin'] = { $exists: true };
+                }
+                if (role === 'district') {
+                    q.status = { $in: ['Pending-State', 'Approved'] };
+                    q['reviewedBy.districtAdmin'] = { $exists: true };
+                }
+                if (role === 'state') {
+                    q.status = 'Approved';
+                    q['reviewedBy.stateAdmin'] = { $exists: true };
+                }
+            } else if (status === 'Rejected') {
+                q.status = 'Rejected';
+                if (role === 'block') q['reviewedBy.blockAdmin'] = { $exists: true };
+                if (role === 'district') q['reviewedBy.districtAdmin'] = { $exists: true };
+                if (role === 'state') q['reviewedBy.stateAdmin'] = { $exists: true };
+            }
+
+            const apps = await Application.find(q).sort({ createdAt: -1 }).lean();
+            
+            // Enhance with gender from MemberDetails
+            const appsWithGender = await Promise.all(apps.map(async(app) => {
+                try {
+                    const memberDetails = await MemberDetails.findOne({ userId: app.userId }).lean();
+                    if (memberDetails && memberDetails.personalDetails && memberDetails.personalDetails.gender) {
+                        app.gender = memberDetails.personalDetails.gender;
+                    }
+                } catch (err) {
+                    console.error('Error fetching member details:', err);
+                }
+                return app;
+            }));
+
+            res.json(appsWithGender);
+        } catch (err) {
+            console.error("Get applications list by admin error:", err);
             res.status(500).json({ success: false, message: "Server error" });
         }
     });

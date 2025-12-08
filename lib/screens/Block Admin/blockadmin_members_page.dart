@@ -8,6 +8,7 @@ class BlockAdminMembersPage extends StatefulWidget {
   final String blockAdminId;
   final String blockName;
   final String? token;
+  final VoidCallback? onNavigateToSettings;
 
   const BlockAdminMembersPage({
     super.key,
@@ -15,6 +16,7 @@ class BlockAdminMembersPage extends StatefulWidget {
     required this.blockAdminId,
     required this.blockName,
     this.token,
+    this.onNavigateToSettings,
   });
 
   @override
@@ -100,12 +102,21 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
     if (_query.isEmpty) return list;
 
     bool match(Map m) {
-      final name = (m['fullName'] ?? '').toString().toLowerCase();
-      final email = (m['email'] ?? '').toString().toLowerCase();
-      final phone = (m['phone'] ?? '').toString().toLowerCase();
+      final name = (m['fullName'] ?? m['name'] ?? '').toString().toLowerCase();
+      final email = (m['email'] ?? m['memberEmail'] ?? '').toString().toLowerCase();
+      final phone = (m['phone'] ?? m['phoneNumber'] ?? '').toString().toLowerCase();
+      final district = (m['district'] ?? '').toString().toLowerCase();
+      final block = (m['block'] ?? '').toString().toLowerCase();
+      final status = (m['status'] ?? '').toString().toLowerCase();
+      final appliedOn = (m['appliedOn'] ?? m['createdAt'] ?? '').toString().toLowerCase();
+      
       return name.contains(_query) ||
           email.contains(_query) ||
-          phone.contains(_query);
+          phone.contains(_query) ||
+          district.contains(_query) ||
+          block.contains(_query) ||
+          status.contains(_query) ||
+          appliedOn.contains(_query);
     }
 
     return list.where(match).toList();
@@ -302,10 +313,13 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
             ),
           ),
           const Spacer(),
-          const CircleAvatar(
-            radius: 18,
-            backgroundColor: Color(0xFF1E88FF),
-            child: Text('A', style: TextStyle(color: Colors.white)),
+          GestureDetector(
+            onTap: widget.onNavigateToSettings,
+            child: const CircleAvatar(
+              radius: 18,
+              backgroundColor: Color(0xFF1E88FF),
+              child: Icon(Icons.person, color: Colors.white, size: 18),
+            ),
           ),
         ],
       ),
@@ -567,24 +581,6 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
                           color: Color(0xFF374151),
                         ),
                         overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.person,
-                      size: 16,
-                      color: Color(0xFF6B7280),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Gender: $gender',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF374151),
                       ),
                     ),
                   ],

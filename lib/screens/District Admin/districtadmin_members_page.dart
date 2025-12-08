@@ -9,6 +9,7 @@ class DistrictAdminMembersPage extends StatefulWidget {
   final String districtAdminId;
   final String districtName;
   final String? token;
+  final VoidCallback? onNavigateToSettings;
 
   const DistrictAdminMembersPage({
     super.key,
@@ -16,6 +17,7 @@ class DistrictAdminMembersPage extends StatefulWidget {
     required this.districtAdminId,
     required this.districtName,
     this.token,
+    this.onNavigateToSettings,
   });
 
   @override
@@ -105,12 +107,21 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
     if (_query.isEmpty) return base;
 
     return base.where((app) {
-      final name = (app['name'] ?? '').toString().toLowerCase();
-      final phone = (app['phone'] ?? '').toString().toLowerCase();
+      final name = (app['name'] ?? app['fullName'] ?? '').toString().toLowerCase();
+      final email = (app['email'] ?? app['memberEmail'] ?? '').toString().toLowerCase();
+      final phone = (app['phone'] ?? app['phoneNumber'] ?? '').toString().toLowerCase();
       final district = (app['district'] ?? '').toString().toLowerCase();
+      final block = (app['block'] ?? '').toString().toLowerCase();
+      final status = (app['status'] ?? '').toString().toLowerCase();
+      final appliedOn = (app['appliedOn'] ?? app['createdAt'] ?? '').toString().toLowerCase();
+      
       return name.contains(_query) ||
+          email.contains(_query) ||
           phone.contains(_query) ||
-          district.contains(_query);
+          district.contains(_query) ||
+          block.contains(_query) ||
+          status.contains(_query) ||
+          appliedOn.contains(_query);
     }).toList();
   }
 
@@ -169,21 +180,24 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
                   ],
                 ),
               ),
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha((0.1 * 255).toInt()),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+              GestureDetector(
+                onTap: widget.onNavigateToSettings,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha((0.1 * 255).toInt()),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.person, color: Colors.white, size: 20),
                 ),
-                child: const Icon(Icons.group, color: Colors.white, size: 20),
               ),
             ],
           ),
@@ -466,24 +480,6 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
                             color: Color(0xFF374151),
                           ),
                           overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.person,
-                        size: 16,
-                        color: Color(0xFF6B7280),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Gender: $gender',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF374151),
                         ),
                       ),
                     ],

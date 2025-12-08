@@ -90,6 +90,8 @@ class StateAdminSettingsPage extends StatefulWidget {
   final String? stateName;
   final String? stateEmail;
   final bool? isActive;
+  final Map<String, int>? statsOverride;
+  final VoidCallback? onBackToDashboard;
 
   const StateAdminSettingsPage({
     super.key,
@@ -99,6 +101,8 @@ class StateAdminSettingsPage extends StatefulWidget {
     this.stateName,
     this.stateEmail,
     this.isActive,
+    this.statsOverride,
+    this.onBackToDashboard,
   });
 
   @override
@@ -134,6 +138,15 @@ class _StateAdminSettingsPageState extends State<StateAdminSettingsPage> {
   }
 
   Future<void> _loadFromParams() async {
+    // Use statsOverride if provided to skip loading time
+    if (widget.statsOverride != null) {
+      setState(() {
+        _stats = widget.statsOverride!;
+        _loading = false;
+      });
+      return;
+    }
+
     if (adminId.isEmpty) {
       setState(() => _loading = false);
       return;
@@ -262,7 +275,13 @@ class _StateAdminSettingsPageState extends State<StateAdminSettingsPage> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, size: 20),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            if (widget.onBackToDashboard != null) {
+              widget.onBackToDashboard!();
+            } else {
+              Navigator.of(context).pop();
+            }
+          },
         ),
       ),
       body: _loading

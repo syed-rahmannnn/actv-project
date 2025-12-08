@@ -15,6 +15,7 @@ class DistrictAdminApprovalPage extends StatefulWidget {
   final String? token;
   final ApprovalCategory initialCategory;
   final VoidCallback? onRefreshRequested;
+  final VoidCallback? onNavigateToSettings;
 
   const DistrictAdminApprovalPage({
     super.key,
@@ -24,6 +25,7 @@ class DistrictAdminApprovalPage extends StatefulWidget {
     this.token,
     this.initialCategory = ApprovalCategory.pending,
     this.onRefreshRequested,
+    this.onNavigateToSettings,
   });
 
   @override
@@ -330,21 +332,24 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
                   ],
                 ),
               ),
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha((0.1 * 255).toInt()),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+              GestureDetector(
+                onTap: widget.onNavigateToSettings,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha((0.1 * 255).toInt()),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.person, color: Colors.white, size: 20),
                 ),
-                child: const Icon(Icons.person, color: Colors.white, size: 20),
               ),
             ],
           ),
@@ -651,24 +656,6 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
                             color: Color(0xFF374151),
                           ),
                           overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.person,
-                        size: 16,
-                        color: Color(0xFF6B7280),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Gender: $gender',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF374151),
                         ),
                       ),
                     ],

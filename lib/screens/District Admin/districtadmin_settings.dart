@@ -90,6 +90,11 @@ class DistrictAdminSettingsPage extends StatefulWidget {
   final String? districtName;
   final String? districtEmail;
   final bool? isActive;
+  // When provided, these counts take precedence and keep Settings in sync
+  // with the Dashboard tab.
+  final Map<String, int>? statsOverride;
+  // Callback to navigate back to Dashboard tab (bottom nav index 0)
+  final VoidCallback? onBackToDashboard;
 
   const DistrictAdminSettingsPage({
     super.key,
@@ -99,6 +104,8 @@ class DistrictAdminSettingsPage extends StatefulWidget {
     this.districtName,
     this.districtEmail,
     this.isActive,
+    this.statsOverride,
+    this.onBackToDashboard,
   });
 
   @override
@@ -122,13 +129,34 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.apiBaseUrl != null && widget.token != null) {
+    // If dashboard passed the counts, use them directly
+    if (widget.statsOverride != null) {
+      adminId = widget.districtAdminId ?? '';
+      districtName = widget.districtName ?? '';
+      email = widget.districtEmail ?? '';
+      active = widget.isActive ?? true;
+      
+      setState(() {
+        _stats = {
+          'total': widget.statsOverride!['total'] ?? 0,
+          'pending': widget.statsOverride!['pending'] ?? 0,
+          'approved': widget.statsOverride!['approved'] ?? 0,
+          'rejected': widget.statsOverride!['rejected'] ?? 0,
+        };
+        _loading = false;
+      });
+    } else if (widget.apiBaseUrl != null && widget.token != null) {
       _svc = ApplicationService(widget.apiBaseUrl!, token: widget.token!);
       adminId = widget.districtAdminId ?? '';
       districtName = widget.districtName ?? '';
       email = widget.districtEmail ?? '';
       active = widget.isActive ?? true;
-      _loadFromParams();
+
+      if (adminId.isNotEmpty) {
+        _loadFromParams();
+      } else {
+        setState(() => _loading = false);
+      }
     } else {
       _initFromAuth();
     }
@@ -143,16 +171,35 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
     setState(() => _loading = true);
 
     try {
-      // Reuses the same stats endpoint as dashboard (true numbers).
-      final data = await _svc.getDistrictStats(adminId);
+      // Only fetch pending count to avoid slow stats call
+      if (widget.token != null && widget.token!.isNotEmpty) {
+        _svc = ApplicationService(widget.apiBaseUrl!, token: widget.token!);
+        final pending = await _svc.getDistrictInbox(adminId);
 
-      if (!mounted) return;
-      setState(() {
-        _stats = data;
-        _loading = false;
-      });
+        if (!mounted) return;
+        setState(() {
+          _stats = {
+            'total': pending.length,
+            'pending': pending.length,
+            'approved': 0,
+            'rejected': 0
+          };
+          _loading = false;
+        });
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _stats = {'total': 0, 'pending': 0, 'approved': 0, 'rejected': 0};
+          _loading = false;
+        });
+      }
     } catch (e) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _stats = {'total': 0, 'pending': 0, 'approved': 0, 'rejected': 0};
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -271,7 +318,13 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, size: 20),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            if (widget.onBackToDashboard != null) {
+              widget.onBackToDashboard!();
+            } else {
+              Navigator.of(context).pop();
+            }
+          },
         ),
       ),
       body: _loading

@@ -13,6 +13,7 @@ class BlockAdminApprovalPage extends StatefulWidget {
   final String blockName;
   final String? token; // if you need it later
   final ApprovalCategory initialCategory;
+  final VoidCallback? onNavigateToSettings;
 
   const BlockAdminApprovalPage({
     super.key,
@@ -21,6 +22,7 @@ class BlockAdminApprovalPage extends StatefulWidget {
     required this.blockName,
     this.token,
     this.initialCategory = ApprovalCategory.pending,
+    this.onNavigateToSettings,
   });
 
   @override
@@ -447,10 +449,13 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
             ],
           ),
           const SizedBox(width: 10),
-          const CircleAvatar(
-            radius: 18,
-            backgroundColor: Color(0xFF1E88FF),
-            child: Text('A', style: TextStyle(color: Colors.white)),
+          GestureDetector(
+            onTap: widget.onNavigateToSettings,
+            child: const CircleAvatar(
+              radius: 18,
+              backgroundColor: Color(0xFF1E88FF),
+              child: Icon(Icons.person, color: Colors.white, size: 18),
+            ),
           ),
         ],
       ),
@@ -829,24 +834,6 @@ class _BlockAdminApprovalPageState extends State<BlockAdminApprovalPage> {
                           color: Color(0xFF374151),
                         ),
                         overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.person,
-                      size: 16,
-                      color: Color(0xFF6B7280),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Gender: $gender',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF374151),
                       ),
                     ),
                   ],

@@ -24,6 +24,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
   String? _districtAdminId;
   String _districtName = '';
   String _adminEmail = '';
+  String? _token;
   late ApplicationService _applicationService;
   final Map<String, int> _stats = {
     'total': 0,
@@ -43,11 +44,18 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
 
   Future<void> _initializeAdminData() async {
     try {
+      // Get token first
+      _token = await AuthService.getToken();
+      
       // Use passed adminId if available, otherwise get from AuthService
       if (widget.adminId != null && widget.adminId!.isNotEmpty) {
         setState(() {
           _districtAdminId = widget.adminId!;
         });
+        developer.log(
+          'DA_DASHBOARD: Using passed adminId: $_districtAdminId',
+          name: 'DistrictAdminDashboard',
+        );
         await _fetchPendingApplications();
       } else {
         final user = await AuthService.getUserData();
@@ -58,7 +66,16 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
             _districtName = user['districtName'] ?? 'Salem District';
             _adminEmail = user['email'] ?? '';
           });
+          developer.log(
+            'DA_DASHBOARD: Resolved adminId from user: $_districtAdminId',
+            name: 'DistrictAdminDashboard',
+          );
           await _fetchPendingApplications();
+        } else {
+          developer.log(
+            'DA_DASHBOARD: ❌ No user data found!',
+            name: 'DistrictAdminDashboard',
+          );
         }
       }
     } catch (e) {
@@ -74,39 +91,70 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
   }
 
   Future<void> _fetchPendingApplications() async {
-    if (_districtAdminId == null) return;
+    if (_districtAdminId == null) {
+      developer.log(
+        'DA_DASHBOARD: ❌ Cannot fetch - districtAdminId is NULL!',
+        name: 'DistrictAdminDashboard',
+      );
+      return;
+    }
+    
+    developer.log(
+      'DA_DASHBOARD: 🔄 Starting fetch with districtAdminId: $_districtAdminId',
+      name: 'DistrictAdminDashboard',
+    );
 
     try {
-      // Fetch ALL applications and then filter Pending-District for dashboard list
-      final applications = await _applicationService.getDistrictApplications(
-        districtAdminId: _districtAdminId!,
-        status: 'all',
-      );
-      final pendingApps = applications.where((app) {
-        final status = (app['status'] ?? app['applicationStatus'] ?? '')
-            .toString()
-            .trim()
-            .toLowerCase();
-        return status.contains('pending-district');
-      }).toList();
-
-      // Fetch statistics from backend
-      final stats = await _applicationService.getDistrictStats(
+      // Use getDistrictInbox like Block Admin uses getBlockInbox
+      final pendingApps = await _applicationService.getDistrictInbox(
         _districtAdminId!,
       );
+      
+      print('🔥🔥🔥 DISTRICT INBOX RESPONSE: $pendingApps');
+      print('🔥🔥🔥 DISTRICT INBOX LENGTH: ${pendingApps.length}');
+
+      developer.log(
+        'DA_DASHBOARD: Fetched ${pendingApps.length} pending applications',
+        name: 'DistrictAdminDashboard',
+      );
+      
+      // Update pending applications immediately
       setState(() {
         // Replace pending list to avoid duplicates on refresh
         _pending.clear();
         _pending.addAll(pendingApps);
-        // Update stats with real data from backend
-        _stats['pending'] = stats['pending'] ?? 0;
-        _stats['approved'] = stats['approved'] ?? 0;
-        _stats['rejected'] = stats['rejected'] ?? 0;
-        _stats['total'] = stats['total'] ?? 0;
+        _stats['pending'] = pendingApps.length;
       });
+
+      // Try to fetch full statistics (but don't fail if it errors)
+      try {
+        final stats = await _applicationService.getDistrictStats(
+          _districtAdminId!,
+        );
+        
+        developer.log(
+          'DA_DASHBOARD: Stats = $stats',
+          name: 'DistrictAdminDashboard',
+        );
+        
+        setState(() {
+          // Update stats with real data from backend
+          _stats['pending'] = stats['pending'] ?? 0;
+          _stats['approved'] = stats['approved'] ?? 0;
+          _stats['rejected'] = stats['rejected'] ?? 0;
+          _stats['total'] = stats['total'] ?? 0;
+        });
+      } catch (statsError) {
+        developer.log(
+          'DA_DASHBOARD: Could not fetch stats (using pending count only): $statsError',
+          name: 'DistrictAdminDashboard',
+        );
+        // Stats are optional, we already have pending apps displayed
+      }
     } catch (e) {
+      print('🔥🔥🔥 ERROR FETCHING: $e');
       developer.log(
-        'Error fetching applications and stats: $e',
+        'Error fetching applications: $e',
         name: 'DistrictAdminDashboard',
       );
     }
@@ -233,12 +281,19 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F6FF),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _page(_tab),
-      bottomNavigationBar: BottomNavigationBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        // Navigate to login screen
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF1F6FF),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _page(_tab),
+        bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _tab,
         onTap: (i) => setState(() => _tab = i),
@@ -269,6 +324,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -288,21 +344,32 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
             await _fetchPendingApplications();
             await _fetchStats();
           },
+          onNavigateToSettings: () {
+            setState(() => _tab = 3);
+          },
         );
       case 2:
         return DistrictAdminMembersPage(
           apiBaseUrl: ApiService.baseUrl,
           districtAdminId: _districtAdminId ?? '',
           districtName: 'Salem District', // You can make this dynamic
+          onNavigateToSettings: () {
+            setState(() => _tab = 3);
+          },
         );
       case 3:
         return DistrictAdminSettingsPage(
           apiBaseUrl: ApiService.baseUrl,
+          token: _token,
           districtAdminId: _districtAdminId ?? '',
           districtName: _districtName.isNotEmpty
               ? _districtName
               : 'Salem District',
           districtEmail: _adminEmail,
+          statsOverride: _stats,
+          onBackToDashboard: () {
+            setState(() => _tab = 0);
+          },
         );
       default:
         return _dashboard();
@@ -331,6 +398,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
                   icon: Icons.people,
                   chipText: 'All',
                   chipColor: const Color(0xFF3B82F6),
+                  onTap: () => setState(() => _tab = 1), // Navigate to Approvals (All)
                 ),
                 _statCard(
                   title: 'Pending',
@@ -339,6 +407,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
                   icon: Icons.access_time,
                   chipText: 'Pending',
                   chipColor: const Color(0xFFF59E0B),
+                  onTap: () => setState(() => _tab = 1), // Navigate to Approvals (Pending)
                 ),
                 _statCard(
                   title: 'Approved',
@@ -347,6 +416,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
                   icon: Icons.check_circle,
                   chipText: 'Approved',
                   chipColor: const Color(0xFF10B981),
+                  onTap: () => setState(() => _tab = 1), // Navigate to Approvals (Approved)
                 ),
                 _statCard(
                   title: 'Rejected',
@@ -355,6 +425,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
                   icon: Icons.cancel,
                   chipText: 'Rejected',
                   chipColor: const Color(0xFFEF4444),
+                  onTap: () => setState(() => _tab = 1), // Navigate to Approvals (Rejected)
                 ),
               ],
             ),
@@ -365,16 +436,52 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: _pill('Pending (${_stats['pending'] ?? 0})'),
+              child: _pill('Pending (${_pending.length})'),
             ),
           ),
           const SizedBox(height: 8),
           // Pending list
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              children: _pending.map((app) => _userCard(app)).toList(),
-            ),
+            child: _pending.isEmpty
+                ? Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.inbox_outlined,
+                          size: 48,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No pending applications',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Applications will appear here when submitted',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[500],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  )
+                : Column(
+                    children: _pending.map((app) => _userCard(app)).toList(),
+                  ),
           ),
 
           const SizedBox(height: 24),
@@ -418,28 +525,28 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
                 ),
               ),
               const SizedBox(width: 12),
-              Stack(
-                children: [
-                  _iconButton(Icons.notifications_outlined),
-                  Positioned(right: 8, top: 8, child: _notifDot()),
-                ],
-              ),
-              const SizedBox(width: 12),
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha((0.1 * 255).toInt()),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _tab = 3; // Navigate to Settings tab
+                  });
+                },
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B82F6),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha((0.1 * 255).toInt()),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.person, color: Colors.white, size: 20),
                 ),
-                child: const Icon(Icons.person, color: Colors.white, size: 20),
               ),
             ],
           ),
@@ -465,10 +572,14 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
     required IconData icon,
     required String chipText,
     required Color chipColor,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      width: (MediaQuery.of(context).size.width - 52) / 2,
-      decoration: BoxDecoration(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: (MediaQuery.of(context).size.width - 52) / 2,
+        decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
@@ -534,6 +645,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -575,10 +687,13 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
     // Prefer block-approved timestamp for district inbox, else createdAt
     final appliedDate = fmtDate(app['blockApprovedAt'] ?? app['createdAt']);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
+    return InkWell(
+      onTap: () => _openProfileSheet(app),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
@@ -691,29 +806,13 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
                         fontSize: 13,
                         color: Color(0xFF374151),
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  const Icon(Icons.person, size: 16, color: Color(0xFF6B7280)),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Gender: $gender',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF374151),
-                    ),
-                  ),
-                ],
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
-
-          // Approve/Reject buttons only for pending
+        ],
+      ),          // Approve/Reject buttons only for pending
           if (status.contains('pending')) ...[
             const SizedBox(height: 16),
             // Log before rendering action buttons
@@ -767,7 +866,87 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
           ],
         ],
       ),
+      ), // InkWell child (Container)
     );
+  }
+
+  // Open profile sheet - reused from Approvals page
+  void _openProfileSheet(Map<String, dynamic> app) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final email = app["email"] ?? app["memberEmail"];
+      if (email != null) {
+        final memberRes = await ApiService.getMemberByEmail(email);
+        if (memberRes['success'] == true && memberRes['data'] != null) {
+          final memberId =
+              memberRes['data']['id'] ??
+              memberRes['data']['memberId'] ??
+              memberRes['data']['_id'];
+          if (memberId != null) {
+            final profileRes = await ApiService.getMemberProfile(
+              memberId.toString(),
+            );
+            if (mounted) Navigator.pop(context);
+            if (profileRes['success'] == true && profileRes['data'] != null) {
+              if (mounted) {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => UserDetailsDropdown(
+                    memberProfile: Map<String, dynamic>.from(
+                      profileRes['data'],
+                    ),
+                    showActions: true,
+                    onApprove: () {
+                      Navigator.pop(context);
+                      _handleApprove(app);
+                    },
+                    onReject: () {
+                      Navigator.pop(context);
+                      _handleReject(app);
+                    },
+                  ),
+                );
+                return;
+              }
+            }
+          }
+        }
+      }
+      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => UserDetailsDropdown(
+            app: Map<String, dynamic>.from(app),
+            showActions: true,
+            onApprove: () {
+              Navigator.pop(context);
+              _handleApprove(app);
+            },
+            onReject: () {
+              Navigator.pop(context);
+              _handleReject(app);
+            },
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
+      }
+    }
   }
 
   // Removed unused _showUserDetailsDropdown to satisfy linter
@@ -858,12 +1037,31 @@ class UserDetailsDropdown extends StatelessWidget {
       financialInfo = profileData['financialInfo'] ?? {};
       declaration = profileData['declaration'] ?? {};
     } else {
-      // Fall back to the old app structure
+      // Parse application data with enhanced formData from backend
       profileData = app ?? {};
-      member = profileData;
       final form = profileData['formData'] != null
           ? Map<String, dynamic>.from(profileData['formData'])
           : <String, dynamic>{};
+      
+      // Member/Demographic data - check both formData root and top-level fields
+      member = {
+        'fullName': form['fullName'] ?? profileData['fullName'],
+        'email': form['email'] ?? profileData['email'],
+        'phoneNumber': form['phoneNumber'] ?? profileData['phone'],
+        'phone': form['phoneNumber'] ?? profileData['phone'],
+        'dateOfBirth': form['dateOfBirth'],
+        'state': form['state'] ?? profileData['state'],
+        'district': form['district'] ?? profileData['district'],
+        'block': form['block'] ?? profileData['block'],
+        'city': form['city'],
+        'streetName': form['streetName'],
+        'educationalQualification': form['educationalQualification'],
+        'religion': form['religion'],
+        'socialCategory': form['socialCategory'],
+        'aadhaarNumber': form['aadhaarNumber'],
+        'gender': form['gender'],
+      };
+      
       businessInfo = form['businessInfo'] != null
           ? Map<String, dynamic>.from(form['businessInfo'])
           : <String, dynamic>{};
@@ -884,6 +1082,15 @@ class UserDetailsDropdown extends StatelessWidget {
     String listToString(List<dynamic>? list) {
       if (list == null || list.isEmpty) return '—';
       return list.join(', ');
+    }
+    
+    // Helper to check if a value is not empty
+    bool hasValue(dynamic value) {
+      if (value == null) return false;
+      if (value is String) return value.trim().isNotEmpty;
+      if (value is List) return value.isNotEmpty;
+      if (value is Map) return value.isNotEmpty;
+      return true; // For numbers, bools, etc
     }
 
     return Container(
@@ -944,35 +1151,44 @@ class UserDetailsDropdown extends StatelessWidget {
                       'Phone',
                       s(member['phone'] ?? member['phoneNumber']),
                     ),
-                    _buildDetailRow(
-                      'Date of Birth',
-                      s(_formatDate(member['dateOfBirth'])),
-                    ),
+                    if (hasValue(member['dateOfBirth']))
+                      _buildDetailRow(
+                        'Date of Birth',
+                        s(_formatDate(member['dateOfBirth'])),
+                      ),
                     _buildDetailRow('State', s(member['state'])),
                     _buildDetailRow('District', s(member['district'])),
                     _buildDetailRow('Block', s(member['block'])),
-                    _buildDetailRow('City', s(member['city'])),
-                    _buildDetailRow('Street Name', s(member['streetName'])),
-                    _buildDetailRow(
-                      'Educational Qualification',
-                      s(member['educationalQualification']),
-                    ),
-                    _buildDetailRow('Religion', s(member['religion'])),
-                    _buildDetailRow(
-                      'Social Category',
-                      s(member['socialCategory']),
-                    ),
-                    _buildDetailRow(
-                      'Aadhaar Number',
-                      s(member['aadhaarNumber']),
-                    ),
-                    _buildDetailRow('Gender', s(member['gender'])),
+                    if (hasValue(member['city']))
+                      _buildDetailRow('City', s(member['city'])),
+                    if (hasValue(member['streetName']))
+                      _buildDetailRow('Street Name', s(member['streetName'])),
+                    if (hasValue(member['educationalQualification']))
+                      _buildDetailRow(
+                        'Educational Qualification',
+                        s(member['educationalQualification']),
+                      ),
+                    if (hasValue(member['religion']))
+                      _buildDetailRow('Religion', s(member['religion'])),
+                    if (hasValue(member['socialCategory']))
+                      _buildDetailRow(
+                        'Social Category',
+                        s(member['socialCategory']),
+                      ),
+                    if (hasValue(member['aadhaarNumber']))
+                      _buildDetailRow(
+                        'Aadhaar Number',
+                        s(member['aadhaarNumber']),
+                      ),
+                    if (hasValue(member['gender']))
+                      _buildDetailRow('Gender', s(member['gender'])),
                   ]),
 
                   const SizedBox(height: 16),
 
-                  // Business Information
-                  ExpansionTile(
+                  // Business Information - Only show if any business data exists
+                  if (hasValue(businessInfo))
+                    ExpansionTile(
                     title: const Text(
                       'Business Information',
                       style: TextStyle(
@@ -986,59 +1202,70 @@ class UserDetailsDropdown extends StatelessWidget {
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           children: [
-                            _buildDetailRow(
-                              'Doing Business',
-                              b(businessInfo['doingBusiness'] as bool?),
-                            ),
-                            _buildDetailRow(
-                              'Organization Name',
-                              s(businessInfo['organizationName']),
-                            ),
-                            _buildDetailRow(
-                              'Constitution Type',
-                              s(businessInfo['constitutionType']),
-                            ),
-                            _buildDetailRow(
-                              'Business Type',
-                              s(businessInfo['businessType']),
-                            ),
-                            _buildDetailRow(
-                              'Business Activities',
-                              s(businessInfo['businessActivities']),
-                            ),
-                            _buildDetailRow(
-                              'Business Commencement Year',
-                              s(businessInfo['businessCommencementYear']),
-                            ),
-                            _buildDetailRow(
-                              'Number of Employees',
-                              s(businessInfo['numberOfEmployees']),
-                            ),
-                            _buildDetailRow(
-                              'Member of Other Chamber',
-                              b(businessInfo['memberOfOtherChamber'] as bool?),
-                            ),
-                            if (businessInfo['memberOfOtherChamber'] == true)
+                            if (businessInfo['doingBusiness'] != null)
+                              _buildDetailRow(
+                                'Doing Business',
+                                b(businessInfo['doingBusiness'] as bool?),
+                              ),
+                            if (hasValue(businessInfo['organizationName']))
+                              _buildDetailRow(
+                                'Organization Name',
+                                s(businessInfo['organizationName']),
+                              ),
+                            if (hasValue(businessInfo['constitutionType']))
+                              _buildDetailRow(
+                                'Constitution Type',
+                                s(businessInfo['constitutionType']),
+                              ),
+                            if (hasValue(businessInfo['businessType']))
+                              _buildDetailRow(
+                                'Business Type',
+                                s(businessInfo['businessType']),
+                              ),
+                            if (hasValue(businessInfo['businessActivities']))
+                              _buildDetailRow(
+                                'Business Activities',
+                                s(businessInfo['businessActivities']),
+                              ),
+                            if (hasValue(businessInfo['businessCommencementYear']))
+                              _buildDetailRow(
+                                'Business Commencement Year',
+                                s(businessInfo['businessCommencementYear']),
+                              ),
+                            if (hasValue(businessInfo['numberOfEmployees']))
+                              _buildDetailRow(
+                                'Number of Employees',
+                                s(businessInfo['numberOfEmployees']),
+                              ),
+                            if (businessInfo['memberOfOtherChamber'] != null)
+                              _buildDetailRow(
+                                'Member of Other Chamber',
+                                b(businessInfo['memberOfOtherChamber'] as bool?),
+                              ),
+                            if (businessInfo['memberOfOtherChamber'] == true &&
+                                hasValue(businessInfo['otherChamber']))
                               _buildDetailRow(
                                 'Other Chamber Name',
                                 s(businessInfo['otherChamber']),
                               ),
-                            _buildDetailRow(
-                              'Registered with Govt Organizations',
-                              listToString(
-                                (businessInfo['registeredWithGovtOrganization']
-                                        as List?)
-                                    ?.cast<dynamic>(),
+                            if (hasValue(businessInfo['registeredWithGovtOrganization']))
+                              _buildDetailRow(
+                                'Registered with Govt Organizations',
+                                listToString(
+                                  (businessInfo['registeredWithGovtOrganization']
+                                          as List?)
+                                      ?.cast<dynamic>(),
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ),
                     ],
                   ),
 
-                  // Financial & Compliance
-                  ExpansionTile(
+                  // Financial & Compliance - Only show if any financial data exists
+                  if (hasValue(financialInfo))
+                    ExpansionTile(
                     title: const Text(
                       'Financial & Compliance',
                       style: TextStyle(
@@ -1052,66 +1279,80 @@ class UserDetailsDropdown extends StatelessWidget {
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           children: [
-                            _buildDetailRow(
-                              'PAN Number',
-                              s(financialInfo['panNumber']),
-                            ),
-                            _buildDetailRow(
-                              'GST Number',
-                              s(financialInfo['gstNumber']),
-                            ),
-                            _buildDetailRow(
-                              'Udyam Number',
-                              s(financialInfo['udyamNumber']),
-                            ),
-                            _buildDetailRow(
-                              'Filed ITR',
-                              b(financialInfo['filedITR'] as bool?),
-                            ),
-                            _buildDetailRow(
-                              'ITR Years',
-                              s(financialInfo['itrYears']),
-                            ),
-                            _buildDetailRow(
-                              'Turnover Range',
-                              s(financialInfo['turnoverRange']),
-                            ),
-                            _buildDetailRow(
-                              'FY 2021',
-                              s(financialInfo['fy2021']),
-                            ),
-                            _buildDetailRow(
-                              'FY 2020',
-                              s(financialInfo['fy2020']),
-                            ),
-                            _buildDetailRow(
-                              'FY 2019',
-                              s(financialInfo['fy2019']),
-                            ),
-                            _buildDetailRow(
-                              'Govt Scheme Benefit',
-                              b(financialInfo['govtSchemeBenefit'] as bool?),
-                            ),
-                            _buildDetailRow(
-                              'Scheme 1',
-                              s(financialInfo['scheme1']),
-                            ),
-                            _buildDetailRow(
-                              'Scheme 2',
-                              s(financialInfo['scheme2']),
-                            ),
-                            _buildDetailRow(
-                              'Scheme 3',
-                              s(financialInfo['scheme3']),
-                            ),
+                            if (hasValue(financialInfo['panNumber']))
+                              _buildDetailRow(
+                                'PAN Number',
+                                s(financialInfo['panNumber']),
+                              ),
+                            if (hasValue(financialInfo['gstNumber']))
+                              _buildDetailRow(
+                                'GST Number',
+                                s(financialInfo['gstNumber']),
+                              ),
+                            if (hasValue(financialInfo['udyamNumber']))
+                              _buildDetailRow(
+                                'Udyam Number',
+                                s(financialInfo['udyamNumber']),
+                              ),
+                            if (financialInfo['filedITR'] != null)
+                              _buildDetailRow(
+                                'Filed ITR',
+                                b(financialInfo['filedITR'] as bool?),
+                              ),
+                            if (hasValue(financialInfo['itrYears']))
+                              _buildDetailRow(
+                                'ITR Years',
+                                s(financialInfo['itrYears']),
+                              ),
+                            if (hasValue(financialInfo['turnoverRange']))
+                              _buildDetailRow(
+                                'Turnover Range',
+                                s(financialInfo['turnoverRange']),
+                              ),
+                            if (hasValue(financialInfo['fy2021']))
+                              _buildDetailRow(
+                                'FY 2021',
+                                s(financialInfo['fy2021']),
+                              ),
+                            if (hasValue(financialInfo['fy2020']))
+                              _buildDetailRow(
+                                'FY 2020',
+                                s(financialInfo['fy2020']),
+                              ),
+                            if (hasValue(financialInfo['fy2019']))
+                              _buildDetailRow(
+                                'FY 2019',
+                                s(financialInfo['fy2019']),
+                              ),
+                            if (financialInfo['govtSchemeBenefit'] != null)
+                              _buildDetailRow(
+                                'Govt Scheme Benefit',
+                                b(financialInfo['govtSchemeBenefit'] as bool?),
+                              ),
+                            if (hasValue(financialInfo['scheme1']))
+                              _buildDetailRow(
+                                'Scheme 1',
+                                s(financialInfo['scheme1']),
+                              ),
+                            if (hasValue(financialInfo['scheme2']))
+                              _buildDetailRow(
+                                'Scheme 2',
+                                s(financialInfo['scheme2']),
+                              ),
+                            if (hasValue(financialInfo['scheme3']))
+                              _buildDetailRow(
+                                'Scheme 3',
+                                s(financialInfo['scheme3']),
+                              ),
                           ],
                         ),
                       ),
                     ],
                   ),
 
-                  // Declaration
-                  ExpansionTile(
+                  // Declaration - Only show if any declaration data exists
+                  if (hasValue(declaration))
+                    ExpansionTile(
                     title: const Text(
                       'Declaration',
                       style: TextStyle(
@@ -1125,35 +1366,41 @@ class UserDetailsDropdown extends StatelessWidget {
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           children: [
-                            _buildDetailRow(
-                              'Sister Concerns',
-                              s(declaration['sisterConcerns']),
-                            ),
-                            _buildDetailRow(
-                              'Company Names',
-                              listToString(
-                                (declaration['companyNames'] as List?)
-                                    ?.cast<dynamic>(),
+                            if (hasValue(declaration['sisterConcerns']))
+                              _buildDetailRow(
+                                'Sister Concerns',
+                                s(declaration['sisterConcerns']),
                               ),
-                            ),
-                            _buildDetailRow(
-                              'Show One Field Per Name',
-                              b(declaration['showOneFieldPerName'] as bool?),
-                            ),
-                            _buildDetailRow(
-                              'Agree To Declaration',
-                              b(declaration['agreeToDeclaration'] as bool?),
-                            ),
-                            _buildDetailRow(
-                              'Profile Completed',
-                              b(declaration['profileCompleted'] as bool?),
-                            ),
-                            _buildDetailRow(
-                              'Submission Date',
-                              s(_formatDate(declaration['submissionDate'])),
-                            ),
-                            _buildDetailRow('Status', s(declaration['status'])),
-                            // Removed admin review audit fields from UI for admin pages
+                            if (hasValue(declaration['companyNames']))
+                              _buildDetailRow(
+                                'Company Names',
+                                listToString(
+                                  (declaration['companyNames'] as List?)
+                                      ?.cast<dynamic>(),
+                                ),
+                              ),
+                            if (declaration['showOneFieldPerName'] != null)
+                              _buildDetailRow(
+                                'Show One Field Per Name',
+                                b(declaration['showOneFieldPerName'] as bool?),
+                              ),
+                            if (declaration['agreeToDeclaration'] != null)
+                              _buildDetailRow(
+                                'Agree To Declaration',
+                                b(declaration['agreeToDeclaration'] as bool?),
+                              ),
+                            if (declaration['profileCompleted'] != null)
+                              _buildDetailRow(
+                                'Profile Completed',
+                                b(declaration['profileCompleted'] as bool?),
+                              ),
+                            if (hasValue(declaration['submissionDate']))
+                              _buildDetailRow(
+                                'Submission Date',
+                                s(_formatDate(declaration['submissionDate'])),
+                              ),
+                            if (hasValue(declaration['status']))
+                              _buildDetailRow('Status', s(declaration['status'])),
                           ],
                         ),
                       ),

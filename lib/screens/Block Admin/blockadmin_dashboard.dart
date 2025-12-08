@@ -215,12 +215,19 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
   // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF1F6FF),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _page(_tab),
-      bottomNavigationBar: BottomNavigationBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        // Navigate to login screen
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF1F6FF),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _page(_tab),
+        bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _tab,
         onTap: (i) {
@@ -259,6 +266,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -273,6 +281,9 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
           blockName: widget.blockName,
           token: widget.authToken ?? widget.token,
           initialCategory: ApprovalCategory.pending,
+          onNavigateToSettings: () {
+            setState(() => _tab = 3);
+          },
         );
       case 2: // Members
         return BlockAdminMembersPage(
@@ -280,6 +291,9 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
           blockAdminId: widget.blockAdminId,
           blockName: widget.blockName,
           token: widget.authToken ?? widget.token,
+          onNavigateToSettings: () {
+            setState(() => _tab = 3);
+          },
         );
       case 3:
         return BlockAdminSettingsPage(
@@ -290,6 +304,10 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
           blockEmail: widget.adminEmail ?? widget.blockEmail!,
           isActive: true,
           statsOverride: _stats,
+          onBackToDashboard: () {
+            // Navigate back to Dashboard tab (index 0)
+            setState(() => _tab = 0);
+          },
         );
       default:
         return const SizedBox();
@@ -408,22 +426,18 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
               ],
             ),
           ),
-          Stack(
-            children: [
-              _iconButton(Icons.notifications_none_outlined),
-              if ((_stats['pending'] ?? 0) > 0)
-                Positioned(
-                  right: 8,
-                  top: 6,
-                  child: _notifDot((_stats['pending'] ?? 0).toString()),
-                ),
-            ],
-          ),
           const SizedBox(width: 8),
-          const CircleAvatar(
-            radius: 18,
-            backgroundColor: Color(0xFF1E88FF),
-            child: Text('A', style: TextStyle(color: Colors.white)),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _tab = 3; // Navigate to Settings tab
+              });
+            },
+            child: const CircleAvatar(
+              radius: 18,
+              backgroundColor: Color(0xFF1E88FF),
+              child: Text('A', style: TextStyle(color: Colors.white)),
+            ),
           ),
         ],
       ),
@@ -575,13 +589,6 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
         form['personalDetails'] is Map<String, dynamic>
         ? Map<String, dynamic>.from(form['personalDetails'])
         : null;
-    final dynamic rawGender =
-        app['gender'] ??
-        form['gender'] ??
-        personalInfo?['gender'] ??
-        personalDetails?['gender'];
-    final String gender = normalizeGender(rawGender);
-
     // Simple tri-state status from backend (already normalized)
     final normalizedStatus = status.trim().toLowerCase();
     final bool displayAsPending =
@@ -595,6 +602,7 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
               : (normalizedStatus == 'rejected' ? 'Rejected' : status));
 
     return GestureDetector(
+      onTap: () => _openProfileSheet(app),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
@@ -734,24 +742,6 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.person,
-                      size: 16,
-                      color: Color(0xFF6B7280),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Gender: $gender',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF374151),
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
 
@@ -809,6 +799,20 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
         ),
       ),
     );
+  }
+
+  void _handleApprove(dynamic app) {
+    final appId = app['_id']?.toString();
+    if (appId != null) {
+      _approve(appId);
+    }
+  }
+
+  void _handleReject(dynamic app) {
+    final appId = app['_id']?.toString();
+    if (appId != null) {
+      _reject(appId);
+    }
   }
 
   Future<void> _approve(String appId) async {
@@ -941,6 +945,84 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
     }
   }
 
+  void _openProfileSheet(Map<String, dynamic> app) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final email = app["email"] ?? app["memberEmail"];
+      if (email != null) {
+        final memberRes = await ApiService.getMemberByEmail(email);
+        if (memberRes['success'] == true && memberRes['data'] != null) {
+          final memberId =
+              memberRes['data']['id'] ??
+              memberRes['data']['memberId'] ??
+              memberRes['data']['_id'];
+          if (memberId != null) {
+            final profileRes = await ApiService.getMemberProfile(
+              memberId.toString(),
+            );
+            if (mounted) Navigator.pop(context);
+            if (profileRes['success'] == true && profileRes['data'] != null) {
+              if (mounted) {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => UserDetailsDropdown(
+                    memberProfile: Map<String, dynamic>.from(
+                      profileRes['data'],
+                    ),
+                    showActions: true,
+                    onApprove: () {
+                      Navigator.pop(context);
+                      _handleApprove(app);
+                    },
+                    onReject: () {
+                      Navigator.pop(context);
+                      _handleReject(app);
+                    },
+                  ),
+                );
+                return;
+              }
+            }
+          }
+        }
+      }
+      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => UserDetailsDropdown(
+            app: Map<String, dynamic>.from(app),
+            showActions: true,
+            onApprove: () {
+              Navigator.pop(context);
+              _handleApprove(app);
+            },
+            onReject: () {
+              Navigator.pop(context);
+              _handleReject(app);
+            },
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading profile: $e')));
+      }
+    }
+  }
+
   Widget _pill(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -957,42 +1039,6 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
       ),
     );
   }
-
-  Widget _iconButton(IconData icon) => Container(
-    width: 38,
-    height: 38,
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withAlpha((0.06 * 255).toInt()),
-          blurRadius: 10,
-          offset: const Offset(0, 6),
-        ),
-      ],
-    ),
-    child: Icon(icon, color: const Color(0xFF0F172A)),
-  );
-
-  Widget _notifDot(String n) => Container(
-    width: 16,
-    height: 16,
-    decoration: BoxDecoration(
-      color: const Color(0xFF1E88FF),
-      borderRadius: BorderRadius.circular(99),
-      border: Border.all(color: Colors.white, width: 2),
-    ),
-    alignment: Alignment.center,
-    child: Text(
-      n,
-      style: const TextStyle(
-        color: Colors.white,
-        fontSize: 9,
-        fontWeight: FontWeight.w800,
-      ),
-    ),
-  );
 }
 
 /// UserDetailsDropdown widget that shows detailed user information in a modal bottom sheet
@@ -1029,12 +1075,31 @@ class UserDetailsDropdown extends StatelessWidget {
       financialInfo = profileData['financialInfo'] ?? {};
       declaration = profileData['declaration'] ?? {};
     } else {
-      // Fall back to the old app structure
+      // Parse application data with enhanced formData from backend
       profileData = app ?? {};
-      member = profileData;
       final form = profileData['formData'] != null
           ? Map<String, dynamic>.from(profileData['formData'])
           : <String, dynamic>{};
+      
+      // Member/Demographic data - check both formData root and top-level fields
+      member = {
+        'fullName': form['fullName'] ?? profileData['fullName'],
+        'email': form['email'] ?? profileData['email'],
+        'phoneNumber': form['phoneNumber'] ?? profileData['phone'],
+        'phone': form['phoneNumber'] ?? profileData['phone'],
+        'dateOfBirth': form['dateOfBirth'],
+        'state': form['state'] ?? profileData['state'],
+        'district': form['district'] ?? profileData['district'],
+        'block': form['block'] ?? profileData['block'],
+        'city': form['city'],
+        'streetName': form['streetName'],
+        'educationalQualification': form['educationalQualification'],
+        'religion': form['religion'],
+        'socialCategory': form['socialCategory'],
+        'aadhaarNumber': form['aadhaarNumber'],
+        'gender': form['gender'],
+      };
+      
       businessInfo = form['businessInfo'] != null
           ? Map<String, dynamic>.from(form['businessInfo'])
           : <String, dynamic>{};
@@ -1046,11 +1111,25 @@ class UserDetailsDropdown extends StatelessWidget {
           : <String, dynamic>{};
     }
 
-    String s(dynamic v) =>
-        (v == null || (v is String && v.isEmpty)) ? '—' : v.toString();
-    String b(bool? v) => v == null ? '—' : (v ? 'Yes' : 'No');
-    String listToString(List<dynamic>? v) =>
-        (v == null || v.isEmpty) ? '—' : v.join(', ');
+    // Helper functions
+    String s(dynamic value) =>
+        (value == null || (value is String && value.isEmpty))
+        ? '—'
+        : value.toString();
+    String b(bool? value) => value == null ? '—' : (value ? 'Yes' : 'No');
+    String listToString(List<dynamic>? list) {
+      if (list == null || list.isEmpty) return '—';
+      return list.join(', ');
+    }
+    
+    // Helper to check if a value is not empty
+    bool hasValue(dynamic value) {
+      if (value == null) return false;
+      if (value is String) return value.trim().isNotEmpty;
+      if (value is List) return value.isNotEmpty;
+      if (value is Map) return value.isNotEmpty;
+      return true; // For numbers, bools, etc
+    }
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
@@ -1113,221 +1192,262 @@ class UserDetailsDropdown extends StatelessWidget {
                       'Phone',
                       s(member['phone'] ?? member['phoneNumber']),
                     ),
-                    _buildDetailRow(
-                      'Date of Birth',
-                      s(_formatDate(member['dateOfBirth'])),
-                    ),
+                    if (hasValue(member['dateOfBirth']))
+                      _buildDetailRow(
+                        'Date of Birth',
+                        s(_formatDate(member['dateOfBirth'])),
+                      ),
                     _buildDetailRow('State', s(member['state'])),
                     _buildDetailRow('District', s(member['district'])),
                     _buildDetailRow('Block', s(member['block'])),
-                    _buildDetailRow('City', s(member['city'])),
-                    _buildDetailRow('Street Name', s(member['streetName'])),
-                    _buildDetailRow(
-                      'Educational Qualification',
-                      s(member['educationalQualification']),
-                    ),
-                    _buildDetailRow('Religion', s(member['religion'])),
-                    _buildDetailRow(
-                      'Social Category',
-                      s(member['socialCategory']),
-                    ),
-                    _buildDetailRow(
-                      'Aadhaar Number',
-                      s(member['aadhaarNumber']),
-                    ),
-                    _buildDetailRow('Gender', s(member['gender'])),
+                    if (hasValue(member['city']))
+                      _buildDetailRow('City', s(member['city'])),
+                    if (hasValue(member['streetName']))
+                      _buildDetailRow('Street Name', s(member['streetName'])),
+                    if (hasValue(member['educationalQualification']))
+                      _buildDetailRow(
+                        'Educational Qualification',
+                        s(member['educationalQualification']),
+                      ),
+                    if (hasValue(member['religion']))
+                      _buildDetailRow('Religion', s(member['religion'])),
+                    if (hasValue(member['socialCategory']))
+                      _buildDetailRow(
+                        'Social Category',
+                        s(member['socialCategory']),
+                      ),
+                    if (hasValue(member['aadhaarNumber']))
+                      _buildDetailRow(
+                        'Aadhaar Number',
+                        s(member['aadhaarNumber']),
+                      ),
+                    if (hasValue(member['gender']))
+                      _buildDetailRow('Gender', s(member['gender'])),
                   ]),
 
                   const SizedBox(height: 16),
 
                   // Business Information
-                  ExpansionTile(
-                    title: const Text(
-                      'Business Information',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            _buildDetailRow(
-                              'Doing Business',
-                              b(businessInfo['doingBusiness'] as bool?),
-                            ),
-                            _buildDetailRow(
-                              'Organization Name',
-                              s(businessInfo['organizationName']),
-                            ),
-                            _buildDetailRow(
-                              'Constitution Type',
-                              s(businessInfo['constitutionType']),
-                            ),
-                            _buildDetailRow(
-                              'Business Type',
-                              s(businessInfo['businessType']),
-                            ),
-                            _buildDetailRow(
-                              'Business Activities',
-                              s(businessInfo['businessActivities']),
-                            ),
-                            _buildDetailRow(
-                              'Business Commencement Year',
-                              s(businessInfo['businessCommencementYear']),
-                            ),
-                            _buildDetailRow(
-                              'Number of Employees',
-                              s(businessInfo['numberOfEmployees']),
-                            ),
-                            _buildDetailRow(
-                              'Member of Other Chamber',
-                              b(businessInfo['memberOfOtherChamber'] as bool?),
-                            ),
-                            if (businessInfo['memberOfOtherChamber'] == true)
-                              _buildDetailRow(
-                                'Other Chamber Name',
-                                s(businessInfo['otherChamber']),
-                              ),
-                            _buildDetailRow(
-                              'Registered with Govt Organizations',
-                              listToString(
-                                (businessInfo['registeredWithGovtOrganization']
-                                        as List?)
-                                    ?.cast<dynamic>(),
-                              ),
-                            ),
-                          ],
+                  if (hasValue(businessInfo))
+                    ExpansionTile(
+                      title: const Text(
+                        'Business Information',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
                         ),
                       ),
-                    ],
-                  ),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              if (hasValue(businessInfo['doingBusiness']))
+                                _buildDetailRow(
+                                  'Doing Business',
+                                  b(businessInfo['doingBusiness'] as bool?),
+                                ),
+                              if (hasValue(businessInfo['organizationName']))
+                                _buildDetailRow(
+                                  'Organization Name',
+                                  s(businessInfo['organizationName']),
+                                ),
+                              if (hasValue(businessInfo['constitutionType']))
+                                _buildDetailRow(
+                                  'Constitution Type',
+                                  s(businessInfo['constitutionType']),
+                                ),
+                              if (hasValue(businessInfo['businessType']))
+                                _buildDetailRow(
+                                  'Business Type',
+                                  s(businessInfo['businessType']),
+                                ),
+                              if (hasValue(businessInfo['businessActivities']))
+                                _buildDetailRow(
+                                  'Business Activities',
+                                  s(businessInfo['businessActivities']),
+                                ),
+                              if (hasValue(businessInfo['businessCommencementYear']))
+                                _buildDetailRow(
+                                  'Business Commencement Year',
+                                  s(businessInfo['businessCommencementYear']),
+                                ),
+                              if (hasValue(businessInfo['numberOfEmployees']))
+                                _buildDetailRow(
+                                  'Number of Employees',
+                                  s(businessInfo['numberOfEmployees']),
+                                ),
+                              if (hasValue(businessInfo['memberOfOtherChamber']))
+                                _buildDetailRow(
+                                  'Member of Other Chamber',
+                                  b(businessInfo['memberOfOtherChamber'] as bool?),
+                                ),
+                              if (businessInfo['memberOfOtherChamber'] == true &&
+                                  hasValue(businessInfo['otherChamber']))
+                                _buildDetailRow(
+                                  'Other Chamber Name',
+                                  s(businessInfo['otherChamber']),
+                                ),
+                              if (hasValue(businessInfo['registeredWithGovtOrganization']))
+                                _buildDetailRow(
+                                  'Registered with Govt Organizations',
+                                  listToString(
+                                    (businessInfo['registeredWithGovtOrganization']
+                                            as List?)
+                                        ?.cast<dynamic>(),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
 
                   // Financial & Compliance
-                  ExpansionTile(
-                    title: const Text(
-                      'Financial & Compliance',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            _buildDetailRow(
-                              'PAN Number',
-                              s(financialInfo['panNumber']),
-                            ),
-                            _buildDetailRow(
-                              'GST Number',
-                              s(financialInfo['gstNumber']),
-                            ),
-                            _buildDetailRow(
-                              'Udyam Number',
-                              s(financialInfo['udyamNumber']),
-                            ),
-                            _buildDetailRow(
-                              'Filed ITR',
-                              b(financialInfo['filedITR'] as bool?),
-                            ),
-                            _buildDetailRow(
-                              'ITR Years',
-                              s(financialInfo['itrYears']),
-                            ),
-                            _buildDetailRow(
-                              'Turnover Range',
-                              s(financialInfo['turnoverRange']),
-                            ),
-                            _buildDetailRow(
-                              'FY 2021',
-                              s(financialInfo['fy2021']),
-                            ),
-                            _buildDetailRow(
-                              'FY 2020',
-                              s(financialInfo['fy2020']),
-                            ),
-                            _buildDetailRow(
-                              'FY 2019',
-                              s(financialInfo['fy2019']),
-                            ),
-                            _buildDetailRow(
-                              'Govt Scheme Benefit',
-                              b(financialInfo['govtSchemeBenefit'] as bool?),
-                            ),
-                            _buildDetailRow(
-                              'Scheme 1',
-                              s(financialInfo['scheme1']),
-                            ),
-                            _buildDetailRow(
-                              'Scheme 2',
-                              s(financialInfo['scheme2']),
-                            ),
-                            _buildDetailRow(
-                              'Scheme 3',
-                              s(financialInfo['scheme3']),
-                            ),
-                          ],
+                  if (hasValue(financialInfo))
+                    ExpansionTile(
+                      title: const Text(
+                        'Financial & Compliance',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
                         ),
                       ),
-                    ],
-                  ),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              if (hasValue(financialInfo['panNumber']))
+                                _buildDetailRow(
+                                  'PAN Number',
+                                  s(financialInfo['panNumber']),
+                                ),
+                              if (hasValue(financialInfo['gstNumber']))
+                                _buildDetailRow(
+                                  'GST Number',
+                                  s(financialInfo['gstNumber']),
+                                ),
+                              if (hasValue(financialInfo['udyamNumber']))
+                                _buildDetailRow(
+                                  'Udyam Number',
+                                  s(financialInfo['udyamNumber']),
+                                ),
+                              if (hasValue(financialInfo['filedITR']))
+                                _buildDetailRow(
+                                  'Filed ITR',
+                                  b(financialInfo['filedITR'] as bool?),
+                                ),
+                              if (hasValue(financialInfo['itrYears']))
+                                _buildDetailRow(
+                                  'ITR Years',
+                                  s(financialInfo['itrYears']),
+                                ),
+                              if (hasValue(financialInfo['turnoverRange']))
+                                _buildDetailRow(
+                                  'Turnover Range',
+                                  s(financialInfo['turnoverRange']),
+                                ),
+                              if (hasValue(financialInfo['fy2021']))
+                                _buildDetailRow(
+                                  'FY 2021',
+                                  s(financialInfo['fy2021']),
+                                ),
+                              if (hasValue(financialInfo['fy2020']))
+                                _buildDetailRow(
+                                  'FY 2020',
+                                  s(financialInfo['fy2020']),
+                                ),
+                              if (hasValue(financialInfo['fy2019']))
+                                _buildDetailRow(
+                                  'FY 2019',
+                                  s(financialInfo['fy2019']),
+                                ),
+                              if (hasValue(financialInfo['govtSchemeBenefit']))
+                                _buildDetailRow(
+                                  'Govt Scheme Benefit',
+                                  b(financialInfo['govtSchemeBenefit'] as bool?),
+                                ),
+                              if (hasValue(financialInfo['scheme1']))
+                                _buildDetailRow(
+                                  'Scheme 1',
+                                  s(financialInfo['scheme1']),
+                                ),
+                              if (hasValue(financialInfo['scheme2']))
+                                _buildDetailRow(
+                                  'Scheme 2',
+                                  s(financialInfo['scheme2']),
+                                ),
+                              if (hasValue(financialInfo['scheme3']))
+                                _buildDetailRow(
+                                  'Scheme 3',
+                                  s(financialInfo['scheme3']),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
 
                   // Declaration
-                  ExpansionTile(
-                    title: const Text(
-                      'Declaration',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            _buildDetailRow(
-                              'Sister Concerns',
-                              s(declaration['sisterConcerns']),
-                            ),
-                            _buildDetailRow(
-                              'Company Names',
-                              listToString(
-                                (declaration['companyNames'] as List?)
-                                    ?.cast<dynamic>(),
-                              ),
-                            ),
-                            _buildDetailRow(
-                              'Show One Field Per Name',
-                              b(declaration['showOneFieldPerName'] as bool?),
-                            ),
-                            _buildDetailRow(
-                              'Agree To Declaration',
-                              b(declaration['agreeToDeclaration'] as bool?),
-                            ),
-                            _buildDetailRow(
-                              'Profile Completed',
-                              b(declaration['profileCompleted'] as bool?),
-                            ),
-                            _buildDetailRow(
-                              'Submission Date',
-                              s(_formatDate(declaration['submissionDate'])),
-                            ),
-                            _buildDetailRow('Status', s(declaration['status'])),
-                            // Removed admin review audit fields from UI for admin pages
-                          ],
+                  if (hasValue(declaration))
+                    ExpansionTile(
+                      title: const Text(
+                        'Declaration',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
                         ),
                       ),
-                    ],
-                  ),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              if (hasValue(declaration['sisterConcerns']))
+                                _buildDetailRow(
+                                  'Sister Concerns',
+                                  s(declaration['sisterConcerns']),
+                                ),
+                              if (hasValue(declaration['companyNames']))
+                                _buildDetailRow(
+                                  'Company Names',
+                                  listToString(
+                                    (declaration['companyNames'] as List?)
+                                        ?.cast<dynamic>(),
+                                  ),
+                                ),
+                              if (hasValue(declaration['showOneFieldPerName']))
+                                _buildDetailRow(
+                                  'Show One Field Per Name',
+                                  b(declaration['showOneFieldPerName'] as bool?),
+                                ),
+                              if (hasValue(declaration['agreeToDeclaration']))
+                                _buildDetailRow(
+                                  'Agree To Declaration',
+                                  b(declaration['agreeToDeclaration'] as bool?),
+                                ),
+                              if (hasValue(declaration['profileCompleted']))
+                                _buildDetailRow(
+                                  'Profile Completed',
+                                  b(declaration['profileCompleted'] as bool?),
+                                ),
+                              if (hasValue(declaration['submissionDate']))
+                                _buildDetailRow(
+                                  'Submission Date',
+                                  s(_formatDate(declaration['submissionDate'])),
+                                ),
+                              if (hasValue(declaration['status']))
+                                _buildDetailRow('Status', s(declaration['status'])),
+                              // Removed admin review audit fields from UI for admin pages
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
 
                   const SizedBox(height: 24),
                 ],
