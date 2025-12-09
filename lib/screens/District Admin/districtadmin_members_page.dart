@@ -107,14 +107,22 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
     if (_query.isEmpty) return base;
 
     return base.where((app) {
-      final name = (app['name'] ?? app['fullName'] ?? '').toString().toLowerCase();
-      final email = (app['email'] ?? app['memberEmail'] ?? '').toString().toLowerCase();
-      final phone = (app['phone'] ?? app['phoneNumber'] ?? '').toString().toLowerCase();
+      final name = (app['name'] ?? app['fullName'] ?? '')
+          .toString()
+          .toLowerCase();
+      final email = (app['email'] ?? app['memberEmail'] ?? '')
+          .toString()
+          .toLowerCase();
+      final phone = (app['phone'] ?? app['phoneNumber'] ?? '')
+          .toString()
+          .toLowerCase();
       final district = (app['district'] ?? '').toString().toLowerCase();
       final block = (app['block'] ?? '').toString().toLowerCase();
       final status = (app['status'] ?? '').toString().toLowerCase();
-      final appliedOn = (app['appliedOn'] ?? app['createdAt'] ?? '').toString().toLowerCase();
-      
+      final appliedOn = (app['appliedOn'] ?? app['createdAt'] ?? '')
+          .toString()
+          .toLowerCase();
+
       return name.contains(_query) ||
           email.contains(_query) ||
           phone.contains(_query) ||
@@ -196,7 +204,11 @@ class _DistrictAdminMembersPageState extends State<DistrictAdminMembersPage> {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.person, color: Colors.white, size: 20),
+                  child: const Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
               ),
             ],

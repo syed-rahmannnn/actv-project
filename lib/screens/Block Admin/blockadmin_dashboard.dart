@@ -220,7 +220,9 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         // Navigate to login screen
-        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/login', (route) => false);
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFF1F6FF),
@@ -228,44 +230,44 @@ class _BlockAdminDashboardState extends State<BlockAdminDashboard> {
             ? const Center(child: CircularProgressIndicator())
             : _page(_tab),
         bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _tab,
-        onTap: (i) {
-          // If navigating back to dashboard (tab 0) from any other tab, refresh the data
-          if (i == 0 && _tab != 0) {
-            _load();
-          }
-          setState(() {
-            _tab = i;
-          });
-        },
-        selectedItemColor: const Color(0xFF1E88FF),
-        unselectedItemColor: const Color(0xFF6B7280),
-        backgroundColor: Colors.white,
-        elevation: 8,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.verified_outlined),
-            activeIcon: Icon(Icons.verified),
-            label: 'Approvals',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group_outlined),
-            activeIcon: Icon(Icons.group),
-            label: 'Members',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined),
-            activeIcon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-      ),
+          type: BottomNavigationBarType.fixed,
+          currentIndex: _tab,
+          onTap: (i) {
+            // If navigating back to dashboard (tab 0) from any other tab, refresh the data
+            if (i == 0 && _tab != 0) {
+              _load();
+            }
+            setState(() {
+              _tab = i;
+            });
+          },
+          selectedItemColor: const Color(0xFF1E88FF),
+          unselectedItemColor: const Color(0xFF6B7280),
+          backgroundColor: Colors.white,
+          elevation: 8,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard_outlined),
+              activeIcon: Icon(Icons.dashboard),
+              label: 'Dashboard',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.verified_outlined),
+              activeIcon: Icon(Icons.verified),
+              label: 'Approvals',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.group_outlined),
+              activeIcon: Icon(Icons.group),
+              label: 'Members',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings_outlined),
+              activeIcon: Icon(Icons.settings),
+              label: 'Settings',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1080,7 +1082,7 @@ class UserDetailsDropdown extends StatelessWidget {
       final form = profileData['formData'] != null
           ? Map<String, dynamic>.from(profileData['formData'])
           : <String, dynamic>{};
-      
+
       // Member/Demographic data - check both formData root and top-level fields
       member = {
         'fullName': form['fullName'] ?? profileData['fullName'],
@@ -1099,7 +1101,7 @@ class UserDetailsDropdown extends StatelessWidget {
         'aadhaarNumber': form['aadhaarNumber'],
         'gender': form['gender'],
       };
-      
+
       businessInfo = form['businessInfo'] != null
           ? Map<String, dynamic>.from(form['businessInfo'])
           : <String, dynamic>{};
@@ -1121,7 +1123,7 @@ class UserDetailsDropdown extends StatelessWidget {
       if (list == null || list.isEmpty) return '—';
       return list.join(', ');
     }
-    
+
     // Helper to check if a value is not empty
     bool hasValue(dynamic value) {
       if (value == null) return false;
@@ -1268,7 +1270,9 @@ class UserDetailsDropdown extends StatelessWidget {
                                   'Business Activities',
                                   s(businessInfo['businessActivities']),
                                 ),
-                              if (hasValue(businessInfo['businessCommencementYear']))
+                              if (hasValue(
+                                businessInfo['businessCommencementYear'],
+                              ))
                                 _buildDetailRow(
                                   'Business Commencement Year',
                                   s(businessInfo['businessCommencementYear']),
@@ -1278,18 +1282,26 @@ class UserDetailsDropdown extends StatelessWidget {
                                   'Number of Employees',
                                   s(businessInfo['numberOfEmployees']),
                                 ),
-                              if (hasValue(businessInfo['memberOfOtherChamber']))
+                              if (hasValue(
+                                businessInfo['memberOfOtherChamber'],
+                              ))
                                 _buildDetailRow(
                                   'Member of Other Chamber',
-                                  b(businessInfo['memberOfOtherChamber'] as bool?),
+                                  b(
+                                    businessInfo['memberOfOtherChamber']
+                                        as bool?,
+                                  ),
                                 ),
-                              if (businessInfo['memberOfOtherChamber'] == true &&
+                              if (businessInfo['memberOfOtherChamber'] ==
+                                      true &&
                                   hasValue(businessInfo['otherChamber']))
                                 _buildDetailRow(
                                   'Other Chamber Name',
                                   s(businessInfo['otherChamber']),
                                 ),
-                              if (hasValue(businessInfo['registeredWithGovtOrganization']))
+                              if (hasValue(
+                                businessInfo['registeredWithGovtOrganization'],
+                              ))
                                 _buildDetailRow(
                                   'Registered with Govt Organizations',
                                   listToString(
@@ -1368,7 +1380,9 @@ class UserDetailsDropdown extends StatelessWidget {
                               if (hasValue(financialInfo['govtSchemeBenefit']))
                                 _buildDetailRow(
                                   'Govt Scheme Benefit',
-                                  b(financialInfo['govtSchemeBenefit'] as bool?),
+                                  b(
+                                    financialInfo['govtSchemeBenefit'] as bool?,
+                                  ),
                                 ),
                               if (hasValue(financialInfo['scheme1']))
                                 _buildDetailRow(
@@ -1423,7 +1437,9 @@ class UserDetailsDropdown extends StatelessWidget {
                               if (hasValue(declaration['showOneFieldPerName']))
                                 _buildDetailRow(
                                   'Show One Field Per Name',
-                                  b(declaration['showOneFieldPerName'] as bool?),
+                                  b(
+                                    declaration['showOneFieldPerName'] as bool?,
+                                  ),
                                 ),
                               if (hasValue(declaration['agreeToDeclaration']))
                                 _buildDetailRow(
@@ -1441,7 +1457,10 @@ class UserDetailsDropdown extends StatelessWidget {
                                   s(_formatDate(declaration['submissionDate'])),
                                 ),
                               if (hasValue(declaration['status']))
-                                _buildDetailRow('Status', s(declaration['status'])),
+                                _buildDetailRow(
+                                  'Status',
+                                  s(declaration['status']),
+                                ),
                               // Removed admin review audit fields from UI for admin pages
                             ],
                           ),

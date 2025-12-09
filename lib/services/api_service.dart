@@ -18,7 +18,7 @@ class ApiService {
 
     // Use local backend during development
     if (kDebugMode) {
-      return 'http://10.42.208.174:3000/api';
+      return 'http://10.191.174.174:3000/api';
     }
 
     // Production backend
@@ -29,9 +29,9 @@ class ApiService {
   static Duration _requestTimeout() {
     try {
       final isRender = baseUrl.contains('onrender.com');
-      return Duration(seconds: isRender ? 75 : 12);
+      return Duration(seconds: isRender ? 75 : 30);
     } catch (_) {
-      return const Duration(seconds: 12);
+      return const Duration(seconds: 30);
     }
   }
 
@@ -125,6 +125,7 @@ class ApiService {
 
     http.Response resp;
     try {
+      developer.log('🔄 Sending login request to: $url', name: 'ApiService');
       resp = await http
           .post(url, headers: _headers(), body: jsonEncode(payload))
           .timeout(_requestTimeout());

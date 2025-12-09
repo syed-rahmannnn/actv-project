@@ -8,7 +8,7 @@ class MemberService {
   static final _cache = FastCacheManager();
   // Backend URL Configuration
   // Using machine's local WiFi IP for device connectivity
-  static const String baseUrl = 'http://10.42.208.174:3000/api';
+  static const String baseUrl = 'http://10.191.174.174:3000/api';
 
   // Get current user's identifier (email) from secure storage
   static Future<String?> _getCurrentUserIdentifier() async {
@@ -77,10 +77,10 @@ class MemberService {
               headers: {'Content-Type': 'application/json'},
             )
             .timeout(
-              const Duration(seconds: 3), // Reduced from 5s
+              const Duration(seconds: 30), // Increased for network stability
               onTimeout: () {
-                print('⏱️ Request timeout (3s)');
-                throw TimeoutException('Request timed out after 3 seconds');
+                print('⏱️ Request timeout (30s)');
+                throw TimeoutException('Request timed out after 30 seconds');
               },
             );
 

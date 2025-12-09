@@ -524,67 +524,67 @@ class _BlockAdminSettingsPageState extends State<BlockAdminSettingsPage> {
             onPressed: _handleBackNavigation,
           ),
         ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : FutureBuilder<Map<String, dynamic>?>(
-              future: AuthService.getUserData(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : FutureBuilder<Map<String, dynamic>?>(
+                future: AuthService.getUserData(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-                if (snapshot.hasData && snapshot.data != null) {
-                  final userData = snapshot.data!;
+                  if (snapshot.hasData && snapshot.data != null) {
+                    final userData = snapshot.data!;
 
-                  // Update local variables with fresh data
-                  adminEmail =
-                      userData['email']?.toString() ?? 'No email found';
-                  adminName = userData['fullName']?.toString() ?? 'Admin';
+                    // Update local variables with fresh data
+                    adminEmail =
+                        userData['email']?.toString() ?? 'No email found';
+                    adminName = userData['fullName']?.toString() ?? 'Admin';
 
-                  // Extract district name for location icon
-                  final districtName =
-                      userData['districtName']?.toString() ??
-                      userData['district']?.toString() ??
-                      userData['meta']?['districtName']?.toString() ??
-                      userData['meta']?['district']?.toString() ??
-                      'Ariyalur'; // Known district name as fallback
+                    // Extract district name for location icon
+                    final districtName =
+                        userData['districtName']?.toString() ??
+                        userData['district']?.toString() ??
+                        userData['meta']?['districtName']?.toString() ??
+                        userData['meta']?['district']?.toString() ??
+                        'Ariyalur'; // Known district name as fallback
 
-                  locationName =
-                      districtName; // Keep this for backward compatibility
-                }
+                    locationName =
+                        districtName; // Keep this for backward compatibility
+                  }
 
-                return RefreshIndicator(
-                  onRefresh: _refresh,
-                  child: ListView(
-                    padding: const EdgeInsets.all(20),
-                    children: [
-                      // Profile Card
-                      _buildProfileCard(
-                        freshAdminName: adminName,
-                        freshAdminEmail: adminEmail,
-                      ),
+                  return RefreshIndicator(
+                    onRefresh: _refresh,
+                    child: ListView(
+                      padding: const EdgeInsets.all(20),
+                      children: [
+                        // Profile Card
+                        _buildProfileCard(
+                          freshAdminName: adminName,
+                          freshAdminEmail: adminEmail,
+                        ),
 
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                      // Admin Overview Stats
-                      _buildOverviewStats(),
+                        // Admin Overview Stats
+                        _buildOverviewStats(),
 
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                      // Support Section (Account panel removed as requested)
-                      _buildSupportSection(),
+                        // Support Section (Account panel removed as requested)
+                        _buildSupportSection(),
 
-                      const SizedBox(height: 32),
+                        const SizedBox(height: 32),
 
-                      // Logout Button
-                      _buildLogoutButton(),
+                        // Logout Button
+                        _buildLogoutButton(),
 
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                );
-              },
-            ),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  );
+                },
+              ),
       ), // PopScope
     );
   }

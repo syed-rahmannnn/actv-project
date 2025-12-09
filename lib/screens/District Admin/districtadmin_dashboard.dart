@@ -46,7 +46,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
     try {
       // Get token first
       _token = await AuthService.getToken();
-      
+
       // Use passed adminId if available, otherwise get from AuthService
       if (widget.adminId != null && widget.adminId!.isNotEmpty) {
         setState(() {
@@ -98,7 +98,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
       );
       return;
     }
-    
+
     developer.log(
       'DA_DASHBOARD: 🔄 Starting fetch with districtAdminId: $_districtAdminId',
       name: 'DistrictAdminDashboard',
@@ -109,7 +109,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
       final pendingApps = await _applicationService.getDistrictInbox(
         _districtAdminId!,
       );
-      
+
       print('🔥🔥🔥 DISTRICT INBOX RESPONSE: $pendingApps');
       print('🔥🔥🔥 DISTRICT INBOX LENGTH: ${pendingApps.length}');
 
@@ -117,7 +117,7 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
         'DA_DASHBOARD: Fetched ${pendingApps.length} pending applications',
         name: 'DistrictAdminDashboard',
       );
-      
+
       // Update pending applications immediately
       setState(() {
         // Replace pending list to avoid duplicates on refresh
@@ -131,12 +131,12 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
         final stats = await _applicationService.getDistrictStats(
           _districtAdminId!,
         );
-        
+
         developer.log(
           'DA_DASHBOARD: Stats = $stats',
           name: 'DistrictAdminDashboard',
         );
-        
+
         setState(() {
           // Update stats with real data from backend
           _stats['pending'] = stats['pending'] ?? 0;
@@ -286,7 +286,9 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         // Navigate to login screen
-        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/login', (route) => false);
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFF1F6FF),
@@ -294,36 +296,36 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
             ? const Center(child: CircularProgressIndicator())
             : _page(_tab),
         bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _tab,
-        onTap: (i) => setState(() => _tab = i),
-        selectedItemColor: const Color(0xFF1E88FF),
-        unselectedItemColor: const Color(0xFF6B7280),
-        backgroundColor: Colors.white,
-        elevation: 8,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.verified_outlined),
-            activeIcon: Icon(Icons.verified),
-            label: 'Approvals',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group_outlined),
-            activeIcon: Icon(Icons.group),
-            label: 'Members',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined),
-            activeIcon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-      ),
+          type: BottomNavigationBarType.fixed,
+          currentIndex: _tab,
+          onTap: (i) => setState(() => _tab = i),
+          selectedItemColor: const Color(0xFF1E88FF),
+          unselectedItemColor: const Color(0xFF6B7280),
+          backgroundColor: Colors.white,
+          elevation: 8,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard_outlined),
+              activeIcon: Icon(Icons.dashboard),
+              label: 'Dashboard',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.verified_outlined),
+              activeIcon: Icon(Icons.verified),
+              label: 'Approvals',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.group_outlined),
+              activeIcon: Icon(Icons.group),
+              label: 'Members',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings_outlined),
+              activeIcon: Icon(Icons.settings),
+              label: 'Settings',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -398,7 +400,8 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
                   icon: Icons.people,
                   chipText: 'All',
                   chipColor: const Color(0xFF3B82F6),
-                  onTap: () => setState(() => _tab = 1), // Navigate to Approvals (All)
+                  onTap: () =>
+                      setState(() => _tab = 1), // Navigate to Approvals (All)
                 ),
                 _statCard(
                   title: 'Pending',
@@ -407,7 +410,9 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
                   icon: Icons.access_time,
                   chipText: 'Pending',
                   chipColor: const Color(0xFFF59E0B),
-                  onTap: () => setState(() => _tab = 1), // Navigate to Approvals (Pending)
+                  onTap: () => setState(
+                    () => _tab = 1,
+                  ), // Navigate to Approvals (Pending)
                 ),
                 _statCard(
                   title: 'Approved',
@@ -416,7 +421,9 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
                   icon: Icons.check_circle,
                   chipText: 'Approved',
                   chipColor: const Color(0xFF10B981),
-                  onTap: () => setState(() => _tab = 1), // Navigate to Approvals (Approved)
+                  onTap: () => setState(
+                    () => _tab = 1,
+                  ), // Navigate to Approvals (Approved)
                 ),
                 _statCard(
                   title: 'Rejected',
@@ -425,7 +432,9 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
                   icon: Icons.cancel,
                   chipText: 'Rejected',
                   chipColor: const Color(0xFFEF4444),
-                  onTap: () => setState(() => _tab = 1), // Navigate to Approvals (Rejected)
+                  onTap: () => setState(
+                    () => _tab = 1,
+                  ), // Navigate to Approvals (Rejected)
                 ),
               ],
             ),
@@ -545,7 +554,11 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.person, color: Colors.white, size: 20),
+                  child: const Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
               ),
             ],
@@ -580,71 +593,71 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
       child: Container(
         width: (MediaQuery.of(context).size.width - 52) / 2,
         decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha((0.05 * 255).toInt()),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Icon(icon, color: chipColor, size: 24),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: chipColor.withAlpha((0.1 * 255).toInt()),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    chipText,
-                    style: TextStyle(
-                      color: chipColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0F172A),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF0F172A),
-              ),
-            ),
-            Text(
-              subtitle,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha((0.05 * 255).toInt()),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
             ),
           ],
+          border: Border.all(color: const Color(0xFFE5E7EB)),
         ),
-      ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Icon(icon, color: chipColor, size: 24),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: chipColor.withAlpha((0.1 * 255).toInt()),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      chipText,
+                      style: TextStyle(
+                        color: chipColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              Text(
+                subtitle,
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -694,178 +707,188 @@ class _DistrictAdminDashboardPageState extends State<DistrictAdminDashboard> {
         margin: const EdgeInsets.only(bottom: 14),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha((0.06 * 255).toInt()),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Top row: avatar, name + phone, pending pill at right
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const CircleAvatar(
-                radius: 26,
-                backgroundColor: Color(0xFFE5E7EB),
-                child: Icon(Icons.person, color: Color(0xFF6B7280)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      fullName,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Phone: $phone',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF6B7280),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Pending pill styled like Block Admin
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFF59E0B)),
-                ),
-                child: const Text(
-                  'Pending',
-                  style: TextStyle(
-                    color: Color(0xFFF59E0B),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          // Block (left) and Applied on date (right)
-          Row(
-            children: [
-              const Icon(Icons.location_on, size: 16, color: Color(0xFF6B7280)),
-              const SizedBox(width: 6),
-              Text(
-                'Block: $block',
-                style: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
-              ),
-              const Spacer(),
-              const Icon(
-                Icons.calendar_today,
-                size: 14,
-                color: Color(0xFF6B7280),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Applied: $appliedDate',
-                style: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          // Email and Gender vertically stacked (Gender below Email)
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.email, size: 16, color: Color(0xFF6B7280)),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Email: $email',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF374151),
-                      ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),          // Approve/Reject buttons only for pending
-          if (status.contains('pending')) ...[
-            const SizedBox(height: 16),
-            // Log before rendering action buttons
-            Builder(
-              builder: (context) {
-                developer.log('SHOW BUTTONS for ${app['_id']}');
-                return const SizedBox.shrink();
-              },
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha((0.06 * 255).toInt()),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
             ),
+          ],
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top row: avatar, name + phone, pending pill at right
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _handleApprove(app),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF16A34A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Approve',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
+                const CircleAvatar(
+                  radius: 26,
+                  backgroundColor: Color(0xFFE5E7EB),
+                  child: Icon(Icons.person, color: Color(0xFF6B7280)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _handleReject(app),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF5C5C),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        fullName,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0F172A),
+                        ),
                       ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Reject',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Phone: $phone',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Pending pill styled like Block Admin
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0xFFF59E0B)),
+                  ),
+                  child: const Text(
+                    'Pending',
+                    style: TextStyle(
+                      color: Color(0xFFF59E0B),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ],
             ),
+
+            const SizedBox(height: 10),
+
+            // Block (left) and Applied on date (right)
+            Row(
+              children: [
+                const Icon(
+                  Icons.location_on,
+                  size: 16,
+                  color: Color(0xFF6B7280),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Block: $block',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+                const Spacer(),
+                const Icon(
+                  Icons.calendar_today,
+                  size: 14,
+                  color: Color(0xFF6B7280),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Applied: $appliedDate',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF374151),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 8),
+
+            // Email and Gender vertically stacked (Gender below Email)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.email, size: 16, color: Color(0xFF6B7280)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Email: $email',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF374151),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ), // Approve/Reject buttons only for pending
+            if (status.contains('pending')) ...[
+              const SizedBox(height: 16),
+              // Log before rendering action buttons
+              Builder(
+                builder: (context) {
+                  developer.log('SHOW BUTTONS for ${app['_id']}');
+                  return const SizedBox.shrink();
+                },
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _handleApprove(app),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF16A34A),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Approve',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _handleReject(app),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF5C5C),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Reject',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
-        ],
-      ),
+        ),
       ), // InkWell child (Container)
     );
   }
@@ -1042,7 +1065,7 @@ class UserDetailsDropdown extends StatelessWidget {
       final form = profileData['formData'] != null
           ? Map<String, dynamic>.from(profileData['formData'])
           : <String, dynamic>{};
-      
+
       // Member/Demographic data - check both formData root and top-level fields
       member = {
         'fullName': form['fullName'] ?? profileData['fullName'],
@@ -1061,7 +1084,7 @@ class UserDetailsDropdown extends StatelessWidget {
         'aadhaarNumber': form['aadhaarNumber'],
         'gender': form['gender'],
       };
-      
+
       businessInfo = form['businessInfo'] != null
           ? Map<String, dynamic>.from(form['businessInfo'])
           : <String, dynamic>{};
@@ -1083,7 +1106,7 @@ class UserDetailsDropdown extends StatelessWidget {
       if (list == null || list.isEmpty) return '—';
       return list.join(', ');
     }
-    
+
     // Helper to check if a value is not empty
     bool hasValue(dynamic value) {
       if (value == null) return false;
@@ -1189,223 +1212,238 @@ class UserDetailsDropdown extends StatelessWidget {
                   // Business Information - Only show if any business data exists
                   if (hasValue(businessInfo))
                     ExpansionTile(
-                    title: const Text(
-                      'Business Information',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            if (businessInfo['doingBusiness'] != null)
-                              _buildDetailRow(
-                                'Doing Business',
-                                b(businessInfo['doingBusiness'] as bool?),
-                              ),
-                            if (hasValue(businessInfo['organizationName']))
-                              _buildDetailRow(
-                                'Organization Name',
-                                s(businessInfo['organizationName']),
-                              ),
-                            if (hasValue(businessInfo['constitutionType']))
-                              _buildDetailRow(
-                                'Constitution Type',
-                                s(businessInfo['constitutionType']),
-                              ),
-                            if (hasValue(businessInfo['businessType']))
-                              _buildDetailRow(
-                                'Business Type',
-                                s(businessInfo['businessType']),
-                              ),
-                            if (hasValue(businessInfo['businessActivities']))
-                              _buildDetailRow(
-                                'Business Activities',
-                                s(businessInfo['businessActivities']),
-                              ),
-                            if (hasValue(businessInfo['businessCommencementYear']))
-                              _buildDetailRow(
-                                'Business Commencement Year',
-                                s(businessInfo['businessCommencementYear']),
-                              ),
-                            if (hasValue(businessInfo['numberOfEmployees']))
-                              _buildDetailRow(
-                                'Number of Employees',
-                                s(businessInfo['numberOfEmployees']),
-                              ),
-                            if (businessInfo['memberOfOtherChamber'] != null)
-                              _buildDetailRow(
-                                'Member of Other Chamber',
-                                b(businessInfo['memberOfOtherChamber'] as bool?),
-                              ),
-                            if (businessInfo['memberOfOtherChamber'] == true &&
-                                hasValue(businessInfo['otherChamber']))
-                              _buildDetailRow(
-                                'Other Chamber Name',
-                                s(businessInfo['otherChamber']),
-                              ),
-                            if (hasValue(businessInfo['registeredWithGovtOrganization']))
-                              _buildDetailRow(
-                                'Registered with Govt Organizations',
-                                listToString(
-                                  (businessInfo['registeredWithGovtOrganization']
-                                          as List?)
-                                      ?.cast<dynamic>(),
-                                ),
-                              ),
-                          ],
+                      title: const Text(
+                        'Business Information',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
                         ),
                       ),
-                    ],
-                  ),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              if (businessInfo['doingBusiness'] != null)
+                                _buildDetailRow(
+                                  'Doing Business',
+                                  b(businessInfo['doingBusiness'] as bool?),
+                                ),
+                              if (hasValue(businessInfo['organizationName']))
+                                _buildDetailRow(
+                                  'Organization Name',
+                                  s(businessInfo['organizationName']),
+                                ),
+                              if (hasValue(businessInfo['constitutionType']))
+                                _buildDetailRow(
+                                  'Constitution Type',
+                                  s(businessInfo['constitutionType']),
+                                ),
+                              if (hasValue(businessInfo['businessType']))
+                                _buildDetailRow(
+                                  'Business Type',
+                                  s(businessInfo['businessType']),
+                                ),
+                              if (hasValue(businessInfo['businessActivities']))
+                                _buildDetailRow(
+                                  'Business Activities',
+                                  s(businessInfo['businessActivities']),
+                                ),
+                              if (hasValue(
+                                businessInfo['businessCommencementYear'],
+                              ))
+                                _buildDetailRow(
+                                  'Business Commencement Year',
+                                  s(businessInfo['businessCommencementYear']),
+                                ),
+                              if (hasValue(businessInfo['numberOfEmployees']))
+                                _buildDetailRow(
+                                  'Number of Employees',
+                                  s(businessInfo['numberOfEmployees']),
+                                ),
+                              if (businessInfo['memberOfOtherChamber'] != null)
+                                _buildDetailRow(
+                                  'Member of Other Chamber',
+                                  b(
+                                    businessInfo['memberOfOtherChamber']
+                                        as bool?,
+                                  ),
+                                ),
+                              if (businessInfo['memberOfOtherChamber'] ==
+                                      true &&
+                                  hasValue(businessInfo['otherChamber']))
+                                _buildDetailRow(
+                                  'Other Chamber Name',
+                                  s(businessInfo['otherChamber']),
+                                ),
+                              if (hasValue(
+                                businessInfo['registeredWithGovtOrganization'],
+                              ))
+                                _buildDetailRow(
+                                  'Registered with Govt Organizations',
+                                  listToString(
+                                    (businessInfo['registeredWithGovtOrganization']
+                                            as List?)
+                                        ?.cast<dynamic>(),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
 
                   // Financial & Compliance - Only show if any financial data exists
                   if (hasValue(financialInfo))
                     ExpansionTile(
-                    title: const Text(
-                      'Financial & Compliance',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            if (hasValue(financialInfo['panNumber']))
-                              _buildDetailRow(
-                                'PAN Number',
-                                s(financialInfo['panNumber']),
-                              ),
-                            if (hasValue(financialInfo['gstNumber']))
-                              _buildDetailRow(
-                                'GST Number',
-                                s(financialInfo['gstNumber']),
-                              ),
-                            if (hasValue(financialInfo['udyamNumber']))
-                              _buildDetailRow(
-                                'Udyam Number',
-                                s(financialInfo['udyamNumber']),
-                              ),
-                            if (financialInfo['filedITR'] != null)
-                              _buildDetailRow(
-                                'Filed ITR',
-                                b(financialInfo['filedITR'] as bool?),
-                              ),
-                            if (hasValue(financialInfo['itrYears']))
-                              _buildDetailRow(
-                                'ITR Years',
-                                s(financialInfo['itrYears']),
-                              ),
-                            if (hasValue(financialInfo['turnoverRange']))
-                              _buildDetailRow(
-                                'Turnover Range',
-                                s(financialInfo['turnoverRange']),
-                              ),
-                            if (hasValue(financialInfo['fy2021']))
-                              _buildDetailRow(
-                                'FY 2021',
-                                s(financialInfo['fy2021']),
-                              ),
-                            if (hasValue(financialInfo['fy2020']))
-                              _buildDetailRow(
-                                'FY 2020',
-                                s(financialInfo['fy2020']),
-                              ),
-                            if (hasValue(financialInfo['fy2019']))
-                              _buildDetailRow(
-                                'FY 2019',
-                                s(financialInfo['fy2019']),
-                              ),
-                            if (financialInfo['govtSchemeBenefit'] != null)
-                              _buildDetailRow(
-                                'Govt Scheme Benefit',
-                                b(financialInfo['govtSchemeBenefit'] as bool?),
-                              ),
-                            if (hasValue(financialInfo['scheme1']))
-                              _buildDetailRow(
-                                'Scheme 1',
-                                s(financialInfo['scheme1']),
-                              ),
-                            if (hasValue(financialInfo['scheme2']))
-                              _buildDetailRow(
-                                'Scheme 2',
-                                s(financialInfo['scheme2']),
-                              ),
-                            if (hasValue(financialInfo['scheme3']))
-                              _buildDetailRow(
-                                'Scheme 3',
-                                s(financialInfo['scheme3']),
-                              ),
-                          ],
+                      title: const Text(
+                        'Financial & Compliance',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
                         ),
                       ),
-                    ],
-                  ),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              if (hasValue(financialInfo['panNumber']))
+                                _buildDetailRow(
+                                  'PAN Number',
+                                  s(financialInfo['panNumber']),
+                                ),
+                              if (hasValue(financialInfo['gstNumber']))
+                                _buildDetailRow(
+                                  'GST Number',
+                                  s(financialInfo['gstNumber']),
+                                ),
+                              if (hasValue(financialInfo['udyamNumber']))
+                                _buildDetailRow(
+                                  'Udyam Number',
+                                  s(financialInfo['udyamNumber']),
+                                ),
+                              if (financialInfo['filedITR'] != null)
+                                _buildDetailRow(
+                                  'Filed ITR',
+                                  b(financialInfo['filedITR'] as bool?),
+                                ),
+                              if (hasValue(financialInfo['itrYears']))
+                                _buildDetailRow(
+                                  'ITR Years',
+                                  s(financialInfo['itrYears']),
+                                ),
+                              if (hasValue(financialInfo['turnoverRange']))
+                                _buildDetailRow(
+                                  'Turnover Range',
+                                  s(financialInfo['turnoverRange']),
+                                ),
+                              if (hasValue(financialInfo['fy2021']))
+                                _buildDetailRow(
+                                  'FY 2021',
+                                  s(financialInfo['fy2021']),
+                                ),
+                              if (hasValue(financialInfo['fy2020']))
+                                _buildDetailRow(
+                                  'FY 2020',
+                                  s(financialInfo['fy2020']),
+                                ),
+                              if (hasValue(financialInfo['fy2019']))
+                                _buildDetailRow(
+                                  'FY 2019',
+                                  s(financialInfo['fy2019']),
+                                ),
+                              if (financialInfo['govtSchemeBenefit'] != null)
+                                _buildDetailRow(
+                                  'Govt Scheme Benefit',
+                                  b(
+                                    financialInfo['govtSchemeBenefit'] as bool?,
+                                  ),
+                                ),
+                              if (hasValue(financialInfo['scheme1']))
+                                _buildDetailRow(
+                                  'Scheme 1',
+                                  s(financialInfo['scheme1']),
+                                ),
+                              if (hasValue(financialInfo['scheme2']))
+                                _buildDetailRow(
+                                  'Scheme 2',
+                                  s(financialInfo['scheme2']),
+                                ),
+                              if (hasValue(financialInfo['scheme3']))
+                                _buildDetailRow(
+                                  'Scheme 3',
+                                  s(financialInfo['scheme3']),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
 
                   // Declaration - Only show if any declaration data exists
                   if (hasValue(declaration))
                     ExpansionTile(
-                    title: const Text(
-                      'Declaration',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            if (hasValue(declaration['sisterConcerns']))
-                              _buildDetailRow(
-                                'Sister Concerns',
-                                s(declaration['sisterConcerns']),
-                              ),
-                            if (hasValue(declaration['companyNames']))
-                              _buildDetailRow(
-                                'Company Names',
-                                listToString(
-                                  (declaration['companyNames'] as List?)
-                                      ?.cast<dynamic>(),
-                                ),
-                              ),
-                            if (declaration['showOneFieldPerName'] != null)
-                              _buildDetailRow(
-                                'Show One Field Per Name',
-                                b(declaration['showOneFieldPerName'] as bool?),
-                              ),
-                            if (declaration['agreeToDeclaration'] != null)
-                              _buildDetailRow(
-                                'Agree To Declaration',
-                                b(declaration['agreeToDeclaration'] as bool?),
-                              ),
-                            if (declaration['profileCompleted'] != null)
-                              _buildDetailRow(
-                                'Profile Completed',
-                                b(declaration['profileCompleted'] as bool?),
-                              ),
-                            if (hasValue(declaration['submissionDate']))
-                              _buildDetailRow(
-                                'Submission Date',
-                                s(_formatDate(declaration['submissionDate'])),
-                              ),
-                            if (hasValue(declaration['status']))
-                              _buildDetailRow('Status', s(declaration['status'])),
-                          ],
+                      title: const Text(
+                        'Declaration',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
                         ),
                       ),
-                    ],
-                  ),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              if (hasValue(declaration['sisterConcerns']))
+                                _buildDetailRow(
+                                  'Sister Concerns',
+                                  s(declaration['sisterConcerns']),
+                                ),
+                              if (hasValue(declaration['companyNames']))
+                                _buildDetailRow(
+                                  'Company Names',
+                                  listToString(
+                                    (declaration['companyNames'] as List?)
+                                        ?.cast<dynamic>(),
+                                  ),
+                                ),
+                              if (declaration['showOneFieldPerName'] != null)
+                                _buildDetailRow(
+                                  'Show One Field Per Name',
+                                  b(
+                                    declaration['showOneFieldPerName'] as bool?,
+                                  ),
+                                ),
+                              if (declaration['agreeToDeclaration'] != null)
+                                _buildDetailRow(
+                                  'Agree To Declaration',
+                                  b(declaration['agreeToDeclaration'] as bool?),
+                                ),
+                              if (declaration['profileCompleted'] != null)
+                                _buildDetailRow(
+                                  'Profile Completed',
+                                  b(declaration['profileCompleted'] as bool?),
+                                ),
+                              if (hasValue(declaration['submissionDate']))
+                                _buildDetailRow(
+                                  'Submission Date',
+                                  s(_formatDate(declaration['submissionDate'])),
+                                ),
+                              if (hasValue(declaration['status']))
+                                _buildDetailRow(
+                                  'Status',
+                                  s(declaration['status']),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
 
                   const SizedBox(height: 24),
                 ],

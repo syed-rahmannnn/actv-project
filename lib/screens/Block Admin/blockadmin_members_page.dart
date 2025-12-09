@@ -103,13 +103,19 @@ class _BlockAdminMembersPageState extends State<BlockAdminMembersPage> {
 
     bool match(Map m) {
       final name = (m['fullName'] ?? m['name'] ?? '').toString().toLowerCase();
-      final email = (m['email'] ?? m['memberEmail'] ?? '').toString().toLowerCase();
-      final phone = (m['phone'] ?? m['phoneNumber'] ?? '').toString().toLowerCase();
+      final email = (m['email'] ?? m['memberEmail'] ?? '')
+          .toString()
+          .toLowerCase();
+      final phone = (m['phone'] ?? m['phoneNumber'] ?? '')
+          .toString()
+          .toLowerCase();
       final district = (m['district'] ?? '').toString().toLowerCase();
       final block = (m['block'] ?? '').toString().toLowerCase();
       final status = (m['status'] ?? '').toString().toLowerCase();
-      final appliedOn = (m['appliedOn'] ?? m['createdAt'] ?? '').toString().toLowerCase();
-      
+      final appliedOn = (m['appliedOn'] ?? m['createdAt'] ?? '')
+          .toString()
+          .toLowerCase();
+
       return name.contains(_query) ||
           email.contains(_query) ||
           phone.contains(_query) ||

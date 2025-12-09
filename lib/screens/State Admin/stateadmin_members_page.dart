@@ -125,13 +125,21 @@ class _StateAdminMembersPageState extends State<StateAdminMembersPage> {
       final name = (app['fullName'] ?? app['name'] ?? '')
           .toString()
           .toLowerCase();
-      final email = (app['email'] ?? app['memberEmail'] ?? '').toString().toLowerCase();
-      final phone = (app['phone'] ?? app['phoneNumber'] ?? '').toString().toLowerCase();
+      final email = (app['email'] ?? app['memberEmail'] ?? '')
+          .toString()
+          .toLowerCase();
+      final phone = (app['phone'] ?? app['phoneNumber'] ?? '')
+          .toString()
+          .toLowerCase();
       final district = (app['district'] ?? '').toString().toLowerCase();
       final block = (app['block'] ?? '').toString().toLowerCase();
-      final status = (app['status'] ?? app['applicationStatus'] ?? '').toString().toLowerCase();
-      final appliedOn = (app['appliedOn'] ?? app['createdAt'] ?? '').toString().toLowerCase();
-      
+      final status = (app['status'] ?? app['applicationStatus'] ?? '')
+          .toString()
+          .toLowerCase();
+      final appliedOn = (app['appliedOn'] ?? app['createdAt'] ?? '')
+          .toString()
+          .toLowerCase();
+
       return name.contains(_query) ||
           email.contains(_query) ||
           phone.contains(_query) ||
@@ -213,7 +221,11 @@ class _StateAdminMembersPageState extends State<StateAdminMembersPage> {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.person, color: Colors.white, size: 20),
+                  child: const Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
               ),
             ],

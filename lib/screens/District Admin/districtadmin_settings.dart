@@ -135,7 +135,7 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
       districtName = widget.districtName ?? '';
       email = widget.districtEmail ?? '';
       active = widget.isActive ?? true;
-      
+
       setState(() {
         _stats = {
           'total': widget.statsOverride!['total'] ?? 0,
@@ -182,7 +182,7 @@ class _DistrictAdminSettingsPageState extends State<DistrictAdminSettingsPage> {
             'total': pending.length,
             'pending': pending.length,
             'approved': 0,
-            'rejected': 0
+            'rejected': 0,
           };
           _loading = false;
         });

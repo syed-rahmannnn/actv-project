@@ -348,7 +348,11 @@ class _DistrictAdminApprovalPageState extends State<DistrictAdminApprovalPage> {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.person, color: Colors.white, size: 20),
+                  child: const Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
               ),
             ],
