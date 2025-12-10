@@ -57,14 +57,16 @@ class MemberService {
 
       final encodedEmail = Uri.encodeComponent(email);
       final cacheKey = 'member_details_$email';
-      
+
       // Try cache first
       final cached = _cache.get<Map<String, dynamic>>(cacheKey);
       if (cached != null) {
-        print('✅ Loaded member details from cache (${cached['data']?['personal_and_demographic_details']?['full_name'] ?? 'Member'})');
+        print(
+          '✅ Loaded member details from cache (${cached['data']?['personal_and_demographic_details']?['full_name'] ?? 'Member'})',
+        );
         return cached;
       }
-      
+
       print('\n🔄 Fetching member details from API...');
       print('📧 User email from session: $email');
       print('🌐 API URL: $baseUrl/members/$encodedEmail/details');
@@ -94,7 +96,7 @@ class MemberService {
           return data;
         } else if (response.statusCode == 404) {
           print('❌ Member not found in database');
-            return {
+          return {
             'success': false,
             'message':
                 'No member profile found. Please complete your registration.',
@@ -108,7 +110,8 @@ class MemberService {
         print('❌ Request failed due to timeout');
         return {
           'success': false,
-          'message': 'Connection timeout. Please check your network and try again.',
+          'message':
+              'Connection timeout. Please check your network and try again.',
         };
       } catch (e) {
         print('❌ Network/other error: $e');

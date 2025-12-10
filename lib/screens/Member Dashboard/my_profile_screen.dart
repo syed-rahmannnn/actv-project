@@ -124,176 +124,281 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
 
   List<Widget> _buildPersonalDetails() {
     final personal = _memberData['personal_and_demographic_details'] ?? {};
-    return [
-      _buildDetailRow('Full Name', personal['full_name'] ?? 'N/A'),
-      _buildDetailRow('Date of Birth', personal['date_of_birth'] ?? 'N/A'),
-      _buildDetailRow('Gender', personal['gender'] ?? 'N/A'),
-      _buildDetailRow('Email', personal['email'] ?? 'N/A'),
-      _buildDetailRow('Phone', personal['phone'] ?? 'N/A'),
-      _buildDetailRow('Address', personal['address'] ?? 'N/A'),
-      _buildDetailRow('State', personal['state'] ?? 'N/A'),
-      _buildDetailRow('District', personal['district'] ?? 'N/A'),
-      _buildDetailRow('Block', personal['block'] ?? 'N/A'),
-      _buildDetailRow('Pincode', personal['pincode'] ?? 'N/A'),
-      _buildDetailRow('Category', personal['category'] ?? 'N/A'),
-      _buildDetailRow('Marital Status', personal['marital_status'] ?? 'N/A'),
-      _buildDetailRow('Education', personal['education'] ?? 'N/A'),
-      _buildDetailRow('Occupation', personal['occupation'] ?? 'N/A'),
-    ];
+    List<Widget> details = [];
+
+    // Helper function to check if value is valid
+    bool hasValue(dynamic value) {
+      if (value == null) return false;
+      final str = value.toString().trim();
+      return str.isNotEmpty && str.toLowerCase() != 'n/a' && str != 'null';
+    }
+
+    // Only add fields that have actual data
+    if (hasValue(personal['full_name'])) {
+      details.add(
+        _buildDetailRow('Full Name', personal['full_name'].toString()),
+      );
+    }
+    if (hasValue(personal['date_of_birth'])) {
+      details.add(
+        _buildDetailRow('Date of Birth', personal['date_of_birth'].toString()),
+      );
+    }
+    if (hasValue(personal['gender'])) {
+      details.add(_buildDetailRow('Gender', personal['gender'].toString()));
+    }
+    if (hasValue(personal['email'])) {
+      details.add(_buildDetailRow('Email', personal['email'].toString()));
+    }
+    if (hasValue(personal['phone'])) {
+      details.add(_buildDetailRow('Phone', personal['phone'].toString()));
+    }
+    if (hasValue(personal['address'])) {
+      details.add(_buildDetailRow('Address', personal['address'].toString()));
+    }
+    if (hasValue(personal['state'])) {
+      details.add(_buildDetailRow('State', personal['state'].toString()));
+    }
+    if (hasValue(personal['district'])) {
+      details.add(_buildDetailRow('District', personal['district'].toString()));
+    }
+    if (hasValue(personal['block'])) {
+      details.add(_buildDetailRow('Block', personal['block'].toString()));
+    }
+    if (hasValue(personal['pincode'])) {
+      details.add(_buildDetailRow('Pincode', personal['pincode'].toString()));
+    }
+    if (hasValue(personal['category'])) {
+      details.add(_buildDetailRow('Category', personal['category'].toString()));
+    }
+    if (hasValue(personal['marital_status'])) {
+      details.add(
+        _buildDetailRow(
+          'Marital Status',
+          personal['marital_status'].toString(),
+        ),
+      );
+    }
+    if (hasValue(personal['education'])) {
+      details.add(
+        _buildDetailRow('Education', personal['education'].toString()),
+      );
+    }
+    if (hasValue(personal['occupation'])) {
+      details.add(
+        _buildDetailRow('Occupation', personal['occupation'].toString()),
+      );
+    }
+
+    return details;
   }
 
   List<Widget> _buildBusinessDetails() {
     final business = _memberData['business_information'] ?? {};
-    return [
-      _buildDetailRow(
-        'Doing Business',
-        business['doing_business'] == true ? 'Yes' : 'No',
-      ),
-      _buildDetailRow(
-        'Organization Name',
-        (business['organization_name']?.toString() ?? '').isEmpty
-            ? ''
-            : business['organization_name'].toString(),
-      ),
-      _buildDetailRow(
-        'Constitution Type',
-        (business['constitution_type']?.toString() ?? '').isEmpty
-            ? ''
-            : business['constitution_type'].toString(),
-      ),
-      _buildDetailRow(
-        'Business Type',
-        (business['business_type']?.toString() ?? '').isEmpty
-            ? ''
-            : business['business_type'].toString(),
-      ),
-      _buildDetailRow(
-        'Activities',
-        (business['activities']?.toString() ?? '').isEmpty
-            ? ''
-            : business['activities'].toString(),
-      ),
-      _buildDetailRow(
-        'Commencement Year',
-        (business['commencement_year']?.toString() ?? '').isEmpty
-            ? ''
-            : business['commencement_year'].toString(),
-      ),
-      _buildDetailRow(
-        'Number of Employees',
-        (business['number_of_employees']?.toString() ?? '').isEmpty
-            ? ''
-            : business['number_of_employees'].toString(),
-      ),
-      _buildDetailRow(
-        'Member of Other Chamber',
-        business['member_of_other_chamber'] == true ? 'Yes' : 'No',
-      ),
-      _buildDetailRow(
-        'Other Chamber Details',
-        (business['other_chamber']?.toString() ?? '').isEmpty
-            ? ''
-            : business['other_chamber'].toString(),
-      ),
-      _buildDetailRow(
-        'Govt Registrations',
-        (business['govt_registrations'] as List?)?.join(', ') ?? '',
-      ),
-    ];
+    List<Widget> details = [];
+
+    // Helper function to check if value is valid
+    bool hasValue(dynamic value) {
+      if (value == null) return false;
+      final str = value.toString().trim();
+      return str.isNotEmpty && str.toLowerCase() != 'n/a' && str != 'null';
+    }
+
+    // Show Doing Business status
+    if (business['doing_business'] != null) {
+      details.add(
+        _buildDetailRow(
+          'Doing Business',
+          business['doing_business'] == true ? 'Yes' : 'No',
+        ),
+      );
+    }
+
+    // Only add fields that have actual data
+    if (hasValue(business['organization_name'])) {
+      details.add(
+        _buildDetailRow(
+          'Organization Name',
+          business['organization_name'].toString(),
+        ),
+      );
+    }
+    if (hasValue(business['constitution_type'])) {
+      details.add(
+        _buildDetailRow(
+          'Constitution Type',
+          business['constitution_type'].toString(),
+        ),
+      );
+    }
+    if (hasValue(business['business_type'])) {
+      details.add(
+        _buildDetailRow('Business Type', business['business_type'].toString()),
+      );
+    }
+    if (hasValue(business['activities'])) {
+      details.add(
+        _buildDetailRow('Activities', business['activities'].toString()),
+      );
+    }
+    if (hasValue(business['commencement_year'])) {
+      details.add(
+        _buildDetailRow(
+          'Commencement Year',
+          business['commencement_year'].toString(),
+        ),
+      );
+    }
+    if (hasValue(business['number_of_employees'])) {
+      details.add(
+        _buildDetailRow(
+          'Number of Employees',
+          business['number_of_employees'].toString(),
+        ),
+      );
+    }
+    if (business['member_of_other_chamber'] != null) {
+      details.add(
+        _buildDetailRow(
+          'Member of Other Chamber',
+          business['member_of_other_chamber'] == true ? 'Yes' : 'No',
+        ),
+      );
+    }
+    if (hasValue(business['other_chamber'])) {
+      details.add(
+        _buildDetailRow(
+          'Other Chamber Details',
+          business['other_chamber'].toString(),
+        ),
+      );
+    }
+
+    // Handle govt registrations if it's a list and has data
+    if (business['govt_registrations'] is List &&
+        (business['govt_registrations'] as List).isNotEmpty) {
+      final registrations = (business['govt_registrations'] as List)
+          .where((item) => item != null && item.toString().trim().isNotEmpty)
+          .join(', ');
+      if (registrations.isNotEmpty) {
+        details.add(_buildDetailRow('Govt Registrations', registrations));
+      }
+    }
+
+    return details;
   }
 
   List<Widget> _buildFinancialDetails() {
     final financial = _memberData['financial_information'] ?? {};
-    return [
-      _buildDetailRow(
-        'PAN Number',
-        (financial['pan_number']?.toString() ?? '').isEmpty
-            ? ''
-            : financial['pan_number'].toString(),
-      ),
-      _buildDetailRow(
-        'GST Number',
-        (financial['gst_number']?.toString() ?? '').isEmpty
-            ? ''
-            : financial['gst_number'].toString(),
-      ),
-      _buildDetailRow(
-        'Udyam Number',
-        (financial['udyam_number']?.toString() ?? '').isEmpty
-            ? ''
-            : financial['udyam_number'].toString(),
-      ),
-      _buildDetailRow(
-        'Filed ITR',
-        financial['filed_itr'] == true ? 'Yes' : 'No',
-      ),
-      _buildDetailRow(
-        'ITR Years',
-        (financial['itr_years']?.toString() ?? '').isEmpty
-            ? ''
-            : financial['itr_years'].toString(),
-      ),
-      _buildDetailRow(
-        'Turnover Range',
-        (financial['turnover_range']?.toString() ?? '').isEmpty
-            ? ''
-            : financial['turnover_range'].toString(),
-      ),
-      _buildDetailRow(
-        'FY 2021',
-        (financial['fy_2021']?.toString() ?? '').isEmpty
-            ? ''
-            : financial['fy_2021'].toString(),
-      ),
-      _buildDetailRow(
-        'FY 2020',
-        (financial['fy_2020']?.toString() ?? '').isEmpty
-            ? ''
-            : financial['fy_2020'].toString(),
-      ),
-      _buildDetailRow(
-        'FY 2019',
-        (financial['fy_2019']?.toString() ?? '').isEmpty
-            ? ''
-            : financial['fy_2019'].toString(),
-      ),
-      _buildDetailRow(
-        'Govt Scheme Benefit',
-        financial['govt_scheme_benefit'] == true ? 'Yes' : 'No',
-      ),
-      _buildDetailRow(
-        'Scheme 1',
-        (financial['scheme_1']?.toString() ?? '').isEmpty
-            ? ''
-            : financial['scheme_1'].toString(),
-      ),
-      _buildDetailRow(
-        'Scheme 2',
-        (financial['scheme_2']?.toString() ?? '').isEmpty
-            ? ''
-            : financial['scheme_2'].toString(),
-      ),
-      _buildDetailRow(
-        'Scheme 3',
-        (financial['scheme_3']?.toString() ?? '').isEmpty
-            ? ''
-            : financial['scheme_3'].toString(),
-      ),
-    ];
+    List<Widget> details = [];
+
+    // Helper function to check if value is valid
+    bool hasValue(dynamic value) {
+      if (value == null) return false;
+      final str = value.toString().trim();
+      return str.isNotEmpty && str.toLowerCase() != 'n/a' && str != 'null';
+    }
+
+    // Only add fields that have actual data
+    if (hasValue(financial['pan_number'])) {
+      details.add(
+        _buildDetailRow('PAN Number', financial['pan_number'].toString()),
+      );
+    }
+    if (hasValue(financial['gst_number'])) {
+      details.add(
+        _buildDetailRow('GST Number', financial['gst_number'].toString()),
+      );
+    }
+    if (hasValue(financial['udyam_number'])) {
+      details.add(
+        _buildDetailRow('Udyam Number', financial['udyam_number'].toString()),
+      );
+    }
+    if (financial['filed_itr'] != null) {
+      details.add(
+        _buildDetailRow(
+          'Filed ITR',
+          financial['filed_itr'] == true ? 'Yes' : 'No',
+        ),
+      );
+    }
+    if (hasValue(financial['itr_years'])) {
+      details.add(
+        _buildDetailRow('ITR Years', financial['itr_years'].toString()),
+      );
+    }
+    if (hasValue(financial['turnover_range'])) {
+      details.add(
+        _buildDetailRow(
+          'Turnover Range',
+          financial['turnover_range'].toString(),
+        ),
+      );
+    }
+    if (hasValue(financial['fy_2021'])) {
+      details.add(_buildDetailRow('FY 2021', financial['fy_2021'].toString()));
+    }
+    if (hasValue(financial['fy_2020'])) {
+      details.add(_buildDetailRow('FY 2020', financial['fy_2020'].toString()));
+    }
+    if (hasValue(financial['fy_2019'])) {
+      details.add(_buildDetailRow('FY 2019', financial['fy_2019'].toString()));
+    }
+    if (financial['govt_scheme_benefit'] != null) {
+      details.add(
+        _buildDetailRow(
+          'Govt Scheme Benefit',
+          financial['govt_scheme_benefit'] == true ? 'Yes' : 'No',
+        ),
+      );
+    }
+    if (hasValue(financial['scheme_1'])) {
+      details.add(
+        _buildDetailRow('Scheme 1', financial['scheme_1'].toString()),
+      );
+    }
+    if (hasValue(financial['scheme_2'])) {
+      details.add(
+        _buildDetailRow('Scheme 2', financial['scheme_2'].toString()),
+      );
+    }
+    if (hasValue(financial['scheme_3'])) {
+      details.add(
+        _buildDetailRow('Scheme 3', financial['scheme_3'].toString()),
+      );
+    }
+
+    return details;
   }
 
   List<Widget> _buildDeclarationDetails() {
     final declaration = _memberData['declaration'] ?? {};
-    return [
-      _buildDetailRow(
-        'Agreed to Terms',
-        declaration['agree_terms'] == true ? 'Yes' : 'No',
-      ),
-      _buildDetailRow(
-        'Submitted At',
-        declaration['submitted_at']?.toString() ?? 'N/A',
-      ),
-    ];
+    List<Widget> details = [];
+
+    // Helper function to check if value is valid
+    bool hasValue(dynamic value) {
+      if (value == null) return false;
+      final str = value.toString().trim();
+      return str.isNotEmpty && str.toLowerCase() != 'n/a' && str != 'null';
+    }
+
+    // Only add fields that have actual data
+    if (declaration['agree_terms'] != null) {
+      details.add(
+        _buildDetailRow(
+          'Agreed to Terms',
+          declaration['agree_terms'] == true ? 'Yes' : 'No',
+        ),
+      );
+    }
+    if (hasValue(declaration['submitted_at'])) {
+      details.add(
+        _buildDetailRow('Submitted At', declaration['submitted_at'].toString()),
+      );
+    }
+
+    return details;
   }
 
   @override
@@ -549,9 +654,6 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   }
 
   Widget _buildDetailRow(String label, String value) {
-    // Show "Not Provided" for empty strings, "N/A" for null or "N/A"
-    final displayValue = value.isEmpty ? 'Not Provided' : value;
-
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Row(
@@ -571,17 +673,11 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           Expanded(
             flex: 3,
             child: Text(
-              displayValue,
-              style: TextStyle(
+              value,
+              style: const TextStyle(
                 fontSize: 14,
-                color: displayValue == 'Not Provided' || displayValue == 'N/A'
-                    ? Colors.grey[500]
-                    : const Color(0xFF202124),
+                color: Color(0xFF202124),
                 fontWeight: FontWeight.w500,
-                fontStyle:
-                    displayValue == 'Not Provided' || displayValue == 'N/A'
-                    ? FontStyle.italic
-                    : FontStyle.normal,
               ),
             ),
           ),

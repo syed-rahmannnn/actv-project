@@ -129,21 +129,14 @@ class AccountScreen extends StatelessWidget {
                             },
                           ),
                           _buildDivider(),
-                          _buildMenuItem(
+                          _buildDisabledMenuItem(
                             icon: Icons.payment_outlined,
                             title: 'Payment History',
-                            onTap: () {
-                              // TODO: Navigate to payment history
-                            },
                           ),
                           _buildDivider(),
-                          _buildMenuItem(
+                          _buildDisabledMenuItem(
                             icon: Icons.workspace_premium_outlined,
                             title: 'Certificates',
-                            onTap: () {
-                              // TODO: Navigate to certificates
-                            },
-                            showDivider: false,
                           ),
                         ],
                       ),
@@ -190,6 +183,32 @@ class AccountScreen extends StatelessWidget {
             const Icon(Icons.chevron_right, color: Color(0xFF5F6368), size: 24),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDisabledMenuItem({
+    required IconData icon,
+    required String title,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF202124), size: 24),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF202124),
+              ),
+            ),
+          ),
+          const Icon(Icons.chevron_right, color: Color(0xFF5F6368), size: 24),
+        ],
       ),
     );
   }

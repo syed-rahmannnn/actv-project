@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:activ/services/auth_service.dart';
 import 'package:activ/services/api_service.dart';
 import '../Member Dashboard/my_profile_screen.dart';
+import '../../utils/snackbar_utils.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -157,29 +158,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    _buildMenuItem(
+                    _buildDisabledMenuItem(
                       icon: Icons.payment_outlined,
                       title: 'Payment History',
-                      onTap: () {
-                        // Navigate to payment history
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Payment History clicked'),
-                          ),
-                        );
-                      },
                     ),
                     const SizedBox(height: 20),
 
-                    _buildMenuItem(
+                    _buildDisabledMenuItem(
                       icon: Icons.workspace_premium_outlined,
                       title: 'Certificates',
-                      onTap: () {
-                        // Navigate to certificates
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Certificates clicked')),
-                        );
-                      },
                     ),
 
                     const Spacer(),
@@ -234,6 +221,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Icon(Icons.chevron_right, color: Colors.grey[400], size: 24),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDisabledMenuItem({
+    required IconData icon,
+    required String title,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey[600], size: 24),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          Icon(Icons.chevron_right, color: Colors.grey[400], size: 24),
+        ],
       ),
     );
   }

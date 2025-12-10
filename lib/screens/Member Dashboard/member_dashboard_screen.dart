@@ -165,27 +165,6 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-
-                    // Search Bar
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Search by location...',
-                          hintStyle: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 16,
-                          ),
-                          border: InputBorder.none,
-                          icon: Icon(Icons.search, color: Colors.grey[600]),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -383,7 +362,9 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                                     builder: (context) => AccountScreen(
                                       memberName: memberName,
                                       companyName: companyName,
-                                      memberId: isViewingOtherMember ? displayMemberId : null, // Pass displayMemberId when viewing other member
+                                      memberId: isViewingOtherMember
+                                          ? displayMemberId
+                                          : null, // Pass displayMemberId when viewing other member
                                     ),
                                   ),
                                 );
