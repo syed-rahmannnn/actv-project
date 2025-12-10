@@ -300,9 +300,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   children: [
-                    // 🔹 Full Blue Header
+                    // 🔹 Compact Header
                     Container(
-                      height: 200,
                       width: double.infinity,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
@@ -315,75 +314,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           bottomRight: Radius.circular(20),
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ProfileScreen(),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(
-                                top: 50,
-                                left: 20,
-                                right: 20,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          top: 40,
+                          left: 20,
+                          right: 20,
+                          bottom: 24,
+                        ),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ProfileScreen(),
                               ),
-                              child: Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 25,
-                                    backgroundColor: Colors.blue.shade700,
-                                    child: Text(
-                                      _getInitials(displayName),
+                            );
+                          },
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 28,
+                                backgroundColor: Colors.blue.shade700,
+                                child: Text(
+                                  _getInitials(displayName),
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Welcome back, $displayName',
                                       style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Welcome back, $displayName',
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                        if (mobileNumber.isNotEmpty)
-                                          Text(
-                                            mobileNumber,
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              color: Colors.black54,
-                                            ),
-                                          ),
-                                        Text(
-                                          companyName,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.black54,
-                                          ),
-                                        ),
-                                      ],
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      companyName,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.black54,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
 
@@ -550,7 +539,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
             Expanded(
@@ -560,12 +549,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Text(
                     cardTitle,
                     style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -579,21 +568,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       badgeText,
                       style: TextStyle(
                         color: badgeTextColor,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Text(
                     cardDescription,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       color: Colors.black54,
-                      height: 1.4,
+                      height: 1.3,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: () async {
                       print(
@@ -640,15 +629,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       elevation: 2,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 28,
-                        vertical: 14,
+                        horizontal: 24,
+                        vertical: 12,
                       ),
                     ),
                     child: Text(
                       buttonText,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -656,25 +645,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: 16),
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Color(0xFFE3F2FD),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Image.network(
                 'https://img.icons8.com/fluency/96/business.png',
-                width: 70,
-                height: 70,
+                width: 60,
+                height: 60,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Container(
-                    width: 70,
-                    height: 70,
+                    width: 60,
+                    height: 60,
                     child: Icon(
                       Icons.business,
-                      size: 50,
+                      size: 45,
                       color: Color(0xFF0D6EFD),
                     ),
                   );
@@ -939,7 +928,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
             Expanded(
@@ -949,12 +938,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const Text(
                     'Your Application Status',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -968,21 +957,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       statusLabel,
                       style: TextStyle(
                         color: statusColor,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   const Text(
                     'Your application is under review. Tap to see status updates.',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       color: Colors.black54,
-                      height: 1.4,
+                      height: 1.3,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: () async {
                       // Navigate to Application Status screen
@@ -998,8 +987,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 28,
-                        vertical: 14,
+                        horizontal: 24,
+                        vertical: 12,
                       ),
                       elevation: 2,
                       shape: RoundedRectangleBorder(
@@ -1010,7 +999,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       'View Status',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1018,16 +1007,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: 16),
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Color(0xFFFFF3E0),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Icon(
                 Icons.pending_actions,
-                size: 70,
+                size: 60,
                 color: Color(0xFFFFA726),
               ),
             ),
