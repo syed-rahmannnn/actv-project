@@ -21,7 +21,7 @@ class AccountScreen extends StatelessWidget {
     print('📛 Member Name: $memberName');
     print('🆔 Member ID: $memberId');
     print('🏢 Company Name: $companyName');
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
@@ -122,7 +122,8 @@ class AccountScreen extends StatelessWidget {
                                   builder: (context) => MyProfileScreen(
                                     memberName: memberName,
                                     profileImageUrl: profileImageUrl,
-                                    memberId: memberId, // Pass memberId to profile screen
+                                    memberId:
+                                        memberId, // Pass memberId to profile screen
                                   ),
                                 ),
                               );
